@@ -1,0 +1,22 @@
+[package]
+name = "iced-alegria"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+iced = { git = "https://github.com/iced-rs/iced", default-features = false, features = [
+    "tokio",
+    "tiny-skia",
+] }
+sqlx = { version = "0.8.3", features = [
+    "runtime-tokio",
+    "sqlite",
+    "chrono",
+    "uuid",
+] }
+i18n-embed-fl = "0.9.3"
+rust-embed = "8.5.0"
+
+[dependencies.i18n-embed]
+version = "0.15.3"
+features = ["fluent-system", "desktop-requester"]
