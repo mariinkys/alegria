@@ -1,11 +1,17 @@
 use iced::Task;
 
-pub struct AlegriaAction<I, Message> {
+pub struct AlegriaAction<I, Message>
+where
+    I: std::fmt::Debug + Clone,
+{
     pub instructions: Vec<I>,
     pub tasks: Vec<Task<Message>>,
 }
 
-impl<I, Message> AlegriaAction<I, Message> {
+impl<I, Message> AlegriaAction<I, Message>
+where
+    I: std::fmt::Debug + Clone,
+{
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
