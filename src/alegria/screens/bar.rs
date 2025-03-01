@@ -5,7 +5,7 @@ use std::sync::Arc;
 use iced::{Element, Task, widget};
 use sqlx::{Pool, Sqlite};
 
-use crate::alegria::core::models::product_category::ProductCategory;
+use crate::alegria::{action::AlegriaAction, core::models::product_category::ProductCategory};
 
 pub struct Bar {
     /// Database of the application
@@ -24,7 +24,7 @@ pub enum Message {
 
 // Tasks that need to modify state on the main screen
 #[derive(Debug, Clone)]
-pub enum BarTasks {
+pub enum BarInstruction {
     Back,
 }
 
@@ -36,15 +36,14 @@ impl Bar {
         }
     }
 
-    pub fn update(&mut self, message: Message) -> (Vec<Task<Message>>, Vec<BarTasks>) {
-        let mut tasks = Vec::new();
-        let mut bar_tasks = Vec::new();
+    pub fn update(&mut self, message: Message) -> AlegriaAction<BarInstruction, Message> {
+        let mut action = AlegriaAction::new();
 
         match message {
-            Message::Back => bar_tasks.push(BarTasks::Back),
+            Message::Back => action.add_instruction(BarInstruction::Back),
             Message::FetchProductCategories => {
                 if let Some(pool) = &self.database {
-                    tasks.push(Task::perform(
+                    action.add_task(Task::perform(
                         ProductCategory::get_all(pool.clone()),
                         |res| match res {
                             Ok(items) => Message::SetProductCategories(items),
@@ -61,7 +60,7 @@ impl Bar {
             }
         }
 
-        (tasks, bar_tasks)
+        action
     }
 
     pub fn view(&self) -> Element<Message> {

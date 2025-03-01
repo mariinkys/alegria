@@ -71,16 +71,18 @@ impl IcedAlegria {
                 }
             },
             Message::Bar(message) => {
-                let (async_bar_tasks, bar_tasks) = self.bar.update(message);
-                let async_bar_tasks: Vec<Task<Message>> = async_bar_tasks
+                let action = self.bar.update(message);
+                // TODO: Can I abstract this into action?
+                let bar_tasks: Vec<Task<Message>> = action
+                    .tasks
                     .into_iter()
                     .map(|task| task.map(Message::Bar))
                     .collect();
-                tasks.extend(async_bar_tasks);
+                tasks.extend(bar_tasks);
 
-                for bar_task in bar_tasks {
+                for bar_task in action.instructions {
                     match bar_task {
-                        bar::BarTasks::Back => {
+                        bar::BarInstruction::Back => {
                             self.screen = Screen::Home;
                         }
                     }
