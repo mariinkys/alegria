@@ -8,7 +8,7 @@ mod app;
 mod i18n;
 
 /// Unique identifier in RDNN (reverse domain name notation) format.
-const APP_ID: &'static str = "dev.mariinkys.IcedAlegria";
+const APP_ID: &str = "dev.mariinkys.IcedAlegria";
 
 fn main() -> Result<(), iced::Error> {
     // Get the system's preferred languages.
@@ -22,7 +22,7 @@ fn main() -> Result<(), iced::Error> {
 
     tasks.push(iced::Task::perform(
         async move { alegria::core::database::init_database(APP_ID).await },
-        |db| app::Message::DatabaseLoaded(db),
+        app::Message::DatabaseLoaded,
     ));
 
     iced::application("Battery Status", IcedAlegria::update, IcedAlegria::view)

@@ -5,33 +5,89 @@ use std::sync::Arc;
 use iced::{Task, widget};
 use sqlx::{Pool, Sqlite};
 
-use crate::fl;
+use crate::{
+    alegria::screens::bar::{self, Bar},
+    fl,
+};
+
+#[derive(Debug, Clone)]
+pub enum Screen {
+    Home,
+    Bar,
+}
 
 pub struct IcedAlegria {
     /// Database of the application
     database: Option<Arc<Pool<Sqlite>>>,
+    /// Represents a Screen of the App
+    screen: Screen,
+    /// Holds the state of the bar screen
+    bar: Bar,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     DatabaseLoaded(Arc<Pool<Sqlite>>),
+    ChangeScreen(Screen),
+
+    Bar(bar::Message),
 }
 
 impl IcedAlegria {
     pub fn new() -> Self {
-        Self { database: None }
+        Self {
+            database: None,
+            screen: Screen::Home,
+            bar: Bar::init(),
+        }
     }
 
     pub fn view(&self) -> iced::Element<'_, Message> {
-        widget::Container::new(widget::Text::new(fl!("welcome"))).into()
+        let content = match self.screen {
+            Screen::Home => widget::Button::new(widget::Text::new(fl!("welcome")))
+                .on_press(Message::ChangeScreen(Screen::Bar))
+                .into(),
+            Screen::Bar => self.bar.view().map(Message::Bar),
+        };
+
+        widget::Container::new(content).into()
     }
 
     pub fn update(&mut self, message: Message) -> iced::Task<Message> {
+        let mut tasks = vec![];
+
         match message {
             Message::DatabaseLoaded(pool) => {
                 self.database = Some(pool);
+                self.bar.database = self.database.clone();
+            }
+            Message::ChangeScreen(screen) => match screen {
+                Screen::Home => {
+                    self.screen = screen;
+                }
+                Screen::Bar => {
+                    tasks.push(self.update(Message::Bar(bar::Message::FetchProductCategories)));
+                    self.screen = screen;
+                }
+            },
+            Message::Bar(message) => {
+                let (async_bar_tasks, bar_tasks) = self.bar.update(message);
+                let async_bar_tasks: Vec<Task<Message>> = async_bar_tasks
+                    .into_iter()
+                    .map(|task| task.map(Message::Bar))
+                    .collect();
+                tasks.extend(async_bar_tasks);
+
+                for bar_task in bar_tasks {
+                    match bar_task {
+                        bar::BarTasks::Back => {
+                            self.screen = Screen::Home;
+                        }
+                    }
+                }
             }
         }
-        Task::none()
+
+        Task::batch(tasks)
     }
 }
