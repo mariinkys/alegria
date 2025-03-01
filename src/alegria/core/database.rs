@@ -2,7 +2,7 @@
 
 use std::{fs, sync::Arc};
 
-use sqlx::{Pool, Sqlite, SqlitePool, migrate};
+use sqlx::{Pool, Sqlite, SqlitePool};
 
 const DB_NAME: &str = "alegria.db";
 

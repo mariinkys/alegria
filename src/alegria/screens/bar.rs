@@ -37,7 +37,6 @@ impl Bar {
     }
 
     pub fn update(&mut self, message: Message) -> (Vec<Task<Message>>, Vec<BarTasks>) {
-        #[allow(unused_mut)]
         let mut tasks = Vec::new();
         let mut bar_tasks = Vec::new();
 
