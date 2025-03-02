@@ -68,6 +68,7 @@ impl IcedAlegria {
                 }
                 Screen::Bar => {
                     tasks.push(self.update(Message::Bar(bar::Message::FetchProductCategories)));
+                    tasks.push(self.update(Message::Bar(bar::Message::FetchTemporalTickets)));
                     self.screen = screen;
                 }
             },

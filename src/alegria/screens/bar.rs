@@ -10,15 +10,12 @@ use sqlx::{Pool, Sqlite};
 
 use crate::alegria::{
     action::AlegriaAction,
-    core::models::{product::Product, product_category::ProductCategory},
+    core::models::{
+        product::Product, product_category::ProductCategory, temporal_product::TemporalProduct,
+        temporal_ticket::TemporalTicket,
+    },
 };
 
-#[derive(Default, Debug, Clone)]
-enum TableStatus {
-    #[default]
-    Default,
-    TicketPrinted,
-}
 #[derive(Default, Debug, Clone)]
 pub enum TableLocation {
     #[default]
@@ -28,11 +25,11 @@ pub enum TableLocation {
 }
 
 #[derive(Default, Debug, Clone)]
-pub struct Table {
-    index: usize,
+pub struct CurrentPositionState {
+    /// Currently selected table location
     location: TableLocation,
-    table_status: TableStatus,
-    products: Vec<Product>,
+    /// Currently selected table index
+    table_index: usize,
 }
 
 pub struct Bar {
@@ -42,15 +39,20 @@ pub struct Bar {
     product_categories: Vec<ProductCategory>,
     /// Selected product category products
     product_category_products: Option<Vec<Product>>,
-    /// Currently selected table location
-    currently_selected_table_location: TableLocation,
-    /// Currently selected table
-    currently_selected_table: Option<Table>,
+    /// Currently selected table state
+    currently_selected_pos_state: CurrentPositionState,
+    /// Temporal Tickets hold the state of the maybe tickets of each table
+    temporal_tickets_model: Vec<TemporalTicket>,
+    // Keeps track of which product is selected in order to be able to modify it with the NumPad
+    //selected_temporal_product: Option<TemporalProduct>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Back,
+
+    FetchTemporalTickets,
+    SetTemporalTickets(Vec<TemporalTicket>),
 
     FetchProductCategories,
     SetProductCategories(Vec<ProductCategory>),
@@ -58,8 +60,7 @@ pub enum Message {
     FetchProductCategoryProducts(Option<i32>),
     SetProductCategoryProducts(Option<Vec<Product>>),
 
-    FetchSelectTable(usize, TableLocation),
-    SetSelectTable(Option<Table>),
+    OnTableChange(CurrentPositionState),
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -75,8 +76,8 @@ impl Bar {
             database: None,
             product_categories: Vec::new(),
             product_category_products: None,
-            currently_selected_table_location: Default::default(),
-            currently_selected_table: None,
+            currently_selected_pos_state: CurrentPositionState::default(),
+            temporal_tickets_model: Vec::new(),
         }
     }
 
@@ -87,8 +88,8 @@ impl Bar {
             database,
             product_categories: Vec::new(),
             product_category_products: None,
-            currently_selected_table_location: Default::default(),
-            currently_selected_table: None,
+            currently_selected_pos_state: CurrentPositionState::default(),
+            temporal_tickets_model: Vec::new(),
         }
     }
 
@@ -98,6 +99,24 @@ impl Bar {
 
         match message {
             Message::Back => action.add_instruction(BarInstruction::Back),
+
+            Message::FetchTemporalTickets => {
+                if let Some(pool) = &self.database {
+                    action.add_task(Task::perform(
+                        TemporalTicket::get_all(pool.clone()),
+                        |res| match res {
+                            Ok(res) => Message::SetTemporalTickets(res),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                Message::SetTemporalTickets(Vec::new())
+                            }
+                        },
+                    ));
+                }
+            }
+            Message::SetTemporalTickets(res) => {
+                self.temporal_tickets_model = res;
+            }
 
             Message::FetchProductCategories => {
                 if let Some(pool) = &self.database {
@@ -138,17 +157,9 @@ impl Bar {
                 self.product_category_products = items;
             }
 
-            Message::FetchSelectTable(index, location) => {
-                //TODO: Fetch table from db by index and location
-                self.currently_selected_table = Some(Table {
-                    index,
-                    location,
-                    table_status: Default::default(),
-                    products: Vec::new(),
-                })
-            }
-            Message::SetSelectTable(table) => {
-                self.currently_selected_table = table;
+            Message::OnTableChange(table_state) => {
+                self.currently_selected_pos_state = table_state;
+                self.update(Message::FetchTemporalTickets);
             }
         }
 
@@ -204,10 +215,11 @@ impl Bar {
                     .align_x(Alignment::Center),
             )
             .width(Length::Fixed(40.))
-            .on_press(Message::FetchSelectTable(
-                index,
-                self.currently_selected_table_location.clone(),
-            ));
+            // TODO: Table location is now always bar
+            .on_press(Message::OnTableChange(CurrentPositionState {
+                location: TableLocation::Bar,
+                table_index: index,
+            }));
             current_row = current_row.push(table_button);
 
             if (index + 1) % Self::TABLES_PER_ROW == 0 {
