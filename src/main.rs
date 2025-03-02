@@ -25,7 +25,7 @@ fn main() -> Result<(), iced::Error> {
         app::Message::DatabaseLoaded,
     ));
 
-    iced::application("Battery Status", IcedAlegria::update, IcedAlegria::view)
+    iced::application(APP_ID, IcedAlegria::update, IcedAlegria::view)
         .window(Settings {
             position: iced::window::Position::Centered,
             resizable: true,
