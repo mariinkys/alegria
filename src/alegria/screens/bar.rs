@@ -13,17 +13,26 @@ use crate::alegria::{
     core::models::{product::Product, product_category::ProductCategory},
 };
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 enum TableStatus {
     #[default]
     Default,
     TicketPrinted,
 }
+#[derive(Default, Debug, Clone)]
+pub enum TableLocation {
+    #[default]
+    Bar,
+    Resturant,
+    Garden,
+}
 
-#[derive(Default)]
-struct Table {
-    products: Vec<Product>,
+#[derive(Default, Debug, Clone)]
+pub struct Table {
+    index: usize,
+    location: TableLocation,
     table_status: TableStatus,
+    products: Vec<Product>,
 }
 
 pub struct Bar {
@@ -33,8 +42,10 @@ pub struct Bar {
     product_categories: Vec<ProductCategory>,
     /// Selected product category products
     product_category_products: Option<Vec<Product>>,
-    /// State of the tables of the bar section
-    bar_tables: [Table; 30],
+    /// Currently selected table location
+    currently_selected_table_location: TableLocation,
+    /// Currently selected table
+    currently_selected_table: Option<Table>,
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +57,9 @@ pub enum Message {
 
     FetchProductCategoryProducts(Option<i32>),
     SetProductCategoryProducts(Option<Vec<Product>>),
+
+    FetchSelectTable(usize, TableLocation),
+    SetSelectTable(Option<Table>),
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -61,7 +75,8 @@ impl Bar {
             database: None,
             product_categories: Vec::new(),
             product_category_products: None,
-            bar_tables: Default::default(), // if I wanted to have 64 tables I'll need std::array::from_fn(|_| Table::default())
+            currently_selected_table_location: Default::default(),
+            currently_selected_table: None,
         }
     }
 
@@ -72,7 +87,8 @@ impl Bar {
             database,
             product_categories: Vec::new(),
             product_category_products: None,
-            bar_tables: Default::default(),
+            currently_selected_table_location: Default::default(),
+            currently_selected_table: None,
         }
     }
 
@@ -121,6 +137,19 @@ impl Bar {
             Message::SetProductCategoryProducts(items) => {
                 self.product_category_products = items;
             }
+
+            Message::FetchSelectTable(index, location) => {
+                //TODO: Fetch table from db by index and location
+                self.currently_selected_table = Some(Table {
+                    index,
+                    location,
+                    table_status: Default::default(),
+                    products: Vec::new(),
+                })
+            }
+            Message::SetSelectTable(table) => {
+                self.currently_selected_table = table;
+            }
         }
 
         action
@@ -158,6 +187,7 @@ impl Bar {
 
     // Controls how many tables there are on a row
     const TABLES_PER_ROW: usize = 5;
+    const NUMBER_OF_TABLES: usize = 30;
 
     /// Returns the view of the tables grid of the application
     fn view_tables_grid(&self) -> Element<Message> {
@@ -166,14 +196,18 @@ impl Bar {
         let grid_spacing: f32 = 3.;
         let mut tables_grid = widget::Column::new().spacing(Pixels::from(grid_spacing));
         let mut current_row = widget::Row::new().spacing(Pixels::from(grid_spacing));
-        for (index, _table) in self.bar_tables.iter().enumerate() {
+        for index in 0..Self::NUMBER_OF_TABLES {
             // TODO: Change button style depending on table status
             let table_button = widget::Button::new(
                 widget::Text::new(format!("{}", index + 1))
                     .width(Length::Fill)
                     .align_x(Alignment::Center),
             )
-            .width(Length::Fixed(40.));
+            .width(Length::Fixed(40.))
+            .on_press(Message::FetchSelectTable(
+                index,
+                self.currently_selected_table_location.clone(),
+            ));
             current_row = current_row.push(table_button);
 
             if (index + 1) % Self::TABLES_PER_ROW == 0 {
