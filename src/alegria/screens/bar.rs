@@ -49,6 +49,16 @@ impl Bar {
         }
     }
 
+    /// Cleans the state of the bar screen preserving the database
+    /// intended to be called when switching to another screen in order to save memory.
+    pub fn clean_state(database: Option<Arc<Pool<Sqlite>>>) -> Self {
+        Self {
+            database,
+            product_categories: Vec::new(),
+            product_category_products: None,
+        }
+    }
+
     /// Handles messages emitted by the application and its widgets.
     pub fn update(&mut self, message: Message) -> AlegriaAction<BarInstruction, Message> {
         let mut action = AlegriaAction::new();

@@ -64,6 +64,7 @@ impl IcedAlegria {
             Message::ChangeScreen(screen) => match screen {
                 Screen::Home => {
                     self.screen = screen;
+                    crate::alegria::screens::bar::Bar::clean_state(self.database.clone());
                 }
                 Screen::Bar => {
                     tasks.push(self.update(Message::Bar(bar::Message::FetchProductCategories)));
@@ -83,7 +84,7 @@ impl IcedAlegria {
                 for bar_task in action.instructions {
                     match bar_task {
                         bar::BarInstruction::Back => {
-                            self.screen = Screen::Home;
+                            let _ = self.update(Message::ChangeScreen(Screen::Home));
                         }
                     }
                 }
