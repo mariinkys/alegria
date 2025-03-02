@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use iced::{
-    Element, Task,
-    widget::{self, Row},
+    Alignment, Element, Length, Pixels, Task,
+    widget::{self},
 };
 use sqlx::{Pool, Sqlite};
 
@@ -13,6 +13,19 @@ use crate::alegria::{
     core::models::{product::Product, product_category::ProductCategory},
 };
 
+#[derive(Default)]
+enum TableStatus {
+    #[default]
+    Default,
+    TicketPrinted,
+}
+
+#[derive(Default)]
+struct Table {
+    products: Vec<Product>,
+    table_status: TableStatus,
+}
+
 pub struct Bar {
     /// Database of the application
     pub database: Option<Arc<Pool<Sqlite>>>,
@@ -20,6 +33,8 @@ pub struct Bar {
     product_categories: Vec<ProductCategory>,
     /// Selected product category products
     product_category_products: Option<Vec<Product>>,
+    /// State of the tables of the bar section
+    bar_tables: [Table; 30],
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +61,7 @@ impl Bar {
             database: None,
             product_categories: Vec::new(),
             product_category_products: None,
+            bar_tables: Default::default(), // if I wanted to have 64 tables I'll need std::array::from_fn(|_| Table::default())
         }
     }
 
@@ -56,6 +72,7 @@ impl Bar {
             database,
             product_categories: Vec::new(),
             product_category_products: None,
+            bar_tables: Default::default(),
         }
     }
 
@@ -65,6 +82,7 @@ impl Bar {
 
         match message {
             Message::Back => action.add_instruction(BarInstruction::Back),
+
             Message::FetchProductCategories => {
                 if let Some(pool) = &self.database {
                     action.add_task(Task::perform(
@@ -82,6 +100,7 @@ impl Bar {
             Message::SetProductCategories(items) => {
                 self.product_categories = items;
             }
+
             Message::FetchProductCategoryProducts(product_category_id) => {
                 if let Some(pool) = &self.database {
                     action.add_task(Task::perform(
@@ -113,7 +132,10 @@ impl Bar {
         let product_categories_container = self.view_product_categories_container();
         let product_category_products_container = self.view_product_category_products_container();
 
-        let bottom_container = Row::new()
+        let upper_left_row = widget::Row::new().push(self.view_tables_grid());
+
+        let bottom_container = widget::Row::new()
+            .push(upper_left_row)
             .push(product_categories_container)
             .push(product_category_products_container);
 
@@ -132,6 +154,35 @@ impl Bar {
         let back_button = widget::Button::new("Back").on_press(Message::Back);
 
         widget::Row::new().push(back_button).into()
+    }
+
+    // Controls how many tables there are on a row
+    const TABLES_PER_ROW: usize = 5;
+
+    /// Returns the view of the tables grid of the application
+    fn view_tables_grid(&self) -> Element<Message> {
+        let header = widget::Row::new().push(widget::Button::new("Bar"));
+
+        let grid_spacing: f32 = 3.;
+        let mut tables_grid = widget::Column::new().spacing(Pixels::from(grid_spacing));
+        let mut current_row = widget::Row::new().spacing(Pixels::from(grid_spacing));
+        for (index, _table) in self.bar_tables.iter().enumerate() {
+            // TODO: Change button style depending on table status
+            let table_button = widget::Button::new(
+                widget::Text::new(format!("{}", index + 1))
+                    .width(Length::Fill)
+                    .align_x(Alignment::Center),
+            )
+            .width(Length::Fixed(40.));
+            current_row = current_row.push(table_button);
+
+            if (index + 1) % Self::TABLES_PER_ROW == 0 {
+                tables_grid = tables_grid.push(current_row);
+                current_row = widget::Row::new().spacing(Pixels::from(grid_spacing));
+            }
+        }
+
+        widget::Column::new().push(header).push(tables_grid).into()
     }
 
     /// Returns the view of the product categories of the bar screen
