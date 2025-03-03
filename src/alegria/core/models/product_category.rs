@@ -18,7 +18,7 @@ pub struct ProductCategory {
 impl ProductCategory {
     pub async fn get_all(pool: Arc<Pool<Sqlite>>) -> Result<Vec<ProductCategory>, sqlx::Error> {
         let mut rows = sqlx::query(
-            "SELECT id, name, created_at, updated_at FROM product_categories ORDER BY id ASC",
+            "SELECT id, name, is_deleted, created_at, updated_at FROM product_categories ORDER BY id ASC",
         )
         .fetch(pool.as_ref());
 

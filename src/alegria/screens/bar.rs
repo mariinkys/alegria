@@ -14,6 +14,7 @@ use crate::alegria::{
         product::Product, product_category::ProductCategory, temporal_product::TemporalProduct,
         temporal_ticket::TemporalTicket,
     },
+    utils::match_table_location_with_number,
 };
 
 #[derive(Default, Debug, Clone)]
@@ -24,6 +25,7 @@ pub enum TableLocation {
     Garden,
 }
 
+/// We can identify a table using the table index and it's location
 #[derive(Default, Debug, Clone)]
 pub struct CurrentPositionState {
     /// Currently selected table location
@@ -61,6 +63,7 @@ pub enum Message {
     SetProductCategoryProducts(Option<Vec<Product>>),
 
     OnTableChange(CurrentPositionState),
+    OnProductClicked(Option<i32>),
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -161,6 +164,37 @@ impl Bar {
                 self.currently_selected_pos_state = table_state;
                 self.update(Message::FetchTemporalTickets);
             }
+
+            Message::OnProductClicked(product_id) => {
+                if let Some(new_product_id) = product_id {
+                    if let Some(pool) = &self.database {
+                        let temporal_ticket = TemporalTicket {
+                            id: None,
+                            table_id: self.currently_selected_pos_state.table_index as i32,
+                            ticket_location: match_table_location_with_number(
+                                self.currently_selected_pos_state.location.clone(),
+                            ),
+                            ticket_status: 0,
+                            products: Vec::new(),
+                        };
+
+                        action.add_task(Task::perform(
+                            TemporalTicket::upsert_ticket_by_id_and_tableloc(
+                                pool.clone(),
+                                temporal_ticket,
+                                new_product_id,
+                            ),
+                            |res| match res {
+                                Ok(_) => Message::FetchTemporalTickets,
+                                Err(err) => {
+                                    eprintln!("{err}");
+                                    Message::SetProductCategoryProducts(None)
+                                }
+                            },
+                        ));
+                    }
+                }
+            }
         }
 
         action
@@ -255,7 +289,11 @@ impl Bar {
             .map(|products| {
                 products
                     .iter()
-                    .map(|product| widget::Button::new(product.name.as_str()).into())
+                    .map(|product| {
+                        widget::Button::new(product.name.as_str())
+                            .on_press(Message::OnProductClicked(product.id))
+                            .into()
+                    })
                     .collect()
             })
             .unwrap_or_default();

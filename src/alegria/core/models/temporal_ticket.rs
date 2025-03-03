@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+use chrono::NaiveDateTime;
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Row, Sqlite};
 use std::{collections::HashMap, sync::Arc};
 
-use super::temporal_product::TemporalProduct;
+use super::{product::Product, temporal_product::TemporalProduct};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemporalTicket {
@@ -77,9 +78,91 @@ impl TemporalTicket {
         }
 
         // Collect the tickets and sort them by id
-        let mut tickets: Vec<TemporalTicket> =
-            tickets_map.into_iter().map(|(_, ticket)| ticket).collect();
+        let mut tickets: Vec<TemporalTicket> = tickets_map.into_values().collect();
         tickets.sort_by_key(|t| t.id);
         Ok(tickets)
+    }
+
+    pub async fn upsert_ticket_by_id_and_tableloc(
+        pool: Arc<Pool<Sqlite>>,
+        temporal_ticket: TemporalTicket,
+        new_product_id: i32,
+    ) -> Result<(), sqlx::Error> {
+        let product_row =
+            sqlx::query("SELECT id, category_id, name, price, is_deleted, created_at, updated_at FROM products WHERE id = ?")
+                .bind(new_product_id)
+                .fetch_optional(pool.as_ref())
+                .await?;
+
+        let product: Product = match product_row {
+            Some(row) => {
+                let id: Option<i32> = row.try_get("id")?;
+                let category_id: Option<i32> = row.try_get("category_id")?;
+                let name: String = row.try_get("name")?;
+                let price: Option<f32> = row.try_get("price")?;
+                let is_deleted: bool = row.try_get("is_deleted")?;
+                let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
+                let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
+
+                Product {
+                    id,
+                    category_id,
+                    name,
+                    price,
+                    is_deleted,
+                    created_at,
+                    updated_at,
+                }
+            }
+            None => return Err(sqlx::Error::RowNotFound),
+        };
+
+        // Check if a ticket already exists with the same table_id and ticket_location.
+        let existing_ticket = sqlx::query(
+            "SELECT id FROM temporal_tickets WHERE table_id = ? AND ticket_location = ?",
+        )
+        .bind(temporal_ticket.table_id)
+        .bind(temporal_ticket.ticket_location)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+        // TODO: Should use a transaction
+
+        // Check if the ticket already exists; if not, insert a new temporal_ticket.
+        let ticket_id = if let Some(row) = existing_ticket {
+            row.try_get("id")?
+        } else {
+            let result = sqlx::query(
+                "INSERT INTO temporal_tickets (table_id, ticket_location, ticket_status) VALUES (?, ?, ?)"
+            )
+            .bind(temporal_ticket.table_id)
+            .bind(temporal_ticket.ticket_location)
+            .bind(temporal_ticket.ticket_status)
+            .execute(pool.as_ref())
+            .await?;
+
+            // retrieve the last inserted row ID.
+            result.last_insert_rowid() as i32
+        };
+
+        sqlx::query(
+            "INSERT INTO temporal_products (original_product_id, temporal_ticket_id, quantity, name, price) VALUES (?, ?, ?, ?, ?)"
+        )
+        .bind(product.id)
+        .bind(ticket_id)
+        .bind(1) // quantity is hard-coded as 1
+        .bind(product.name)
+        .bind(product.price
+            // TODO: update db with both prices
+            // if temporal_ticket.ticket_location == 1 {
+            //     inside_price
+            // } else {
+            //     outside_price
+            // }
+        )
+        .execute(pool.as_ref())
+        .await?;
+
+        Ok(())
     }
 }
