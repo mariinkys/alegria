@@ -89,7 +89,7 @@ impl TemporalTicket {
         new_product_id: i32,
     ) -> Result<(), sqlx::Error> {
         let product_row =
-            sqlx::query("SELECT id, category_id, name, price, is_deleted, created_at, updated_at FROM products WHERE id = ?")
+            sqlx::query("SELECT id, category_id, name, inside_price, outside_price, is_deleted, created_at, updated_at FROM products WHERE id = ?")
                 .bind(new_product_id)
                 .fetch_optional(pool.as_ref())
                 .await?;
@@ -99,7 +99,8 @@ impl TemporalTicket {
                 let id: Option<i32> = row.try_get("id")?;
                 let category_id: Option<i32> = row.try_get("category_id")?;
                 let name: String = row.try_get("name")?;
-                let price: Option<f32> = row.try_get("price")?;
+                let inside_price: Option<f32> = row.try_get("inside_price")?;
+                let outside_price: Option<f32> = row.try_get("outside_price")?;
                 let is_deleted: bool = row.try_get("is_deleted")?;
                 let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
                 let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
@@ -108,7 +109,8 @@ impl TemporalTicket {
                     id,
                     category_id,
                     name,
-                    price,
+                    inside_price,
+                    outside_price,
                     is_deleted,
                     created_at,
                     updated_at,
@@ -152,13 +154,12 @@ impl TemporalTicket {
         .bind(ticket_id)
         .bind(1) // quantity is hard-coded as 1
         .bind(product.name)
-        .bind(product.price
-            // TODO: update db with both prices
-            // if temporal_ticket.ticket_location == 1 {
-            //     inside_price
-            // } else {
-            //     outside_price
-            // }
+        .bind(
+            if temporal_ticket.ticket_location == 1 {
+                product.inside_price
+            } else {
+                product.outside_price
+            }
         )
         .execute(pool.as_ref())
         .await?;
