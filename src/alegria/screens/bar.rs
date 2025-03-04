@@ -65,7 +65,8 @@ pub enum Message {
     FetchProductCategoryProducts(Option<i32>),
     SetProductCategoryProducts(Option<Vec<Product>>),
 
-    OnTableChange(CurrentPositionState),
+    OnTableChange(usize),
+    ChangeCurrentTablesLocation(TableLocation),
     OnProductClicked(Option<i32>),
 }
 
@@ -163,9 +164,12 @@ impl Bar {
                 self.product_category_products = items;
             }
 
-            Message::OnTableChange(table_state) => {
-                self.currently_selected_pos_state = table_state;
+            Message::OnTableChange(table_index) => {
+                self.currently_selected_pos_state.table_index = table_index;
                 self.update(Message::FetchTemporalTickets);
+            }
+            Message::ChangeCurrentTablesLocation(location) => {
+                self.currently_selected_pos_state.location = location;
             }
 
             Message::OnProductClicked(product_id) => {
@@ -244,7 +248,19 @@ impl Bar {
 
     /// Returns the view of the tables grid of the application
     fn view_tables_grid(&self) -> Element<Message> {
-        let header = widget::Row::new().push(widget::Button::new("Bar"));
+        let header =
+            widget::Row::new()
+                .push(
+                    widget::Button::new("Bar")
+                        .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Bar)),
+                )
+                .push(widget::Button::new("Restaurant").on_press(
+                    Message::ChangeCurrentTablesLocation(TableLocation::Resturant),
+                ))
+                .push(
+                    widget::Button::new("Garden")
+                        .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Garden)),
+                );
 
         let grid_spacing: f32 = 3.;
         let mut tables_grid = widget::Column::new().spacing(Pixels::from(grid_spacing));
@@ -257,11 +273,7 @@ impl Bar {
             )
             .width(Length::Fixed(40.))
             .style(move |x, _| self.determine_table_button_color(x, index))
-            // TODO: Table location is now always bar
-            .on_press(Message::OnTableChange(CurrentPositionState {
-                location: TableLocation::Bar,
-                table_index: index,
-            }));
+            .on_press(Message::OnTableChange(index));
             current_row = current_row.push(table_button);
 
             if (index + 1) % Self::TABLES_PER_ROW == 0 {
