@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use iced::{
-    Alignment, Element, Length, Pixels, Task,
+    Alignment, Background, Color, Element, Length, Pixels, Task,
     widget::{self},
 };
 use sqlx::{Pool, Sqlite};
@@ -14,7 +14,10 @@ use crate::alegria::{
         product::Product, product_category::ProductCategory, temporal_product::TemporalProduct,
         temporal_ticket::TemporalTicket,
     },
-    utils::match_table_location_with_number,
+    utils::{
+        TemporalTicketStatus, match_number_with_temporal_ticket_status,
+        match_table_location_with_number,
+    },
 };
 
 #[derive(Default, Debug, Clone)]
@@ -249,6 +252,7 @@ impl Bar {
                     .align_x(Alignment::Center),
             )
             .width(Length::Fixed(40.))
+            .style(move |x, _| self.determine_table_button_color(x, index))
             // TODO: Table location is now always bar
             .on_press(Message::OnTableChange(CurrentPositionState {
                 location: TableLocation::Bar,
@@ -304,5 +308,119 @@ impl Bar {
 
     //
     //  END OF VIEW COMPOSING
+    //
+
+    //
+    // HELPERS
+    //
+
+    const CURRENTLY_SELECTED_COLOR: Color = Color::from_rgb(0.0 / 255.0, 122.0 / 255.0, 1.); // Info (Blue)
+    const PENDING_COLOR: Color = Color::from_rgb(1., 59.0 / 255.0, 48.0 / 255.0); // Error (Red)
+    const PRINTED_COLOR: Color = Color::from_rgb(1., 149.0 / 255.0, 0.0 / 255.0); // Warning (Orange)
+    const WHITE_COLOR: Color = Color::from_rgb(1., 1., 1.); // White
+    const BLACK_COLOR: Color = Color::from_rgb(0.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0); // Black
+
+    const BORDER_RADIUS: f32 = 5.;
+    const BORDER_WIDTH: f32 = 1.;
+
+    fn determine_table_button_color(&self, _: &iced::Theme, t_id: usize) -> widget::button::Style {
+        let table_id = t_id as i32;
+
+        if self.currently_selected_pos_state.table_index as i32 == table_id {
+            return widget::button::Style {
+                background: Some(Background::Color(Self::CURRENTLY_SELECTED_COLOR)),
+                text_color: Self::WHITE_COLOR,
+                border: iced::Border {
+                    color: Self::CURRENTLY_SELECTED_COLOR,
+                    width: Self::BORDER_WIDTH,
+                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
+                },
+                shadow: iced::Shadow::default(),
+            };
+        }
+
+        if self.temporal_tickets_model.iter().any(|x| {
+            x.table_id == table_id
+                && x.ticket_location
+                    == match_table_location_with_number(
+                        self.currently_selected_pos_state.location.clone(),
+                    )
+        }) {
+            return widget::button::Style {
+                background: Some(Background::Color(Self::CURRENTLY_SELECTED_COLOR)),
+                text_color: Self::WHITE_COLOR,
+                border: iced::Border {
+                    color: Self::CURRENTLY_SELECTED_COLOR,
+                    width: Self::BORDER_WIDTH,
+                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
+                },
+                shadow: iced::Shadow::default(),
+            };
+        } else if self
+            .temporal_tickets_model
+            .iter()
+            .find(|x| {
+                x.table_id == table_id
+                    && x.ticket_location
+                        == match_table_location_with_number(
+                            self.currently_selected_pos_state.location.clone(),
+                        )
+            })
+            .is_some_and(|y| {
+                match_number_with_temporal_ticket_status(y.ticket_status)
+                    == TemporalTicketStatus::Pending
+            })
+        {
+            return widget::button::Style {
+                background: Some(Background::Color(Self::PENDING_COLOR)),
+                text_color: Self::WHITE_COLOR,
+                border: iced::Border {
+                    color: Self::PENDING_COLOR,
+                    width: Self::BORDER_WIDTH,
+                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
+                },
+                shadow: iced::Shadow::default(),
+            };
+        } else if self
+            .temporal_tickets_model
+            .iter()
+            .find(|x| {
+                x.table_id == table_id
+                    && x.ticket_location
+                        == match_table_location_with_number(
+                            self.currently_selected_pos_state.location.clone(),
+                        )
+            })
+            .is_some_and(|y| {
+                match_number_with_temporal_ticket_status(y.ticket_status)
+                    == TemporalTicketStatus::Printed
+            })
+        {
+            return widget::button::Style {
+                background: Some(Background::Color(Self::PRINTED_COLOR)),
+                text_color: Self::WHITE_COLOR,
+                border: iced::Border {
+                    color: Self::PRINTED_COLOR,
+                    width: Self::BORDER_WIDTH,
+                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
+                },
+                shadow: iced::Shadow::default(),
+            };
+        }
+
+        widget::button::Style {
+            background: Some(Background::Color(Self::WHITE_COLOR)),
+            text_color: Self::BLACK_COLOR,
+            border: iced::Border {
+                color: Self::BLACK_COLOR,
+                width: Self::BORDER_WIDTH,
+                radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
+            },
+            shadow: iced::Shadow::default(),
+        }
+    }
+
+    //
+    //  END OF HELPERS
     //
 }
