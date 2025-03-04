@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use iced::{
     Alignment, Background, Color, Element, Length, Pixels, Task,
-    widget::{self},
+    widget::{self, text::LineHeight},
 };
 use sqlx::{Pool, Sqlite};
 
@@ -242,14 +242,15 @@ impl Bar {
         let product_categories_container = self.view_product_categories_container();
         let product_category_products_container = self.view_product_category_products_container();
 
-        let upper_left_row = widget::Row::new().push(self.view_tables_grid()).push(
-            crate::alegria::widgets::numpad::Numpad::new(
+        let upper_left_row = widget::Row::new()
+            .push(self.view_tables_grid())
+            .push(crate::alegria::widgets::numpad::Numpad::new(
                 Message::OnNumpadNumberClicked,
                 || Message::OnNumpadClickTest,
                 || Message::OnNumpadClickTest,
                 || Message::OnNumpadClickTest,
-            ),
-        );
+            ))
+            .spacing(3);
         let bottom_left = self.view_current_ticket_products();
         let left_side_col = widget::Column::new().push(upper_left_row).push(bottom_left);
 
@@ -308,22 +309,30 @@ impl Bar {
             .width(Length::Fill);
 
         let grid_spacing: f32 = 3.;
-        let mut tables_grid = widget::Column::new().spacing(Pixels::from(grid_spacing));
-        let mut current_row = widget::Row::new().spacing(Pixels::from(grid_spacing));
+        let mut tables_grid = widget::Column::new()
+            .spacing(Pixels::from(grid_spacing))
+            .width(Length::Fill);
+        let mut current_row = widget::Row::new()
+            .spacing(Pixels::from(grid_spacing))
+            .width(Length::Fill);
         for index in 0..Self::NUMBER_OF_TABLES {
             let table_button = widget::Button::new(
                 widget::Text::new(format!("{}", index + 1))
                     .width(Length::Fill)
-                    .align_x(Alignment::Center),
+                    .align_x(Alignment::Center)
+                    .line_height(LineHeight::Absolute(Pixels::from(40.))),
             )
-            .width(Length::Fixed(40.))
+            .width(Length::Fill)
+            .height(Length::Fixed(50.))
             .style(move |x, _| self.determine_table_button_color(x, index))
             .on_press(Message::OnTableChange(index));
             current_row = current_row.push(table_button);
 
             if (index + 1) % Self::TABLES_PER_ROW == 0 {
                 tables_grid = tables_grid.push(current_row);
-                current_row = widget::Row::new().spacing(Pixels::from(grid_spacing));
+                current_row = widget::Row::new()
+                    .spacing(Pixels::from(grid_spacing))
+                    .width(Length::Fill);
             }
         }
 
@@ -331,6 +340,7 @@ impl Bar {
             .push(header)
             .push(tables_grid)
             .width(Length::Fill)
+            .spacing(grid_spacing)
             .into()
     }
 
