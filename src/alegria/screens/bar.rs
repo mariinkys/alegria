@@ -206,13 +206,18 @@ impl Bar {
     /// Returns the view of the bar screen
     pub fn view(&self) -> Element<Message> {
         let header_row = self.view_header_row();
+
+        // TODO: Pagination
         let product_categories_container = self.view_product_categories_container();
         let product_category_products_container = self.view_product_category_products_container();
 
+        // TODO: Add numpad next to tables
         let upper_left_row = widget::Row::new().push(self.view_tables_grid());
+        let bottom_left = self.view_current_ticket_products();
+        let left_side_col = widget::Column::new().push(upper_left_row).push(bottom_left);
 
         let bottom_container = widget::Row::new()
-            .push(upper_left_row)
+            .push(left_side_col)
             .push(product_categories_container)
             .push(product_category_products_container);
 
@@ -245,7 +250,6 @@ impl Bar {
         let mut tables_grid = widget::Column::new().spacing(Pixels::from(grid_spacing));
         let mut current_row = widget::Row::new().spacing(Pixels::from(grid_spacing));
         for index in 0..Self::NUMBER_OF_TABLES {
-            // TODO: Change button style depending on table status
             let table_button = widget::Button::new(
                 widget::Text::new(format!("{}", index + 1))
                     .width(Length::Fill)
@@ -306,6 +310,38 @@ impl Bar {
         widget::Container::new(products_col).into()
     }
 
+    /// Returns the view of the product (list) of the currently selected ticket
+    fn view_current_ticket_products(&self) -> Element<Message> {
+        if self.temporal_tickets_model.is_empty() {
+            return widget::Text::new("Nothing to see here...").into();
+        }
+
+        let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
+            x.ticket_location
+                == match_table_location_with_number(
+                    self.currently_selected_pos_state.location.clone(),
+                )
+                && x.table_id == self.currently_selected_pos_state.table_index as i32
+        });
+
+        if current_ticket.is_some() {
+            let mut products_column = widget::Column::new();
+
+            for product in &current_ticket.unwrap().products {
+                let product_row = widget::Row::new()
+                    .push(widget::Text::new(&product.name).width(Length::Fill))
+                    .push(widget::Text::new(product.quantity))
+                    .push(widget::Text::new(product.price.unwrap_or_default()));
+
+                products_column = products_column.push(product_row);
+            }
+
+            products_column.into()
+        } else {
+            widget::Text::new("No products yet...").into()
+        }
+    }
+
     //
     //  END OF VIEW COMPOSING
     //
@@ -328,8 +364,8 @@ impl Bar {
 
         if self.currently_selected_pos_state.table_index as i32 == table_id {
             return widget::button::Style {
-                background: Some(Background::Color(Self::CURRENTLY_SELECTED_COLOR)),
-                text_color: Self::WHITE_COLOR,
+                background: Some(Background::Color(Self::WHITE_COLOR)),
+                text_color: Self::BLACK_COLOR,
                 border: iced::Border {
                     color: Self::CURRENTLY_SELECTED_COLOR,
                     width: Self::BORDER_WIDTH,
@@ -339,13 +375,15 @@ impl Bar {
             };
         }
 
-        if self.temporal_tickets_model.iter().any(|x| {
+        let current_ticket = self.temporal_tickets_model.iter().find(|x| {
             x.table_id == table_id
                 && x.ticket_location
                     == match_table_location_with_number(
                         self.currently_selected_pos_state.location.clone(),
                     )
-        }) {
+        });
+
+        if current_ticket.is_none() {
             return widget::button::Style {
                 background: Some(Background::Color(Self::CURRENTLY_SELECTED_COLOR)),
                 text_color: Self::WHITE_COLOR,
@@ -356,21 +394,10 @@ impl Bar {
                 },
                 shadow: iced::Shadow::default(),
             };
-        } else if self
-            .temporal_tickets_model
-            .iter()
-            .find(|x| {
-                x.table_id == table_id
-                    && x.ticket_location
-                        == match_table_location_with_number(
-                            self.currently_selected_pos_state.location.clone(),
-                        )
-            })
-            .is_some_and(|y| {
-                match_number_with_temporal_ticket_status(y.ticket_status)
-                    == TemporalTicketStatus::Pending
-            })
-        {
+        } else if current_ticket.is_some_and(|y| {
+            match_number_with_temporal_ticket_status(y.ticket_status)
+                == TemporalTicketStatus::Pending
+        }) {
             return widget::button::Style {
                 background: Some(Background::Color(Self::PENDING_COLOR)),
                 text_color: Self::WHITE_COLOR,
@@ -381,21 +408,10 @@ impl Bar {
                 },
                 shadow: iced::Shadow::default(),
             };
-        } else if self
-            .temporal_tickets_model
-            .iter()
-            .find(|x| {
-                x.table_id == table_id
-                    && x.ticket_location
-                        == match_table_location_with_number(
-                            self.currently_selected_pos_state.location.clone(),
-                        )
-            })
-            .is_some_and(|y| {
-                match_number_with_temporal_ticket_status(y.ticket_status)
-                    == TemporalTicketStatus::Printed
-            })
-        {
+        } else if current_ticket.is_some_and(|y| {
+            match_number_with_temporal_ticket_status(y.ticket_status)
+                == TemporalTicketStatus::Printed
+        }) {
             return widget::button::Style {
                 background: Some(Background::Color(Self::PRINTED_COLOR)),
                 text_color: Self::WHITE_COLOR,
