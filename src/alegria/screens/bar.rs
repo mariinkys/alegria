@@ -20,6 +20,7 @@ use crate::alegria::{
     },
 };
 
+/// Defines the different locations in which a table can be located at
 #[derive(Default, Debug, Clone)]
 pub enum TableLocation {
     #[default]
@@ -40,34 +41,34 @@ pub struct CurrentPositionState {
 pub struct Bar {
     /// Database of the application
     pub database: Option<Arc<Pool<Sqlite>>>,
-    /// Product Categories
+    /// Product Categories (for listing and then selecting products)
     product_categories: Vec<ProductCategory>,
-    /// Selected product category products
+    /// Selected product category products (if we clicked a category we will show it's products)
     product_category_products: Option<Vec<Product>>,
-    /// Currently selected table state
+    /// Currently selected table state (helps us identify the currently selected table) TODO: Could we chnage this to an Option<TemporalTicket> and avoid this allotgether?
     currently_selected_pos_state: CurrentPositionState,
     /// Temporal Tickets hold the state of the maybe tickets of each table
     temporal_tickets_model: Vec<TemporalTicket>,
-    // Keeps track of which product is selected in order to be able to modify it with the NumPad
-    //selected_temporal_product: Option<TemporalProduct>,
+    // Keeps track of which temporal product is active (within a temporal ticket) in order to be able to modify it with the NumPad
+    active_temporal_product: Option<TemporalProduct>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Back,
+    Back, // Asks the parent (app.rs) to go back
 
-    FetchTemporalTickets,
-    SetTemporalTickets(Vec<TemporalTicket>),
+    FetchTemporalTickets, // Fetches all the current temporal tickets
+    SetTemporalTickets(Vec<TemporalTicket>), // Sets the temporal tickets on the app state
 
-    FetchProductCategories,
-    SetProductCategories(Vec<ProductCategory>),
+    FetchProductCategories, // Fetches all the product categories
+    SetProductCategories(Vec<ProductCategory>), // Sets the product categories on the state
 
-    FetchProductCategoryProducts(Option<i32>),
-    SetProductCategoryProducts(Option<Vec<Product>>),
+    FetchProductCategoryProducts(Option<i32>), // Fetches the products for a given product category
+    SetProductCategoryProducts(Option<Vec<Product>>), // Sets the products on the state
 
-    OnTableChange(usize),
-    ChangeCurrentTablesLocation(TableLocation),
-    OnProductClicked(Option<i32>),
+    OnTableChange(usize), // Callback after a table has been clicked
+    ChangeCurrentTablesLocation(TableLocation), // Callback after we ask to change our current TableLocation
+    OnProductClicked(Option<i32>), // When we click a product on the product list we have to add it to the temporal ticket...
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -85,6 +86,7 @@ impl Bar {
             product_category_products: None,
             currently_selected_pos_state: CurrentPositionState::default(),
             temporal_tickets_model: Vec::new(),
+            active_temporal_product: None,
         }
     }
 
@@ -97,6 +99,7 @@ impl Bar {
             product_category_products: None,
             currently_selected_pos_state: CurrentPositionState::default(),
             temporal_tickets_model: Vec::new(),
+            active_temporal_product: None,
         }
     }
 
@@ -105,8 +108,10 @@ impl Bar {
         let mut action = AlegriaAction::new();
 
         match message {
+            // Asks the parent (app.rs) to go back
             Message::Back => action.add_instruction(BarInstruction::Back),
 
+            // Fetches all the current temporal tickets
             Message::FetchTemporalTickets => {
                 if let Some(pool) = &self.database {
                     action.add_task(Task::perform(
@@ -121,10 +126,12 @@ impl Bar {
                     ));
                 }
             }
+            // Sets the temporal tickets on the app state
             Message::SetTemporalTickets(res) => {
                 self.temporal_tickets_model = res;
             }
 
+            // Fetches all the product categories
             Message::FetchProductCategories => {
                 if let Some(pool) = &self.database {
                     action.add_task(Task::perform(
@@ -139,10 +146,12 @@ impl Bar {
                     ));
                 }
             }
+            // Sets the product categories on the state
             Message::SetProductCategories(items) => {
                 self.product_categories = items;
             }
 
+            // Fetches the products for a given product category
             Message::FetchProductCategoryProducts(product_category_id) => {
                 if let Some(pool) = &self.database {
                     action.add_task(Task::perform(
@@ -160,21 +169,28 @@ impl Bar {
                     ));
                 }
             }
+            // Sets the products on the state
             Message::SetProductCategoryProducts(items) => {
                 self.product_category_products = items;
             }
 
+            // Callback after a table has been clicked
             Message::OnTableChange(table_index) => {
                 self.currently_selected_pos_state.table_index = table_index;
                 self.update(Message::FetchTemporalTickets);
             }
+            // Callback after we ask to change our current TableLocation
             Message::ChangeCurrentTablesLocation(location) => {
                 self.currently_selected_pos_state.location = location;
             }
 
+            // When we click a product on the product list we have to add it to the temporal ticket...
             Message::OnProductClicked(product_id) => {
                 if let Some(new_product_id) = product_id {
                     if let Some(pool) = &self.database {
+                        // Deselect the active temporal product
+                        self.active_temporal_product = None;
+
                         let temporal_ticket = TemporalTicket {
                             id: None,
                             table_id: self.currently_selected_pos_state.table_index as i32,
@@ -185,6 +201,7 @@ impl Bar {
                             products: Vec::new(),
                         };
 
+                        // Upsert a temporal ticket with the clicked product
                         action.add_task(Task::perform(
                             TemporalTicket::upsert_ticket_by_id_and_tableloc(
                                 pool.clone(),
@@ -239,7 +256,10 @@ impl Bar {
     fn view_header_row(&self) -> Element<Message> {
         let back_button = widget::Button::new("Back").on_press(Message::Back);
 
-        widget::Row::new().push(back_button).into()
+        widget::Row::new()
+            .push(back_button)
+            .width(Length::Fill)
+            .into()
     }
 
     // Controls how many tables there are on a row
@@ -248,19 +268,25 @@ impl Bar {
 
     /// Returns the view of the tables grid of the application
     fn view_tables_grid(&self) -> Element<Message> {
-        let header =
-            widget::Row::new()
-                .push(
-                    widget::Button::new("Bar")
-                        .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Bar)),
-                )
-                .push(widget::Button::new("Restaurant").on_press(
-                    Message::ChangeCurrentTablesLocation(TableLocation::Resturant),
-                ))
-                .push(
-                    widget::Button::new("Garden")
-                        .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Garden)),
-                );
+        let header = widget::Row::new()
+            .push(
+                widget::Button::new("Bar")
+                    .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Bar))
+                    .width(Length::Fill),
+            )
+            .push(
+                widget::Button::new("Restaurant")
+                    .on_press(Message::ChangeCurrentTablesLocation(
+                        TableLocation::Resturant,
+                    ))
+                    .width(Length::Fill),
+            )
+            .push(
+                widget::Button::new("Garden")
+                    .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Garden))
+                    .width(Length::Fill),
+            )
+            .width(Length::Fill);
 
         let grid_spacing: f32 = 3.;
         let mut tables_grid = widget::Column::new().spacing(Pixels::from(grid_spacing));
@@ -282,7 +308,11 @@ impl Bar {
             }
         }
 
-        widget::Column::new().push(header).push(tables_grid).into()
+        widget::Column::new()
+            .push(header)
+            .push(tables_grid)
+            .width(Length::Fill)
+            .into()
     }
 
     /// Returns the view of the product categories of the bar screen
@@ -296,9 +326,12 @@ impl Bar {
                     .into()
             })
             .collect();
-        let categories_col = widget::Column::with_children(categories_buttons);
+        let categories_col = widget::Column::with_children(categories_buttons).height(Length::Fill);
 
-        widget::Container::new(categories_col).into()
+        widget::Container::new(categories_col)
+            .height(Length::Fill)
+            .width(Length::Fill)
+            .into()
     }
 
     /// Returns the view of the currently selected product category products of the bar screen
@@ -317,9 +350,12 @@ impl Bar {
                     .collect()
             })
             .unwrap_or_default();
-        let products_col = widget::Column::with_children(products_buttons);
+        let products_col = widget::Column::with_children(products_buttons).height(Length::Fill);
 
-        widget::Container::new(products_col).into()
+        widget::Container::new(products_col)
+            .height(Length::Fill)
+            .width(Length::Fill)
+            .into()
     }
 
     /// Returns the view of the product (list) of the currently selected ticket
@@ -371,6 +407,7 @@ impl Bar {
     const BORDER_RADIUS: f32 = 5.;
     const BORDER_WIDTH: f32 = 1.;
 
+    /// Determines the color a button of the tables grid should be given the table index, using the temporal_tickets model
     fn determine_table_button_color(&self, _: &iced::Theme, t_id: usize) -> widget::button::Style {
         let table_id = t_id as i32;
 
