@@ -4,6 +4,7 @@ use iced::advanced::renderer;
 use iced::advanced::widget::Widget;
 use iced::advanced::widget::tree::Tree;
 use iced::mouse::{self, Cursor};
+use iced::widget::text::{LineHeight, Shaping, Wrapping};
 use iced::{Color, Element, Length, Rectangle, Size};
 
 /// A custom Numpad widget.
@@ -47,14 +48,140 @@ impl<Message> Numpad<Message> {
 
 impl<Message: 'static, Theme, Renderer> Widget<Message, Theme, Renderer> for Numpad<Message>
 where
-    Renderer: renderer::Renderer,
+    Renderer: iced::advanced::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
 {
     fn size(&self) -> Size<Length> {
-        // Our widget shrinks to fit its computed layout.
+        // widget shrinks to fit its computed layout.
         Size {
             width: Length::Shrink,
             height: Length::Shrink,
         }
+    }
+
+    fn draw(
+        &self,
+        _state: &Tree,
+        renderer: &mut Renderer,
+        _theme: &Theme,
+        _style: &renderer::Style,
+        layout: Layout<'_>,
+        _cursor: mouse::Cursor,
+        _viewport: &Rectangle,
+    ) where
+        Renderer: iced::advanced::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
+    {
+        use iced::advanced::Text;
+        use iced::alignment::{Horizontal, Vertical};
+        use iced::{Font, Point};
+
+        let bounds = layout.bounds();
+        let text_size = 16.0;
+        let font = Font::default();
+
+        // Draw keys for rows 0 to 3
+        for row in 0..4 {
+            for col in 0..3 {
+                let x = bounds.x + col as f32 * (self.button_size + self.spacing);
+                let y = bounds.y + row as f32 * (self.button_size + self.spacing);
+                let rect = Rectangle {
+                    x,
+                    y,
+                    width: self.button_size,
+                    height: self.button_size,
+                };
+
+                // Draw the button background
+                renderer.fill_quad(
+                    renderer::Quad {
+                        bounds: rect,
+                        border: Border {
+                            color: Color::BLACK,
+                            width: 1.0,
+                            radius: 3.0.into(),
+                        },
+                        ..renderer::Quad::default()
+                    },
+                    Color::from_rgb(0.9, 0.9, 0.9),
+                );
+
+                // Determine the label
+                let label = match (row, col) {
+                    (0, 0) => "7",
+                    (0, 1) => "8",
+                    (0, 2) => "9",
+                    (1, 0) => "4",
+                    (1, 1) => "5",
+                    (1, 2) => "6",
+                    (2, 0) => "1",
+                    (2, 1) => "2",
+                    (2, 2) => "3",
+                    (3, 0) => ",",
+                    (3, 1) => "0",
+                    (3, 2) => "←",
+                    _ => "",
+                };
+
+                // Create text configuration
+                let text: Text<String> = Text {
+                    content: String::from(label),
+                    bounds: rect.size(),
+                    size: text_size.into(),
+                    line_height: LineHeight::default(),
+                    font,
+                    horizontal_alignment: Horizontal::Center,
+                    vertical_alignment: Vertical::Center,
+                    shaping: Shaping::Advanced,
+                    wrapping: Wrapping::Word,
+                };
+
+                // Calculate centered position
+                let text_position =
+                    Point::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
+
+                // Draw the text
+                renderer.fill_text(text, text_position, Color::BLACK, bounds);
+            }
+        }
+
+        // Draw delete button
+        let y = bounds.y + 4.0 * (self.button_size + self.spacing);
+        let rect = Rectangle {
+            x: bounds.x,
+            y,
+            width: bounds.width,
+            height: self.button_size,
+        };
+
+        // Draw delete button background
+        renderer.fill_quad(
+            renderer::Quad {
+                bounds: rect,
+                border: Border {
+                    color: Color::BLACK,
+                    width: 1.0,
+                    radius: 5.0.into(),
+                },
+                ..renderer::Quad::default()
+            },
+            Color::from_rgb(0.9, 0.9, 0.9),
+        );
+
+        // Delete button text
+        let text = Text {
+            content: String::from("Delete"),
+            bounds: rect.size(),
+            size: text_size.into(),
+            line_height: LineHeight::default(),
+            font,
+            horizontal_alignment: Horizontal::Center,
+            vertical_alignment: Vertical::Center,
+            shaping: Shaping::Advanced,
+            wrapping: Wrapping::Word,
+        };
+
+        let text_position = Point::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
+
+        renderer.fill_text(text, text_position, Color::BLACK, bounds);
     }
 
     fn layout(
@@ -69,68 +196,6 @@ where
         let height_delete = self.button_size;
         let total_height = height_first_part + self.spacing + height_delete;
         layout::Node::new(Size::new(width, total_height))
-    }
-
-    fn draw(
-        &self,
-        _state: &Tree,
-        renderer: &mut Renderer,
-        _theme: &Theme,
-        _style: &renderer::Style,
-        layout: Layout<'_>,
-        _cursor: mouse::Cursor,
-        _viewport: &Rectangle,
-    ) {
-        let bounds = layout.bounds();
-
-        // Draw keys for rows 0 to 3
-        for row in 0..4 {
-            for col in 0..3 {
-                let x = bounds.x + col as f32 * (self.button_size + self.spacing);
-                let y = bounds.y + row as f32 * (self.button_size + self.spacing);
-                let rect = Rectangle {
-                    x,
-                    y,
-                    width: self.button_size,
-                    height: self.button_size,
-                };
-
-                // Draw a rounded rectangle for the button.
-                renderer.fill_quad(
-                    renderer::Quad {
-                        bounds: rect,
-                        border: Border {
-                            color: Color::BLACK,
-                            width: 1.0,
-                            radius: 3.0.into(),
-                        },
-                        ..renderer::Quad::default()
-                    },
-                    Color::from_rgb(0.9, 0.9, 0.9),
-                );
-            }
-        }
-
-        // Draw the delete button in row 4 (full width)
-        let y = bounds.y + 4.0 * (self.button_size + self.spacing);
-        let rect = Rectangle {
-            x: bounds.x,
-            y,
-            width: bounds.width,
-            height: self.button_size,
-        };
-        renderer.fill_quad(
-            renderer::Quad {
-                bounds: rect,
-                border: Border {
-                    color: Color::BLACK,
-                    width: 1.0,
-                    radius: 5.0.into(),
-                },
-                ..renderer::Quad::default()
-            },
-            Color::from_rgb(0.9, 0.9, 0.9),
-        );
     }
 
     fn update(
@@ -204,7 +269,7 @@ where
 impl<Message: 'static, Theme, Renderer> From<Numpad<Message>>
     for Element<'_, Message, Theme, Renderer>
 where
-    Renderer: renderer::Renderer,
+    Renderer: renderer::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
 {
     fn from(numpad: Numpad<Message>) -> Self {
         Element::new(numpad)
