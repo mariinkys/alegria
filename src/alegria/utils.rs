@@ -13,7 +13,7 @@ pub enum TemporalTicketStatus {
     #[default]
     Pending,
     Printed,
-    //Payed,
+    //Paid,
 }
 
 pub fn match_number_with_temporal_ticket_status(n: i32) -> TemporalTicketStatus {
