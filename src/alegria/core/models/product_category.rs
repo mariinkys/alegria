@@ -10,6 +10,7 @@ use std::sync::Arc;
 pub struct ProductCategory {
     pub id: Option<i32>,
     pub name: String,
+    pub is_deleted: bool,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -17,7 +18,7 @@ pub struct ProductCategory {
 impl ProductCategory {
     pub async fn get_all(pool: Arc<Pool<Sqlite>>) -> Result<Vec<ProductCategory>, sqlx::Error> {
         let mut rows = sqlx::query(
-            "SELECT id, name, created_at, updated_at FROM product_categories ORDER BY id ASC",
+            "SELECT id, name, is_deleted, created_at, updated_at FROM product_categories ORDER BY id ASC",
         )
         .fetch(pool.as_ref());
 
@@ -26,12 +27,14 @@ impl ProductCategory {
         while let Some(row) = rows.try_next().await? {
             let id: Option<i32> = row.try_get("id")?;
             let name: String = row.try_get("name")?;
+            let is_deleted: bool = row.try_get("is_deleted")?;
             let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
             let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
 
             let product_category = ProductCategory {
                 id,
                 name,
+                is_deleted,
                 created_at,
                 updated_at,
             };
@@ -46,8 +49,9 @@ impl ProductCategory {
         pool: Arc<Pool<Sqlite>>,
         product_category: ProductCategory,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query("INSERT INTO product_categories (name) VALUES (?)")
+        sqlx::query("INSERT INTO product_categories (name, is_deleted) VALUES (?, ?)")
             .bind(product_category.name)
+            .bind(false)
             .execute(pool.as_ref())
             .await?;
 
@@ -71,7 +75,8 @@ impl ProductCategory {
         pool: Arc<Pool<Sqlite>>,
         product_category_id: i32,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query("DELETE FROM product_categories WHERE id = ?")
+        sqlx::query("UPDATE product_categories SET is_deleted = $1 WHERE id = $2")
+            .bind(true)
             .bind(product_category_id)
             .execute(pool.as_ref())
             .await?;
