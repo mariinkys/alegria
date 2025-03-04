@@ -21,7 +21,7 @@ use crate::alegria::{
 };
 
 /// Defines the different locations in which a table can be located at
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub enum TableLocation {
     #[default]
     Bar,
@@ -272,6 +272,7 @@ impl Bar {
             .push(
                 widget::Button::new("Bar")
                     .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Bar))
+                    .style(|x, _| self.determine_location_button_color(x, TableLocation::Bar))
                     .width(Length::Fill),
             )
             .push(
@@ -279,11 +280,13 @@ impl Bar {
                     .on_press(Message::ChangeCurrentTablesLocation(
                         TableLocation::Resturant,
                     ))
+                    .style(|x, _| self.determine_location_button_color(x, TableLocation::Resturant))
                     .width(Length::Fill),
             )
             .push(
                 widget::Button::new("Garden")
                     .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Garden))
+                    .style(|x, _| self.determine_location_button_color(x, TableLocation::Garden))
                     .width(Length::Fill),
             )
             .width(Length::Fill);
@@ -482,6 +485,37 @@ impl Bar {
                 radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
             },
             shadow: iced::Shadow::default(),
+        }
+    }
+
+    /// Determines the color of the locations buttons using the current location of the state and given which location is which one
+    fn determine_location_button_color(
+        &self,
+        _: &iced::Theme,
+        loc: TableLocation,
+    ) -> widget::button::Style {
+        if loc == self.currently_selected_pos_state.location {
+            widget::button::Style {
+                background: Some(Background::Color(Self::WHITE_COLOR)),
+                text_color: Self::BLACK_COLOR,
+                border: iced::Border {
+                    color: Self::CURRENTLY_SELECTED_COLOR,
+                    width: Self::BORDER_WIDTH,
+                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
+                },
+                shadow: iced::Shadow::default(),
+            }
+        } else {
+            widget::button::Style {
+                background: Some(Background::Color(Self::CURRENTLY_SELECTED_COLOR)),
+                text_color: Self::WHITE_COLOR,
+                border: iced::Border {
+                    color: Self::CURRENTLY_SELECTED_COLOR,
+                    width: Self::BORDER_WIDTH,
+                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
+                },
+                shadow: iced::Shadow::default(),
+            }
         }
     }
 
