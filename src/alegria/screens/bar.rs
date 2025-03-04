@@ -69,6 +69,9 @@ pub enum Message {
     OnTableChange(usize), // Callback after a table has been clicked
     ChangeCurrentTablesLocation(TableLocation), // Callback after we ask to change our current TableLocation
     OnProductClicked(Option<i32>), // When we click a product on the product list we have to add it to the temporal ticket...
+
+    OnNumpadNumberClicked(u8),
+    OnNumpadClickTest,
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -219,6 +222,13 @@ impl Bar {
                     }
                 }
             }
+
+            Message::OnNumpadNumberClicked(num) => {
+                println!("{num}");
+            }
+            Message::OnNumpadClickTest => {
+                println!("clicked");
+            }
         }
 
         action
@@ -232,8 +242,14 @@ impl Bar {
         let product_categories_container = self.view_product_categories_container();
         let product_category_products_container = self.view_product_category_products_container();
 
-        // TODO: Add numpad next to tables
-        let upper_left_row = widget::Row::new().push(self.view_tables_grid());
+        let upper_left_row = widget::Row::new().push(self.view_tables_grid()).push(
+            crate::alegria::widgets::numpad::Numpad::new(
+                Message::OnNumpadNumberClicked,
+                || Message::OnNumpadClickTest,
+                || Message::OnNumpadClickTest,
+                || Message::OnNumpadClickTest,
+            ),
+        );
         let bottom_left = self.view_current_ticket_products();
         let left_side_col = widget::Column::new().push(upper_left_row).push(bottom_left);
 

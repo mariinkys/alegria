@@ -7,6 +7,7 @@ edition = "2024"
 iced = { git = "https://github.com/iced-rs/iced", default-features = false, features = [
     "tokio",
     "tiny-skia",
+    "advanced",
 ] }
 sqlx = { version = "0.8.3", features = [
     "runtime-tokio",
