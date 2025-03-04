@@ -130,7 +130,7 @@ where
                     font,
                     horizontal_alignment: Horizontal::Center,
                     vertical_alignment: Vertical::Center,
-                    shaping: Shaping::Advanced,
+                    shaping: Shaping::Basic,
                     wrapping: Wrapping::Word,
                 };
 
