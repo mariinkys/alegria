@@ -1,10 +1,10 @@
-use iced::Border;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer;
 use iced::advanced::widget::Widget;
 use iced::advanced::widget::tree::Tree;
 use iced::mouse::{self, Cursor};
 use iced::widget::text::{LineHeight, Shaping, Wrapping};
+use iced::{Border, event};
 use iced::{Color, Element, Length, Rectangle, Size};
 
 /// A custom Numpad widget.
@@ -198,54 +198,110 @@ where
         layout::Node::new(Size::new(width, total_height))
     }
 
-    fn update(
+    fn on_event(
         &mut self,
         _state: &mut iced::advanced::widget::Tree,
-        event: &iced::Event,
+        event: iced::Event,
         layout: Layout<'_>,
         cursor: iced::advanced::mouse::Cursor,
         _renderer: &Renderer,
         _clipboard: &mut dyn iced::advanced::Clipboard,
         shell: &mut iced::advanced::Shell<'_, Message>,
         _viewport: &Rectangle,
-    ) {
+    ) -> event::Status {
         if let iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left)) =
             event
         {
             let bounds = layout.bounds();
-            if bounds.contains(cursor.position().unwrap_or_default()) {
-                let local_x = cursor.position().unwrap_or_default().x - bounds.x;
-                let local_y = cursor.position().unwrap_or_default().y - bounds.y;
-                let height_first_part = 4.0 * self.button_size + 3.0 * self.spacing;
+            if let Some(cursor_pos) = cursor.position() {
+                if bounds.contains(cursor_pos) {
+                    let local_x = cursor_pos.x - bounds.x;
+                    let local_y = cursor_pos.y - bounds.y;
+                    let height_first_part = 4.0 * self.button_size + 3.0 * self.spacing;
 
-                if local_y < height_first_part {
-                    // Determine row and column in the first 4 rows.
-                    let row = (local_y / (self.button_size + self.spacing)).floor() as usize;
-                    let col = (local_x / (self.button_size + self.spacing)).floor() as usize;
-                    let message = match row {
-                        0 => (self.on_number_clicked)(7 + col as u8), // Row 0: 7, 8, 9
-                        1 => (self.on_number_clicked)(4 + col as u8), // Row 1: 4, 5, 6
-                        2 => (self.on_number_clicked)(1 + col as u8), // Row 2: 1, 2, 3
-                        3 => match col {
-                            0 => (self.on_comma_clicked)(),   // Comma
-                            1 => (self.on_number_clicked)(0), // 0
-                            2 => (self.on_back_clicked)(),    // Back
-                            _ => return,
-                        },
-                        _ => return,
-                    };
-                    shell.publish(message);
-                } else {
-                    // Check if click is in the delete button row.
-                    let delete_row_top = height_first_part + self.spacing;
-                    if local_y >= delete_row_top && local_y <= delete_row_top + self.button_size {
-                        let message = (self.on_delete_clicked)();
+                    if local_y < height_first_part {
+                        // Determine row and column in the first 4 rows.
+                        let row = (local_y / (self.button_size + self.spacing)).floor() as usize;
+                        let col = (local_x / (self.button_size + self.spacing)).floor() as usize;
+                        let message = match row {
+                            0 => (self.on_number_clicked)(7 + col as u8), // Row 0: 7, 8, 9
+                            1 => (self.on_number_clicked)(4 + col as u8), // Row 1: 4, 5, 6
+                            2 => (self.on_number_clicked)(1 + col as u8), // Row 2: 1, 2, 3
+                            3 => match col {
+                                0 => (self.on_comma_clicked)(),   // Comma
+                                1 => (self.on_number_clicked)(0), // 0
+                                2 => (self.on_back_clicked)(),    // Back
+                                _ => return event::Status::Ignored,
+                            },
+                            _ => return event::Status::Ignored,
+                        };
                         shell.publish(message);
+                        return event::Status::Captured;
+                    } else {
+                        // Check if click is in the delete button row.
+                        let delete_row_top = height_first_part + self.spacing;
+                        if local_y >= delete_row_top && local_y <= delete_row_top + self.button_size
+                        {
+                            let message = (self.on_delete_clicked)();
+                            shell.publish(message);
+                            return event::Status::Captured;
+                        }
                     }
                 }
             }
         }
+        event::Status::Ignored
     }
+
+    // OLD CODE MAY BE USEFUL WHEN UPDATING TO ICED 0.14
+    // fn update(
+    //     &mut self,
+    //     _state: &mut iced::advanced::widget::Tree,
+    //     event: &iced::Event,
+    //     layout: Layout<'_>,
+    //     cursor: iced::advanced::mouse::Cursor,
+    //     _renderer: &Renderer,
+    //     _clipboard: &mut dyn iced::advanced::Clipboard,
+    //     shell: &mut iced::advanced::Shell<'_, Message>,
+    //     _viewport: &Rectangle,
+    // ) {
+    //     if let iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left)) =
+    //         event
+    //     {
+    //         let bounds = layout.bounds();
+    //         if bounds.contains(cursor.position().unwrap_or_default()) {
+    //             let local_x = cursor.position().unwrap_or_default().x - bounds.x;
+    //             let local_y = cursor.position().unwrap_or_default().y - bounds.y;
+    //             let height_first_part = 4.0 * self.button_size + 3.0 * self.spacing;
+
+    //             if local_y < height_first_part {
+    //                 // Determine row and column in the first 4 rows.
+    //                 let row = (local_y / (self.button_size + self.spacing)).floor() as usize;
+    //                 let col = (local_x / (self.button_size + self.spacing)).floor() as usize;
+    //                 let message = match row {
+    //                     0 => (self.on_number_clicked)(7 + col as u8), // Row 0: 7, 8, 9
+    //                     1 => (self.on_number_clicked)(4 + col as u8), // Row 1: 4, 5, 6
+    //                     2 => (self.on_number_clicked)(1 + col as u8), // Row 2: 1, 2, 3
+    //                     3 => match col {
+    //                         0 => (self.on_comma_clicked)(),   // Comma
+    //                         1 => (self.on_number_clicked)(0), // 0
+    //                         2 => (self.on_back_clicked)(),    // Back
+    //                         _ => return,
+    //                     },
+    //                     _ => return,
+    //                 };
+    //                 shell.publish(message);
+    //             } else {
+    //                 // Check if click is in the delete button row.
+    //                 let delete_row_top = height_first_part + self.spacing;
+    //                 if local_y >= delete_row_top && local_y <= delete_row_top + self.button_size {
+    //                     let message = (self.on_delete_clicked)();
+    //                     shell.publish(message);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     fn mouse_interaction(
         &self,

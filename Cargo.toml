@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-iced = { git = "https://github.com/iced-rs/iced", default-features = false, features = [
+iced = { version = "0.13.1", default-features = false, features = [
     "tokio",
     "tiny-skia",
     "advanced",
@@ -21,6 +21,7 @@ chrono = { version = "0.4.40", features = ["serde"] }
 serde = { version = "1.0.218", features = ["derive"] }
 i18n-embed-fl = "0.9.3"
 rust-embed = "8.6.0"
+sweeten = "0.1.0" # needed for on_focus text input
 
 [dependencies.i18n-embed]
 version = "0.15.3"
