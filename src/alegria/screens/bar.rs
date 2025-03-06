@@ -7,6 +7,7 @@ use iced::{
     widget::{self, text::LineHeight},
 };
 use sqlx::{Pool, Sqlite};
+use sweeten::widget::text_input;
 
 use crate::alegria::{
     action::AlegriaAction,
@@ -38,6 +39,12 @@ pub struct CurrentPositionState {
     table_index: usize,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TemporalProductField {
+    Quantity,
+    Price,
+}
+
 pub struct Bar {
     /// Database of the application
     pub database: Option<Arc<Pool<Sqlite>>>,
@@ -51,6 +58,8 @@ pub struct Bar {
     temporal_tickets_model: Vec<TemporalTicket>,
     // Keeps track of which temporal product is active (within a temporal ticket) in order to be able to modify it with the NumPad
     active_temporal_product: Option<TemporalProduct>,
+    // Keeps track of which temporal product field is active (within a temporal product) in order to be able to modify it with the NumPad
+    active_temporal_product_field: Option<TemporalProductField>,
 }
 
 #[derive(Debug, Clone)]
@@ -72,6 +81,10 @@ pub enum Message {
 
     OnNumpadNumberClicked(u8),
     OnNumpadClickTest,
+
+    FocusProductQuantity(TemporalProduct),
+    FocusProductPrice(TemporalProduct),
+    TemporalProductInput(TemporalProduct, String),
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -90,6 +103,7 @@ impl Bar {
             currently_selected_pos_state: CurrentPositionState::default(),
             temporal_tickets_model: Vec::new(),
             active_temporal_product: None,
+            active_temporal_product_field: None,
         }
     }
 
@@ -103,6 +117,7 @@ impl Bar {
             currently_selected_pos_state: CurrentPositionState::default(),
             temporal_tickets_model: Vec::new(),
             active_temporal_product: None,
+            active_temporal_product_field: None,
         }
     }
 
@@ -228,6 +243,38 @@ impl Bar {
             }
             Message::OnNumpadClickTest => {
                 println!("clicked");
+            }
+
+            Message::FocusProductQuantity(product) => {
+                self.active_temporal_product = Some(product);
+                self.active_temporal_product_field = Some(TemporalProductField::Quantity);
+            }
+            Message::FocusProductPrice(product) => {
+                self.active_temporal_product = Some(product);
+                self.active_temporal_product_field = Some(TemporalProductField::Price);
+            }
+            Message::TemporalProductInput(product, new_value) => {
+                if let Some(field) = &self.active_temporal_product_field {
+                    let mut mutable_product = product;
+
+                    match field {
+                        TemporalProductField::Quantity => {
+                            if let Ok(num) = new_value.parse::<i32>() {
+                                mutable_product.quantity = num;
+                            }
+                        }
+                        TemporalProductField::Price => {
+                            if let Ok(num) = new_value.parse::<f32>() {
+                                mutable_product.price = Some(num);
+                            }
+                        }
+                    }
+
+                    // TODO: Edit on the database (TemporalProductEdit)
+                    // TODO: Maybe we're going to have issues because the temporal product we have on the state is not going to be updated?
+                    // maybe not because even if on_focus is not trigered again we will send the updated temporal product on new input
+                    self.update(Message::FetchTemporalTickets);
+                }
             }
         }
 
@@ -393,6 +440,7 @@ impl Bar {
             return widget::Text::new("Nothing to see here...").into();
         }
 
+        // TODO: We could do this OnTableClick and save the Option<TemporalTicket> on state and do not search for it here and on the colors functions
         let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
             x.ticket_location
                 == match_table_location_with_number(
@@ -405,10 +453,25 @@ impl Bar {
             let mut products_column = widget::Column::new();
 
             for product in &current_ticket.unwrap().products {
+                let product_quantity_str = product.quantity.to_string();
+                let product_price_str = product.price.unwrap_or_default().to_string();
+
                 let product_row = widget::Row::new()
                     .push(widget::Text::new(&product.name).width(Length::Fill))
-                    .push(widget::Text::new(product.quantity))
-                    .push(widget::Text::new(product.price.unwrap_or_default()));
+                    .push(
+                        text_input(&product_quantity_str, &product_quantity_str)
+                            .on_focus(move |_| Message::FocusProductQuantity(product.clone()))
+                            .on_input(|value| {
+                                Message::TemporalProductInput(product.clone(), value)
+                            }),
+                    )
+                    .push(
+                        text_input(&product_price_str, &product_price_str)
+                            .on_focus(move |_| Message::FocusProductPrice(product.clone()))
+                            .on_input(|value| {
+                                Message::TemporalProductInput(product.clone(), value)
+                            }),
+                    );
 
                 products_column = products_column.push(product_row);
             }

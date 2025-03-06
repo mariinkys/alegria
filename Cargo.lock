@@ -4071,11 +4071,11 @@ dependencies = [
 
 [[package]]
 name = "sweeten"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "614922bb348fad791bfc2ac473f7ae0054372ad055501ec8e54aa5cca4aea270"
+version = "0.2.0"
+source = "git+https://github.com/airstrike/sweeten#9526ce2148822b5833843c1730eb71a1b00278c0"
 dependencies = [
  "iced",
+ "unicode-segmentation",
 ]
 
 [[package]]
