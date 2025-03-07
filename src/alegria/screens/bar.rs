@@ -56,10 +56,12 @@ pub struct Bar {
     currently_selected_pos_state: CurrentPositionState,
     /// Temporal Tickets hold the state of the maybe tickets of each table
     temporal_tickets_model: Vec<TemporalTicket>,
-    // Keeps track of which temporal product is active (within a temporal ticket) in order to be able to modify it with the NumPad
+    /// Keeps track of which temporal product is active (within a temporal ticket) in order to be able to modify it with the NumPad
     active_temporal_product: Option<TemporalProduct>,
-    // Keeps track of which temporal product field is active (within a temporal product) in order to be able to modify it with the NumPad
+    /// Keeps track of which temporal product field is active (within a temporal product) in order to be able to modify it with the NumPad
     active_temporal_product_field: Option<TemporalProductField>,
+    /// Helps us when converting a string text input to a decimal field (for price modification).
+    is_decimal_next: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -104,6 +106,7 @@ impl Bar {
             temporal_tickets_model: Vec::new(),
             active_temporal_product: None,
             active_temporal_product_field: None,
+            is_decimal_next: false,
         }
     }
 
@@ -118,6 +121,7 @@ impl Bar {
             temporal_tickets_model: Vec::new(),
             active_temporal_product: None,
             active_temporal_product_field: None,
+            is_decimal_next: false,
         }
     }
 
@@ -267,10 +271,22 @@ impl Bar {
                         }
                         TemporalProductField::Price => {
                             if let Ok(num) = new_value.parse::<f32>() {
-                                mutable_product.price = Some(num);
+                                if !self.is_decimal_next {
+                                    mutable_product.price = Some(num);
+                                } else {
+                                    mutable_product.price = Some(
+                                        mutable_product.price.unwrap_or(0.0) + (num / 10.0)
+                                            - mutable_product.price.unwrap_or_default(),
+                                    );
+                                    self.is_decimal_next = false;
+                                }
                             } else if new_value.is_empty() {
                                 mutable_product.price = Some(0.);
+                                self.is_decimal_next = false;
                             }
+
+                            self.is_decimal_next = new_value.ends_with(".")
+                                && (new_value.find('.') == Some(new_value.len() - 1));
                         }
                     }
 
