@@ -261,19 +261,31 @@ impl Bar {
                         TemporalProductField::Quantity => {
                             if let Ok(num) = new_value.parse::<i32>() {
                                 mutable_product.quantity = num;
+                            } else if new_value.is_empty() {
+                                mutable_product.quantity = 0;
                             }
                         }
                         TemporalProductField::Price => {
                             if let Ok(num) = new_value.parse::<f32>() {
                                 mutable_product.price = Some(num);
+                            } else if new_value.is_empty() {
+                                mutable_product.price = Some(0.);
                             }
                         }
                     }
 
-                    // TODO: Edit on the database (TemporalProductEdit)
-                    // TODO: Maybe we're going to have issues because the temporal product we have on the state is not going to be updated?
-                    // maybe not because even if on_focus is not trigered again we will send the updated temporal product on new input
-                    self.update(Message::FetchTemporalTickets);
+                    if let Some(pool) = &self.database {
+                        action.add_task(Task::perform(
+                            TemporalProduct::edit(pool.clone(), mutable_product),
+                            |res| match res {
+                                Ok(_) => Message::FetchTemporalTickets,
+                                Err(err) => {
+                                    eprintln!("{err}");
+                                    Message::FetchTemporalTickets
+                                }
+                            },
+                        ));
+                    }
                 }
             }
         }

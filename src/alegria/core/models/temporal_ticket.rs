@@ -77,6 +77,11 @@ impl TemporalTicket {
             }
         }
 
+        // Sort the products for each ticket by product id
+        for ticket in tickets_map.values_mut() {
+            ticket.products.sort_by_key(|p| p.id);
+        }
+
         // Collect the tickets and sort them by id
         let mut tickets: Vec<TemporalTicket> = tickets_map.into_values().collect();
         tickets.sort_by_key(|t| t.id);
