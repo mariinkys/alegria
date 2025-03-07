@@ -248,11 +248,13 @@ impl Bar {
                         match field {
                             TemporalProductField::Quantity => {
                                 let value = format!("{}{}", product.quantity, num);
-                                self.update(Message::TemporalProductInput(product.clone(), value));
+                                return self
+                                    .update(Message::TemporalProductInput(product.clone(), value));
                             }
                             TemporalProductField::Price => {
                                 let value = format!("{}{}", product.price.unwrap_or_default(), num);
-                                self.update(Message::TemporalProductInput(product.clone(), value));
+                                return self
+                                    .update(Message::TemporalProductInput(product.clone(), value));
                             }
                         }
                     }
@@ -304,10 +306,6 @@ impl Bar {
                     }
 
                     if let Some(pool) = &self.database {
-                        println!(
-                            "Database found, adding TemporalProduct Edit Task to: {:?}",
-                            &mutable_product
-                        );
                         action.add_task(Task::perform(
                             TemporalProduct::edit(pool.clone(), mutable_product),
                             |res| match res {

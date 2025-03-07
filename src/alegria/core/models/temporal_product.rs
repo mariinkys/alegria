@@ -20,7 +20,6 @@ impl TemporalProduct {
         pool: Arc<Pool<Sqlite>>,
         temporal_product: TemporalProduct,
     ) -> Result<(), sqlx::Error> {
-        println!("Editing: {:?}", &temporal_product);
         sqlx::query("UPDATE temporal_products SET quantity = $1, price = $2 WHERE id = $3")
             .bind(temporal_product.quantity)
             .bind(temporal_product.price)
