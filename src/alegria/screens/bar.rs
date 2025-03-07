@@ -243,7 +243,20 @@ impl Bar {
             }
 
             Message::OnNumpadNumberClicked(num) => {
-                println!("{num}");
+                if let Some(product) = &self.active_temporal_product {
+                    if let Some(field) = &self.active_temporal_product_field {
+                        match field {
+                            TemporalProductField::Quantity => {
+                                let value = format!("{}{}", product.quantity, num);
+                                self.update(Message::TemporalProductInput(product.clone(), value));
+                            }
+                            TemporalProductField::Price => {
+                                let value = format!("{}{}", product.price.unwrap_or_default(), num);
+                                self.update(Message::TemporalProductInput(product.clone(), value));
+                            }
+                        }
+                    }
+                }
             }
             Message::OnNumpadClickTest => {
                 println!("clicked");
@@ -291,6 +304,10 @@ impl Bar {
                     }
 
                     if let Some(pool) = &self.database {
+                        println!(
+                            "Database found, adding TemporalProduct Edit Task to: {:?}",
+                            &mutable_product
+                        );
                         action.add_task(Task::perform(
                             TemporalProduct::edit(pool.clone(), mutable_product),
                             |res| match res {
