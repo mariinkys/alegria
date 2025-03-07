@@ -171,4 +171,16 @@ impl TemporalTicket {
 
         Ok(())
     }
+
+    pub async fn delete(
+        pool: Arc<Pool<Sqlite>>,
+        temporal_ticket_id: i32,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM temporal_tickets WHERE id = ?")
+            .bind(temporal_ticket_id)
+            .execute(pool.as_ref())
+            .await?;
+
+        Ok(())
+    }
 }

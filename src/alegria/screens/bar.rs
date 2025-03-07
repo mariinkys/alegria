@@ -45,6 +45,13 @@ pub enum TemporalProductField {
     Price,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum NumPadAction {
+    Delete,
+    Erase,
+    Decimal,
+}
+
 pub struct Bar {
     /// Database of the application
     pub database: Option<Arc<Pool<Sqlite>>>,
@@ -82,7 +89,7 @@ pub enum Message {
     OnProductClicked(Option<i32>), // When we click a product on the product list we have to add it to the temporal ticket...
 
     OnNumpadNumberClicked(u8),
-    OnNumpadClickTest,
+    OnNumpadKeyClicked(NumPadAction),
 
     FocusProductQuantity(TemporalProduct),
     FocusProductPrice(TemporalProduct),
@@ -260,9 +267,131 @@ impl Bar {
                     }
                 }
             }
-            Message::OnNumpadClickTest => {
-                println!("clicked");
-            }
+            Message::OnNumpadKeyClicked(action_type) => match action_type {
+                // we clicked the delete button of the numpad
+                NumPadAction::Delete => {
+                    // we will need the current ticket to check if there are no more products we will need to delete the temporal ticket
+                    let current_ticket = self.temporal_tickets_model.iter().find(|x| {
+                        x.table_id == self.currently_selected_pos_state.table_index as i32
+                            && x.ticket_location
+                                == match_table_location_with_number(
+                                    self.currently_selected_pos_state.location.clone(),
+                                )
+                    });
+
+                    // if we have a product selected we delete that product
+                    if let Some(active_product) = &self.active_temporal_product {
+                        if let Some(pool) = &self.database {
+                            action.add_task(Task::perform(
+                                TemporalProduct::delete(
+                                    pool.clone(),
+                                    active_product.id.unwrap_or_default(),
+                                ),
+                                |res| match res {
+                                    Ok(_) => Message::FetchTemporalTickets,
+                                    Err(err) => {
+                                        eprintln!("{err}");
+                                        Message::FetchTemporalTickets
+                                    }
+                                },
+                            ));
+
+                            self.active_temporal_product = None;
+                            self.active_temporal_product_field = None;
+
+                            // check if there are no more products we will need to delete the temporal ticket
+                            if let Some(ticket) = current_ticket {
+                                if ticket.products.len() == 1 {
+                                    action.add_task(Task::perform(
+                                        TemporalTicket::delete(
+                                            pool.clone(),
+                                            ticket.id.unwrap_or_default(),
+                                        ),
+                                        |res| match res {
+                                            Ok(_) => Message::FetchTemporalTickets,
+                                            Err(err) => {
+                                                eprintln!("{err}");
+                                                Message::FetchTemporalTickets
+                                            }
+                                        },
+                                    ));
+                                }
+                            }
+                        }
+                    // if we don't have a product selected but there is a ticket and we pressed delete
+                    } else if let Some(ticket) = current_ticket {
+                        if let Some(product) = ticket.products.first() {
+                            if let Some(pool) = &self.database {
+                                // we delete the first product of the list
+                                action.add_task(Task::perform(
+                                    TemporalProduct::delete(
+                                        pool.clone(),
+                                        product.id.unwrap_or_default(),
+                                    ),
+                                    |res| match res {
+                                        Ok(_) => Message::FetchTemporalTickets,
+                                        Err(err) => {
+                                            eprintln!("{err}");
+                                            Message::FetchTemporalTickets
+                                        }
+                                    },
+                                ));
+
+                                // check if there are no more products we will need to delete the temporal ticket
+                                if ticket.products.len() == 1 {
+                                    action.add_task(Task::perform(
+                                        TemporalTicket::delete(
+                                            pool.clone(),
+                                            ticket.id.unwrap_or_default(),
+                                        ),
+                                        |res| match res {
+                                            Ok(_) => Message::FetchTemporalTickets,
+                                            Err(err) => {
+                                                eprintln!("{err}");
+                                                Message::FetchTemporalTickets
+                                            }
+                                        },
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+                // we clicked the erase button of the numpad
+                NumPadAction::Erase => {
+                    if let Some(product) = &self.active_temporal_product {
+                        if let Some(field) = &self.active_temporal_product_field {
+                            match field {
+                                TemporalProductField::Quantity => {
+                                    let product_quantity = product.quantity.to_string();
+                                    if product_quantity.len() > 1 {
+                                        let value = &product_quantity[..product_quantity.len() - 1];
+                                        return self.update(Message::TemporalProductInput(
+                                            product.clone(),
+                                            value.to_string(),
+                                        ));
+                                    }
+                                }
+                                TemporalProductField::Price => {
+                                    let product_price =
+                                        product.price.unwrap_or_default().to_string();
+                                    if product_price.len() > 1 {
+                                        let value = &product_price[..product_price.len() - 1];
+                                        return self.update(Message::TemporalProductInput(
+                                            product.clone(),
+                                            value.to_string(),
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // we clicked the '.' button of the numpad
+                NumPadAction::Decimal => {
+                    self.is_decimal_next = true;
+                }
+            },
 
             Message::FocusProductQuantity(product) => {
                 self.active_temporal_product = Some(product);
@@ -336,9 +465,9 @@ impl Bar {
             .push(self.view_tables_grid())
             .push(crate::alegria::widgets::numpad::Numpad::new(
                 Message::OnNumpadNumberClicked,
-                || Message::OnNumpadClickTest,
-                || Message::OnNumpadClickTest,
-                || Message::OnNumpadClickTest,
+                || Message::OnNumpadKeyClicked(NumPadAction::Decimal),
+                || Message::OnNumpadKeyClicked(NumPadAction::Erase),
+                || Message::OnNumpadKeyClicked(NumPadAction::Delete),
             ))
             .spacing(3);
         let bottom_left = self.view_current_ticket_products();
