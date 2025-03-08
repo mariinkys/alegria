@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use iced::{Task, widget};
+use iced::{Alignment, Length, Pixels, Task, widget};
 use sqlx::{Pool, Sqlite};
 
 use crate::{
@@ -44,13 +44,52 @@ impl IcedAlegria {
 
     pub fn view(&self) -> iced::Element<'_, Message> {
         let content = match self.screen {
-            Screen::Home => widget::Button::new(widget::Text::new(fl!("welcome")))
-                .on_press(Message::ChangeScreen(Screen::Bar))
-                .into(),
+            Screen::Home => {
+                let buttons_row = widget::Row::new()
+                    .push(
+                        widget::Button::new(
+                            widget::Text::new(fl!("bar"))
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .on_press(Message::ChangeScreen(Screen::Bar))
+                        .width(Length::Fixed(100.))
+                        .height(Length::Fixed(100.)),
+                    )
+                    .push(
+                        widget::Button::new(
+                            widget::Text::new(fl!("hotel"))
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .width(Length::Fixed(100.))
+                        .height(Length::Fixed(100.)),
+                    )
+                    .push(
+                        widget::Button::new(
+                            widget::Text::new(fl!("managment"))
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .width(Length::Fixed(100.))
+                        .height(Length::Fixed(100.)),
+                    )
+                    .spacing(Pixels::from(5.));
+
+                widget::Container::new(buttons_row)
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into()
+            }
             Screen::Bar => self.bar.view().map(Message::Bar),
         };
 
-        widget::Container::new(content).into()
+        widget::Container::new(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 
     pub fn update(&mut self, message: Message) -> iced::Task<Message> {
