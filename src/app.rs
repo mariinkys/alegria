@@ -94,4 +94,8 @@ impl IcedAlegria {
 
         Task::batch(tasks)
     }
+
+    pub fn theme(&self) -> iced::Theme {
+        iced::Theme::GruvboxLight
+    }
 }

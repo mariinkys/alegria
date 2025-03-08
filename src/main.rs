@@ -31,5 +31,6 @@ fn main() -> Result<(), iced::Error> {
             resizable: true,
             ..Default::default()
         })
+        .theme(IcedAlegria::theme)
         .run_with(|| (IcedAlegria::new(), Task::batch(tasks)))
 }
