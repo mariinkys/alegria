@@ -337,20 +337,14 @@ where
     }
 }
 
-/// The appearance of a pick list.
+/// The appearance of a numberpad.
 #[derive(Debug, Clone, Copy)]
 pub struct Style {
-    /// The text [`Color`] of the pick list.
+    /// The text [`Color`] of the numberpad.
     pub text_color: Color,
-    /// The disabled text [`Color`] of the pick list.
-    pub disabled_text_color: Color,
-    /// The placeholder [`Color`] of the pick list.
-    pub placeholder_color: Color,
-    /// The handle [`Color`] of the pick list.
-    pub handle_color: Color,
-    /// The [`Background`] of the pick list.
+    /// The [`Background`] of the numberpad.
     pub background: Background,
-    /// The [`Border`] of the pick list.
+    /// The [`Border`] of the numberpad.
     pub border: Border,
 }
 
@@ -389,7 +383,6 @@ pub fn default(theme: &Theme) -> Style {
 
     Style {
         text_color: palette.background.base.text,
-        disabled_text_color: palette.background.weak.text,
         background: Background {
             base: Pair::new(palette.background.base.color, palette.background.base.color),
             weak: Pair::new(palette.background.weak.color, palette.background.weak.color),
@@ -398,8 +391,6 @@ pub fn default(theme: &Theme) -> Style {
                 palette.background.strong.color,
             ),
         },
-        placeholder_color: palette.background.strong.color,
-        handle_color: palette.background.weak.text,
         border: Border {
             radius: 2.0.into(),
             width: 1.0,
