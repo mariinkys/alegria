@@ -20,35 +20,68 @@ use iced::{Color, Element, Length, Rectangle, Size};
 /// - Row 4: A full-width “delete” button.
 ///
 /// Callback closures are invoked when a button is clicked.
-pub struct Numpad<Message: 'static> {
-    on_number_clicked: Box<dyn Fn(u8) -> Message>,
-    on_comma_clicked: Box<dyn Fn() -> Message>,
-    on_back_clicked: Box<dyn Fn() -> Message>,
-    on_delete_clicked: Box<dyn Fn() -> Message>,
+pub struct Numpad<'a, Message: 'a> {
+    on_number_clicked: Option<Box<dyn Fn(u8) -> Message + 'a>>,
+    on_comma_clicked: Option<Box<dyn Fn() -> Message + 'a>>,
+    on_back_clicked: Option<Box<dyn Fn() -> Message + 'a>>,
+    on_delete_clicked: Option<Box<dyn Fn() -> Message + 'a>>,
     button_size: f32,
     spacing: f32,
 }
 
-impl<Message> Numpad<Message> {
+impl<'a, Message> Numpad<'a, Message> {
     /// Create a new Numpad with callbacks.
-    pub fn new(
-        on_number_clicked: impl Fn(u8) -> Message + 'static,
-        on_comma_clicked: impl Fn() -> Message + 'static,
-        on_back_clicked: impl Fn() -> Message + 'static,
-        on_delete_clicked: impl Fn() -> Message + 'static,
-    ) -> Self {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
         Self {
-            on_number_clicked: Box::new(on_number_clicked),
-            on_comma_clicked: Box::new(on_comma_clicked),
-            on_back_clicked: Box::new(on_back_clicked),
-            on_delete_clicked: Box::new(on_delete_clicked),
+            on_number_clicked: None,
+            on_comma_clicked: None,
+            on_back_clicked: None,
+            on_delete_clicked: None,
             button_size: 50.0,
             spacing: 5.0,
         }
     }
+
+    /// Sets the message that should be produced when a [`NumPad`] number
+    /// is clicked.
+    pub fn on_number_clicked(mut self, on_number_clicked: impl Fn(u8) -> Message + 'a) -> Self {
+        self.on_number_clicked = Some(Box::new(on_number_clicked));
+        self
+    }
+
+    /// Sets the message that should be produced when the [`NumPad`] ','
+    /// is clicked.
+    pub fn on_comma_clicked(mut self, message: Message) -> Self
+    where
+        Message: Clone + 'a,
+    {
+        self.on_comma_clicked = Some(Box::new(move || message.clone()));
+        self
+    }
+
+    /// Sets the message that should be produced when the [`NumPad`] '<-'
+    /// is clicked.
+    pub fn on_back_clicked(mut self, message: Message) -> Self
+    where
+        Message: Clone + 'a,
+    {
+        self.on_back_clicked = Some(Box::new(move || message.clone()));
+        self
+    }
+
+    /// Sets the message that should be produced when the [`NumPad`] 'Delete'
+    /// is clicked.
+    pub fn on_delete_clicked(mut self, message: Message) -> Self
+    where
+        Message: Clone + 'a,
+    {
+        self.on_delete_clicked = Some(Box::new(move || message.clone()));
+        self
+    }
 }
 
-impl<Message: 'static, Theme, Renderer> Widget<Message, Theme, Renderer> for Numpad<Message>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Numpad<'_, Message>
 where
     Renderer: iced::advanced::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
 {
@@ -202,7 +235,7 @@ where
 
     fn on_event(
         &mut self,
-        _state: &mut iced::advanced::widget::Tree,
+        _tree: &mut iced::advanced::widget::Tree,
         event: iced::Event,
         layout: Layout<'_>,
         cursor: iced::advanced::mouse::Cursor,
@@ -211,99 +244,53 @@ where
         shell: &mut iced::advanced::Shell<'_, Message>,
         _viewport: &Rectangle,
     ) -> event::Status {
-        if let iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left)) =
-            event
-        {
-            let bounds = layout.bounds();
-            if let Some(cursor_pos) = cursor.position() {
-                if bounds.contains(cursor_pos) {
-                    let local_x = cursor_pos.x - bounds.x;
-                    let local_y = cursor_pos.y - bounds.y;
+        match event {
+            iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left))
+            | iced::Event::Touch(iced::touch::Event::FingerPressed { .. }) => {
+                if let Some(cursor_position) = cursor.position_over(layout.bounds()) {
+                    let bounds = layout.bounds();
+                    let local_x = cursor_position.x - bounds.x;
+                    let local_y = cursor_position.y - bounds.y;
                     let height_first_part = 4.0 * self.button_size + 3.0 * self.spacing;
 
                     if local_y < height_first_part {
-                        // Determine row and column in the first 4 rows.
+                        // Determine row and column for the first four rows.
                         let row = (local_y / (self.button_size + self.spacing)).floor() as usize;
                         let col = (local_x / (self.button_size + self.spacing)).floor() as usize;
-                        let message = match row {
-                            0 => (self.on_number_clicked)(7 + col as u8), // Row 0: 7, 8, 9
-                            1 => (self.on_number_clicked)(4 + col as u8), // Row 1: 4, 5, 6
-                            2 => (self.on_number_clicked)(1 + col as u8), // Row 2: 1, 2, 3
+                        let maybe_message = match row {
+                            0 => self.on_number_clicked.as_ref().map(|f| f(7 + col as u8)),
+                            1 => self.on_number_clicked.as_ref().map(|f| f(4 + col as u8)),
+                            2 => self.on_number_clicked.as_ref().map(|f| f(1 + col as u8)),
                             3 => match col {
-                                0 => (self.on_comma_clicked)(),   // Comma
-                                1 => (self.on_number_clicked)(0), // 0
-                                2 => (self.on_back_clicked)(),    // Back
-                                _ => return event::Status::Ignored,
+                                0 => self.on_comma_clicked.as_ref().map(|f| f()),
+                                1 => self.on_number_clicked.as_ref().map(|f| f(0)),
+                                2 => self.on_back_clicked.as_ref().map(|f| f()),
+                                _ => None,
                             },
-                            _ => return event::Status::Ignored,
+                            _ => None,
                         };
-                        shell.publish(message);
-                        return event::Status::Captured;
-                    } else {
-                        // Check if click is in the delete button row.
-                        let delete_row_top = height_first_part + self.spacing;
-                        if local_y >= delete_row_top && local_y <= delete_row_top + self.button_size
-                        {
-                            let message = (self.on_delete_clicked)();
+
+                        if let Some(message) = maybe_message {
                             shell.publish(message);
                             return event::Status::Captured;
                         }
+                    } else {
+                        // Check if the click is within the delete button row.
+                        let delete_row_top = height_first_part + self.spacing;
+                        if local_y >= delete_row_top && local_y <= delete_row_top + self.button_size
+                        {
+                            if let Some(ref on_delete_clicked) = self.on_delete_clicked {
+                                shell.publish(on_delete_clicked());
+                                return event::Status::Captured;
+                            }
+                        }
                     }
                 }
+                event::Status::Ignored
             }
+            _ => event::Status::Ignored,
         }
-        event::Status::Ignored
     }
-
-    // OLD CODE MAY BE USEFUL WHEN UPDATING TO ICED 0.14
-    // fn update(
-    //     &mut self,
-    //     _state: &mut iced::advanced::widget::Tree,
-    //     event: &iced::Event,
-    //     layout: Layout<'_>,
-    //     cursor: iced::advanced::mouse::Cursor,
-    //     _renderer: &Renderer,
-    //     _clipboard: &mut dyn iced::advanced::Clipboard,
-    //     shell: &mut iced::advanced::Shell<'_, Message>,
-    //     _viewport: &Rectangle,
-    // ) {
-    //     if let iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left)) =
-    //         event
-    //     {
-    //         let bounds = layout.bounds();
-    //         if bounds.contains(cursor.position().unwrap_or_default()) {
-    //             let local_x = cursor.position().unwrap_or_default().x - bounds.x;
-    //             let local_y = cursor.position().unwrap_or_default().y - bounds.y;
-    //             let height_first_part = 4.0 * self.button_size + 3.0 * self.spacing;
-
-    //             if local_y < height_first_part {
-    //                 // Determine row and column in the first 4 rows.
-    //                 let row = (local_y / (self.button_size + self.spacing)).floor() as usize;
-    //                 let col = (local_x / (self.button_size + self.spacing)).floor() as usize;
-    //                 let message = match row {
-    //                     0 => (self.on_number_clicked)(7 + col as u8), // Row 0: 7, 8, 9
-    //                     1 => (self.on_number_clicked)(4 + col as u8), // Row 1: 4, 5, 6
-    //                     2 => (self.on_number_clicked)(1 + col as u8), // Row 2: 1, 2, 3
-    //                     3 => match col {
-    //                         0 => (self.on_comma_clicked)(),   // Comma
-    //                         1 => (self.on_number_clicked)(0), // 0
-    //                         2 => (self.on_back_clicked)(),    // Back
-    //                         _ => return,
-    //                     },
-    //                     _ => return,
-    //                 };
-    //                 shell.publish(message);
-    //             } else {
-    //                 // Check if click is in the delete button row.
-    //                 let delete_row_top = height_first_part + self.spacing;
-    //                 if local_y >= delete_row_top && local_y <= delete_row_top + self.button_size {
-    //                     let message = (self.on_delete_clicked)();
-    //                     shell.publish(message);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 
     fn mouse_interaction(
         &self,
@@ -324,12 +311,13 @@ where
     }
 }
 
-impl<Message: 'static, Theme, Renderer> From<Numpad<Message>>
-    for Element<'_, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> From<Numpad<'a, Message>>
+    for Element<'a, Message, Theme, Renderer>
 where
-    Renderer: renderer::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
+    Message: Clone + 'a,
+    Renderer: renderer::Renderer + iced::advanced::text::Renderer<Font = iced::Font> + 'a,
 {
-    fn from(numpad: Numpad<Message>) -> Self {
+    fn from(numpad: Numpad<'a, Message>) -> Self {
         Element::new(numpad)
     }
 }

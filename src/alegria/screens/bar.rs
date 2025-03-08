@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use iced::{
-    Alignment, Background, Color, Element, Length, Padding, Pixels, Task,
-    widget::{self, text::LineHeight},
+    Alignment, Element, Length, Pixels, Task,
+    widget::{self},
 };
 use sqlx::{Pool, Sqlite};
 use sweeten::widget::text_input;
@@ -738,13 +738,12 @@ impl Bar {
 
     /// Returns the view of the numpad
     fn view_numpad(&self) -> Element<Message> {
-        crate::alegria::widgets::numpad::Numpad::new(
-            Message::OnNumpadNumberClicked,
-            || Message::OnNumpadKeyClicked(NumPadAction::Decimal),
-            || Message::OnNumpadKeyClicked(NumPadAction::Erase),
-            || Message::OnNumpadKeyClicked(NumPadAction::Delete),
-        )
-        .into()
+        crate::alegria::widgets::numpad::Numpad::new()
+            .on_number_clicked(Message::OnNumpadNumberClicked)
+            .on_back_clicked(Message::OnNumpadKeyClicked(NumPadAction::Erase))
+            .on_delete_clicked(Message::OnNumpadKeyClicked(NumPadAction::Delete))
+            .on_comma_clicked(Message::OnNumpadKeyClicked(NumPadAction::Decimal))
+            .into()
     }
 
     //
