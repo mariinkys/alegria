@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use iced::{Alignment, Length, Pixels, Task, widget};
+use iced::{Alignment, Length, Padding, Pixels, Task, widget};
 use sqlx::{Pool, Sqlite};
 
 use crate::{
@@ -89,6 +89,7 @@ impl IcedAlegria {
         widget::Container::new(content)
             .width(Length::Fill)
             .height(Length::Fill)
+            .padding(Padding::new(8.))
             .into()
     }
 

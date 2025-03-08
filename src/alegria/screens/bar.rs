@@ -3,22 +3,25 @@
 use std::sync::Arc;
 
 use iced::{
-    Alignment, Background, Color, Element, Length, Pixels, Task,
+    Alignment, Background, Color, Element, Length, Padding, Pixels, Task,
     widget::{self, text::LineHeight},
 };
 use sqlx::{Pool, Sqlite};
 use sweeten::widget::text_input;
 
-use crate::alegria::{
-    action::AlegriaAction,
-    core::models::{
-        product::Product, product_category::ProductCategory, temporal_product::TemporalProduct,
-        temporal_ticket::TemporalTicket,
+use crate::{
+    alegria::{
+        action::AlegriaAction,
+        core::models::{
+            product::Product, product_category::ProductCategory, temporal_product::TemporalProduct,
+            temporal_ticket::TemporalTicket,
+        },
+        utils::{
+            TemporalTicketStatus, match_number_with_temporal_ticket_status,
+            match_table_location_with_number,
+        },
     },
-    utils::{
-        TemporalTicketStatus, match_number_with_temporal_ticket_status,
-        match_table_location_with_number,
-    },
+    fl,
 };
 
 /// Defines the different locations in which a table can be located at
@@ -59,6 +62,8 @@ pub struct Bar {
     product_categories: Vec<ProductCategory>,
     /// Selected product category products (if we clicked a category we will show it's products)
     product_category_products: Option<Vec<Product>>,
+    /// Currently selected product_category id (needed for correct button styling)
+    currently_selected_product_category: Option<i32>,
     /// Currently selected table state (helps us identify the currently selected table) TODO: Could we chnage this to an Option<TemporalTicket> and avoid this allotgether?
     currently_selected_pos_state: CurrentPositionState,
     /// Temporal Tickets hold the state of the maybe tickets of each table
@@ -109,6 +114,7 @@ impl Bar {
             database: None,
             product_categories: Vec::new(),
             product_category_products: None,
+            currently_selected_product_category: None,
             currently_selected_pos_state: CurrentPositionState::default(),
             temporal_tickets_model: Vec::new(),
             active_temporal_product: None,
@@ -124,6 +130,7 @@ impl Bar {
             database,
             product_categories: Vec::new(),
             product_category_products: None,
+            currently_selected_product_category: None,
             currently_selected_pos_state: CurrentPositionState::default(),
             temporal_tickets_model: Vec::new(),
             active_temporal_product: None,
@@ -177,12 +184,15 @@ impl Bar {
             }
             // Sets the product categories on the state
             Message::SetProductCategories(items) => {
+                self.currently_selected_product_category = None;
+                self.product_category_products = None;
                 self.product_categories = items;
             }
 
             // Fetches the products for a given product category
             Message::FetchProductCategoryProducts(product_category_id) => {
                 if let Some(pool) = &self.database {
+                    self.currently_selected_product_category = product_category_id;
                     action.add_task(Task::perform(
                         Product::get_all_by_category(
                             pool.clone(),
@@ -453,34 +463,54 @@ impl Bar {
         action
     }
 
+    const GLOBAL_SPACING: f32 = 6.;
+    const GLOBAL_BUTTON_HEIGHT: f32 = 50.;
+
     /// Returns the view of the bar screen
     pub fn view(&self) -> Element<Message> {
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
+
+        // HEADER
         let header_row = self.view_header_row();
 
+        // BOTTOM RIGHT SIDE
         // TODO: Pagination
         let product_categories_container = self.view_product_categories_container();
         let product_category_products_container = self.view_product_category_products_container();
-
-        let upper_left_row = widget::Row::new()
-            .push(self.view_tables_grid())
-            .push(crate::alegria::widgets::numpad::Numpad::new(
-                Message::OnNumpadNumberClicked,
-                || Message::OnNumpadKeyClicked(NumPadAction::Decimal),
-                || Message::OnNumpadKeyClicked(NumPadAction::Erase),
-                || Message::OnNumpadKeyClicked(NumPadAction::Delete),
-            ))
-            .spacing(3);
-        let bottom_left = self.view_current_ticket_products();
-        let left_side_col = widget::Column::new().push(upper_left_row).push(bottom_left);
-
-        let bottom_container = widget::Row::new()
-            .push(left_side_col)
+        let right_side_container = widget::Row::new()
             .push(product_categories_container)
-            .push(product_category_products_container);
+            .push(product_category_products_container)
+            .spacing(spacing)
+            .width(Length::Fill);
+
+        // BOTTOM LEFT SIDE
+        let left_side_upper_row_left_col = self.view_tables_grid();
+        // TODO: Add ticket total overview above numpad
+        let left_side_upper_row_right_col = widget::Column::new()
+            .push(self.view_numpad())
+            .spacing(spacing);
+        let left_side_upper_row = widget::Row::new()
+            .push(left_side_upper_row_left_col)
+            .push(left_side_upper_row_right_col)
+            .spacing(spacing);
+        let left_side_down_row = self.view_current_ticket_products();
+        let left_side_container = widget::Column::new()
+            .push(left_side_upper_row)
+            .push(left_side_down_row)
+            .spacing(spacing)
+            .width(Length::Fill);
+
+        let bottom_row = widget::Row::new()
+            .push(left_side_container)
+            .push(right_side_container)
+            .spacing(spacing);
 
         widget::Column::new()
             .push(header_row)
-            .push(bottom_container)
+            .push(bottom_row)
+            .spacing(spacing)
+            .height(Length::Fill)
+            .width(Length::Fill)
             .into()
     }
 
@@ -490,7 +520,15 @@ impl Bar {
 
     /// Returns the view of the header row of the bar screen
     fn view_header_row(&self) -> Element<Message> {
-        let back_button = widget::Button::new("Back").on_press(Message::Back);
+        let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
+
+        let back_button = widget::Button::new(
+            widget::Text::new(fl!("back"))
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center),
+        )
+        .on_press(Message::Back)
+        .height(button_height);
 
         widget::Row::new()
             .push(back_button)
@@ -504,54 +542,66 @@ impl Bar {
 
     /// Returns the view of the tables grid of the application
     fn view_tables_grid(&self) -> Element<Message> {
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
+        let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
+
         let header = widget::Row::new()
             .push(
-                widget::Button::new("Bar")
-                    .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Bar))
-                    .style(|x, _| self.determine_location_button_color(x, TableLocation::Bar))
-                    .width(Length::Fill),
+                widget::Button::new(
+                    widget::Text::new(fl!("bar"))
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center),
+                )
+                .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Bar))
+                .style(|t, s| self.determine_location_button_color(t, s, TableLocation::Bar))
+                .height(button_height)
+                .width(Length::Fill),
             )
             .push(
-                widget::Button::new("Restaurant")
-                    .on_press(Message::ChangeCurrentTablesLocation(
-                        TableLocation::Resturant,
-                    ))
-                    .style(|x, _| self.determine_location_button_color(x, TableLocation::Resturant))
-                    .width(Length::Fill),
+                widget::Button::new(
+                    widget::Text::new("Restaurant")
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center),
+                )
+                .on_press(Message::ChangeCurrentTablesLocation(
+                    TableLocation::Resturant,
+                ))
+                .style(|t, s| self.determine_location_button_color(t, s, TableLocation::Resturant))
+                .height(button_height)
+                .width(Length::Fill),
             )
             .push(
-                widget::Button::new("Garden")
-                    .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Garden))
-                    .style(|x, _| self.determine_location_button_color(x, TableLocation::Garden))
-                    .width(Length::Fill),
+                widget::Button::new(
+                    widget::Text::new("Garden")
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center),
+                )
+                .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Garden))
+                .style(|t, s| self.determine_location_button_color(t, s, TableLocation::Garden))
+                .height(button_height)
+                .width(Length::Fill),
             )
-            .width(Length::Fill);
+            .width(Length::Fill)
+            .spacing(spacing);
 
-        let grid_spacing: f32 = 3.;
-        let mut tables_grid = widget::Column::new()
-            .spacing(Pixels::from(grid_spacing))
-            .width(Length::Fill);
-        let mut current_row = widget::Row::new()
-            .spacing(Pixels::from(grid_spacing))
-            .width(Length::Fill);
+        let mut tables_grid = widget::Column::new().spacing(spacing).width(Length::Fill);
+        let mut current_row = widget::Row::new().spacing(spacing).width(Length::Fill);
         for index in 0..Self::NUMBER_OF_TABLES {
             let table_button = widget::Button::new(
                 widget::Text::new(format!("{}", index + 1))
                     .width(Length::Fill)
                     .align_x(Alignment::Center)
-                    .line_height(LineHeight::Absolute(Pixels::from(40.))),
+                    .align_y(Alignment::Center),
             )
             .width(Length::Fill)
-            .height(Length::Fixed(50.))
-            .style(move |x, _| self.determine_table_button_color(x, index))
+            .height(button_height)
+            .style(move |t, s| self.determine_table_button_color(t, s, index))
             .on_press(Message::OnTableChange(index));
             current_row = current_row.push(table_button);
 
             if (index + 1) % Self::TABLES_PER_ROW == 0 {
                 tables_grid = tables_grid.push(current_row);
-                current_row = widget::Row::new()
-                    .spacing(Pixels::from(grid_spacing))
-                    .width(Length::Fill);
+                current_row = widget::Row::new().spacing(spacing).width(Length::Fill);
             }
         }
 
@@ -559,22 +609,32 @@ impl Bar {
             .push(header)
             .push(tables_grid)
             .width(Length::Fill)
-            .spacing(grid_spacing)
+            .spacing(spacing)
             .into()
     }
 
     /// Returns the view of the product categories of the bar screen
     fn view_product_categories_container(&self) -> Element<Message> {
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
+        let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
+
         let categories_buttons: Vec<_> = self
             .product_categories
             .iter()
             .map(|category| {
-                widget::Button::new(category.name.as_str())
-                    .on_press(Message::FetchProductCategoryProducts(category.id))
-                    .into()
+                widget::Button::new(
+                    widget::Text::new(category.name.as_str())
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center),
+                )
+                .on_press(Message::FetchProductCategoryProducts(category.id))
+                .style(move |t, s| self.determine_product_category_button_color(t, s, category.id))
+                .height(button_height)
+                .width(Length::Fill)
+                .into()
             })
             .collect();
-        let categories_col = widget::Column::with_children(categories_buttons).height(Length::Fill);
+        let categories_col = widget::Column::with_children(categories_buttons).spacing(spacing);
 
         widget::Container::new(categories_col)
             .height(Length::Fill)
@@ -584,6 +644,9 @@ impl Bar {
 
     /// Returns the view of the currently selected product category products of the bar screen
     fn view_product_category_products_container(&self) -> Element<Message> {
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
+        let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
+
         let products_buttons: Vec<_> = self
             .product_category_products
             .as_ref()
@@ -591,14 +654,22 @@ impl Bar {
                 products
                     .iter()
                     .map(|product| {
-                        widget::Button::new(product.name.as_str())
-                            .on_press(Message::OnProductClicked(product.id))
-                            .into()
+                        widget::Button::new(
+                            widget::Text::new(product.name.as_str())
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .on_press(Message::OnProductClicked(product.id))
+                        .height(button_height)
+                        .width(Length::Fill)
+                        .into()
                     })
                     .collect()
             })
             .unwrap_or_default();
-        let products_col = widget::Column::with_children(products_buttons).height(Length::Fill);
+        let products_col = widget::Column::with_children(products_buttons)
+            .spacing(spacing)
+            .height(Length::Fill);
 
         widget::Container::new(products_col)
             .height(Length::Fill)
@@ -608,6 +679,8 @@ impl Bar {
 
     /// Returns the view of the product (list) of the currently selected ticket
     fn view_current_ticket_products(&self) -> Element<Message> {
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
+
         if self.temporal_tickets_model.is_empty() {
             return widget::Text::new("Nothing to see here...").into();
         }
@@ -622,14 +695,14 @@ impl Bar {
         });
 
         if current_ticket.is_some() {
-            let mut products_column = widget::Column::new();
+            let mut products_column = widget::Column::new().spacing(spacing);
 
             for product in &current_ticket.unwrap().products {
                 let product_quantity_str = product.quantity.to_string();
                 let product_price_str = product.price.unwrap_or_default().to_string();
 
                 let product_row = widget::Row::new()
-                    .push(widget::Text::new(&product.name).width(Length::Fill))
+                    .push(widget::Text::new(&product.name).width(Length::Fill)) // TODO: Can I make this bold?
                     .push(
                         text_input(&product_quantity_str, &product_quantity_str)
                             .on_focus(move |_| Message::FocusProductQuantity(product.clone()))
@@ -643,7 +716,9 @@ impl Bar {
                             .on_input(|value| {
                                 Message::TemporalProductInput(product.clone(), value)
                             }),
-                    );
+                    )
+                    .spacing(spacing)
+                    .align_y(Alignment::Center);
 
                 products_column = products_column.push(product_row);
             }
@@ -654,6 +729,17 @@ impl Bar {
         }
     }
 
+    /// Returns the view of the numpad
+    fn view_numpad(&self) -> Element<Message> {
+        crate::alegria::widgets::numpad::Numpad::new(
+            Message::OnNumpadNumberClicked,
+            || Message::OnNumpadKeyClicked(NumPadAction::Decimal),
+            || Message::OnNumpadKeyClicked(NumPadAction::Erase),
+            || Message::OnNumpadKeyClicked(NumPadAction::Delete),
+        )
+        .into()
+    }
+
     //
     //  END OF VIEW COMPOSING
     //
@@ -662,30 +748,25 @@ impl Bar {
     // HELPERS
     //
 
-    const CURRENTLY_SELECTED_COLOR: Color = Color::from_rgb(0.0 / 255.0, 122.0 / 255.0, 1.); // Info (Blue)
-    const PENDING_COLOR: Color = Color::from_rgb(1., 59.0 / 255.0, 48.0 / 255.0); // Error (Red)
-    const PRINTED_COLOR: Color = Color::from_rgb(1., 149.0 / 255.0, 0.0 / 255.0); // Warning (Orange)
-    const WHITE_COLOR: Color = Color::from_rgb(1., 1., 1.); // White
-    const BLACK_COLOR: Color = Color::from_rgb(0.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0); // Black
-
-    const BORDER_RADIUS: f32 = 5.;
-    const BORDER_WIDTH: f32 = 1.;
-
     /// Determines the color a button of the tables grid should be given the table index, using the temporal_tickets model
-    fn determine_table_button_color(&self, _: &iced::Theme, t_id: usize) -> widget::button::Style {
+    fn determine_table_button_color(
+        &self,
+        t: &iced::Theme,
+        s: widget::button::Status,
+        t_id: usize,
+    ) -> widget::button::Style {
         let table_id = t_id as i32;
 
+        // We have it currently selected
         if self.currently_selected_pos_state.table_index as i32 == table_id {
-            return widget::button::Style {
-                background: Some(Background::Color(Self::WHITE_COLOR)),
-                text_color: Self::BLACK_COLOR,
-                border: iced::Border {
-                    color: Self::CURRENTLY_SELECTED_COLOR,
-                    width: Self::BORDER_WIDTH,
-                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
-                },
-                shadow: iced::Shadow::default(),
-            };
+            match s {
+                widget::button::Status::Hovered => {
+                    return widget::button::primary(t, widget::button::Status::Hovered);
+                }
+                _ => {
+                    return widget::button::primary(t, widget::button::Status::Active);
+                }
+            }
         }
 
         let current_ticket = self.temporal_tickets_model.iter().find(|x| {
@@ -696,86 +777,89 @@ impl Bar {
                     )
         });
 
+        // there is not ticket on this table
         if current_ticket.is_none() {
-            return widget::button::Style {
-                background: Some(Background::Color(Self::CURRENTLY_SELECTED_COLOR)),
-                text_color: Self::WHITE_COLOR,
-                border: iced::Border {
-                    color: Self::CURRENTLY_SELECTED_COLOR,
-                    width: Self::BORDER_WIDTH,
-                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
-                },
-                shadow: iced::Shadow::default(),
-            };
+            match s {
+                widget::button::Status::Hovered => {
+                    return widget::button::secondary(t, widget::button::Status::Hovered);
+                }
+                _ => return widget::button::secondary(t, widget::button::Status::Active),
+            }
+
+        // there is a pending ticket on this table (we are not currently selecting this ticket)
         } else if current_ticket.is_some_and(|y| {
             match_number_with_temporal_ticket_status(y.ticket_status)
                 == TemporalTicketStatus::Pending
         }) {
-            return widget::button::Style {
-                background: Some(Background::Color(Self::PENDING_COLOR)),
-                text_color: Self::WHITE_COLOR,
-                border: iced::Border {
-                    color: Self::PENDING_COLOR,
-                    width: Self::BORDER_WIDTH,
-                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
-                },
-                shadow: iced::Shadow::default(),
-            };
+            match s {
+                widget::button::Status::Hovered => {
+                    return widget::button::danger(t, widget::button::Status::Hovered);
+                }
+                _ => return widget::button::danger(t, widget::button::Status::Active),
+            }
+
+        // there is a printed ticket on this table (we are not currently selecting this ticket)
         } else if current_ticket.is_some_and(|y| {
             match_number_with_temporal_ticket_status(y.ticket_status)
                 == TemporalTicketStatus::Printed
         }) {
-            return widget::button::Style {
-                background: Some(Background::Color(Self::PRINTED_COLOR)),
-                text_color: Self::WHITE_COLOR,
-                border: iced::Border {
-                    color: Self::PRINTED_COLOR,
-                    width: Self::BORDER_WIDTH,
-                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
-                },
-                shadow: iced::Shadow::default(),
-            };
+            match s {
+                widget::button::Status::Hovered => {
+                    return widget::button::success(t, widget::button::Status::Hovered);
+                }
+                _ => return widget::button::success(t, widget::button::Status::Active),
+            }
         }
 
-        widget::button::Style {
-            background: Some(Background::Color(Self::WHITE_COLOR)),
-            text_color: Self::BLACK_COLOR,
-            border: iced::Border {
-                color: Self::BLACK_COLOR,
-                width: Self::BORDER_WIDTH,
-                radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
-            },
-            shadow: iced::Shadow::default(),
-        }
+        widget::button::secondary(t, widget::button::Status::Disabled)
     }
 
     /// Determines the color of the locations buttons using the current location of the state and given which location is which one
     fn determine_location_button_color(
         &self,
-        _: &iced::Theme,
+        t: &iced::Theme,
+        s: widget::button::Status,
         loc: TableLocation,
     ) -> widget::button::Style {
+        // we are currently in this location
         if loc == self.currently_selected_pos_state.location {
-            widget::button::Style {
-                background: Some(Background::Color(Self::WHITE_COLOR)),
-                text_color: Self::BLACK_COLOR,
-                border: iced::Border {
-                    color: Self::CURRENTLY_SELECTED_COLOR,
-                    width: Self::BORDER_WIDTH,
-                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
-                },
-                shadow: iced::Shadow::default(),
+            match s {
+                widget::button::Status::Hovered => {
+                    widget::button::primary(t, widget::button::Status::Hovered)
+                }
+                _ => widget::button::primary(t, widget::button::Status::Active),
             }
         } else {
-            widget::button::Style {
-                background: Some(Background::Color(Self::CURRENTLY_SELECTED_COLOR)),
-                text_color: Self::WHITE_COLOR,
-                border: iced::Border {
-                    color: Self::CURRENTLY_SELECTED_COLOR,
-                    width: Self::BORDER_WIDTH,
-                    radius: iced::border::Radius::new(Pixels::from(Self::BORDER_RADIUS)),
-                },
-                shadow: iced::Shadow::default(),
+            match s {
+                widget::button::Status::Hovered => {
+                    widget::button::secondary(t, widget::button::Status::Hovered)
+                }
+                _ => widget::button::secondary(t, widget::button::Status::Active),
+            }
+        }
+    }
+
+    /// Determines the color a button of the tables grid should be given the table index, using the temporal_tickets model
+    fn determine_product_category_button_color(
+        &self,
+        t: &iced::Theme,
+        s: widget::button::Status,
+        cat_id: Option<i32>,
+    ) -> widget::button::Style {
+        // we are currently selecting this category
+        if self.currently_selected_product_category == cat_id {
+            match s {
+                widget::button::Status::Hovered => {
+                    widget::button::primary(t, widget::button::Status::Hovered)
+                }
+                _ => widget::button::primary(t, widget::button::Status::Active),
+            }
+        } else {
+            match s {
+                widget::button::Status::Hovered => {
+                    widget::button::secondary(t, widget::button::Status::Hovered)
+                }
+                _ => widget::button::secondary(t, widget::button::Status::Active),
             }
         }
     }
