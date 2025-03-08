@@ -5,8 +5,10 @@ use iced::advanced::renderer;
 use iced::advanced::widget::Widget;
 use iced::advanced::widget::tree::Tree;
 use iced::mouse::{self, Cursor};
+use iced::overlay::menu;
+use iced::theme::palette::{Background, Pair};
 use iced::widget::text::{LineHeight, Shaping, Wrapping};
-use iced::{Border, event};
+use iced::{Border, Theme, event};
 use iced::{Color, Element, Length, Rectangle, Size};
 
 /// A custom Numpad widget.
@@ -25,6 +27,7 @@ pub struct Numpad<'a, Message: 'a> {
     on_comma_clicked: Option<Box<dyn Fn() -> Message + 'a>>,
     on_back_clicked: Option<Box<dyn Fn() -> Message + 'a>>,
     on_delete_clicked: Option<Box<dyn Fn() -> Message + 'a>>,
+    class: <Theme as Catalog>::Class<'a>,
     button_size: f32,
     spacing: f32,
 }
@@ -38,6 +41,7 @@ impl<'a, Message> Numpad<'a, Message> {
             on_comma_clicked: None,
             on_back_clicked: None,
             on_delete_clicked: None,
+            class: <Theme as Catalog>::default(),
             button_size: 50.0,
             spacing: 5.0,
         }
@@ -79,10 +83,20 @@ impl<'a, Message> Numpad<'a, Message> {
         self.on_delete_clicked = Some(Box::new(move || message.clone()));
         self
     }
+
+    /// Sets the style of the [`NumPad`].
+    pub fn style(mut self, style: impl Fn(&Theme) -> Style + 'a) -> Self
+    where
+        <Theme as Catalog>::Class<'a>: From<StyleFn<'a, Theme>>,
+    {
+        self.class = Box::new(style) as StyleFn<'a, Theme>;
+        self
+    }
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Numpad<'_, Message>
+impl<'a, Message, Renderer> Widget<Message, iced::Theme, Renderer> for Numpad<'a, Message>
 where
+    Message: Clone + 'a,
     Renderer: iced::advanced::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
 {
     fn size(&self) -> Size<Length> {
@@ -97,7 +111,7 @@ where
         &self,
         _state: &Tree,
         renderer: &mut Renderer,
-        _theme: &Theme,
+        theme: &Theme,
         _style: &renderer::Style,
         layout: Layout<'_>,
         _cursor: mouse::Cursor,
@@ -112,6 +126,7 @@ where
         let bounds = layout.bounds();
         let text_size = 16.0;
         let font = Font::default();
+        let style = Catalog::style(theme, &self.class);
 
         // Draw keys for rows 0 to 3
         for row in 0..4 {
@@ -130,13 +145,13 @@ where
                     renderer::Quad {
                         bounds: rect,
                         border: Border {
-                            color: Color::BLACK,
+                            color: style.border.color,
                             width: 1.0,
                             radius: 3.0.into(),
                         },
                         ..renderer::Quad::default()
                     },
-                    Color::from_rgb(0.9, 0.9, 0.9),
+                    style.background.base.color,
                 );
 
                 // Determine the label
@@ -174,7 +189,7 @@ where
                     Point::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
 
                 // Draw the text
-                renderer.fill_text(text, text_position, Color::BLACK, bounds);
+                renderer.fill_text(text, text_position, style.text_color, bounds);
             }
         }
 
@@ -192,13 +207,13 @@ where
             renderer::Quad {
                 bounds: rect,
                 border: Border {
-                    color: Color::BLACK,
+                    color: style.border.color,
                     width: 1.0,
                     radius: 5.0.into(),
                 },
                 ..renderer::Quad::default()
             },
-            Color::from_rgb(0.9, 0.9, 0.9),
+            style.background.base.color,
         );
 
         // Delete button text
@@ -216,7 +231,7 @@ where
 
         let text_position = Point::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
 
-        renderer.fill_text(text, text_position, Color::BLACK, bounds);
+        renderer.fill_text(text, text_position, style.text_color, bounds);
     }
 
     fn layout(
@@ -311,13 +326,84 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<Numpad<'a, Message>>
-    for Element<'a, Message, Theme, Renderer>
+impl<'a, Message, Renderer> From<Numpad<'a, Message>>
+    for Element<'a, Message, iced::Theme, Renderer>
 where
     Message: Clone + 'a,
     Renderer: renderer::Renderer + iced::advanced::text::Renderer<Font = iced::Font> + 'a,
 {
     fn from(numpad: Numpad<'a, Message>) -> Self {
         Element::new(numpad)
+    }
+}
+
+/// The appearance of a pick list.
+#[derive(Debug, Clone, Copy)]
+pub struct Style {
+    /// The text [`Color`] of the pick list.
+    pub text_color: Color,
+    /// The disabled text [`Color`] of the pick list.
+    pub disabled_text_color: Color,
+    /// The placeholder [`Color`] of the pick list.
+    pub placeholder_color: Color,
+    /// The handle [`Color`] of the pick list.
+    pub handle_color: Color,
+    /// The [`Background`] of the pick list.
+    pub background: Background,
+    /// The [`Border`] of the pick list.
+    pub border: Border,
+}
+
+/// The theme catalog of a [`NumPad`].
+pub trait Catalog: menu::Catalog {
+    /// The item class of the [`Catalog`].
+    type Class<'a>;
+
+    /// The default class produced by the [`Catalog`].
+    fn default<'a>() -> <Self as Catalog>::Class<'a>;
+
+    /// The [`Style`] of a class with the given status.
+    fn style(&self, class: &<Self as Catalog>::Class<'_>) -> Style;
+}
+
+/// A styling function for a [`NumPad`].
+///
+/// This is just a boxed closure: `Fn(&Theme, Status) -> Style`.
+pub type StyleFn<'a, Theme> = Box<dyn Fn(&Theme) -> Style + 'a>;
+
+impl Catalog for iced::Theme {
+    type Class<'a> = StyleFn<'a, Self>;
+
+    fn default<'a>() -> StyleFn<'a, Self> {
+        Box::new(default)
+    }
+
+    fn style(&self, class: &StyleFn<'_, Self>) -> Style {
+        class(self)
+    }
+}
+
+/// The default style of the field of a [`NumPad`].
+pub fn default(theme: &Theme) -> Style {
+    let palette = theme.extended_palette();
+
+    Style {
+        text_color: palette.background.base.text,
+        disabled_text_color: palette.background.weak.text,
+        background: Background {
+            base: Pair::new(palette.background.base.color, palette.background.base.color),
+            weak: Pair::new(palette.background.weak.color, palette.background.weak.color),
+            strong: Pair::new(
+                palette.background.strong.color,
+                palette.background.strong.color,
+            ),
+        },
+        placeholder_color: palette.background.strong.color,
+        handle_color: palette.background.weak.text,
+        border: Border {
+            radius: 2.0.into(),
+            width: 1.0,
+            color: palette.background.strong.color,
+        },
     }
 }
