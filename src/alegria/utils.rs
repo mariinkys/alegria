@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 use super::screens::bar::TableLocation;
 
 pub fn match_table_location_with_number(tl: TableLocation) -> i32 {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 use iced::Task;
 
 pub struct AlegriaAction<I, Message>
