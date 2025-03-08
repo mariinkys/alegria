@@ -464,7 +464,7 @@ impl Bar {
     }
 
     const GLOBAL_SPACING: f32 = 6.;
-    const GLOBAL_BUTTON_HEIGHT: f32 = 50.;
+    const GLOBAL_BUTTON_HEIGHT: f32 = 60.;
 
     /// Returns the view of the bar screen
     pub fn view(&self) -> Element<Message> {

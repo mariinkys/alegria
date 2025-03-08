@@ -42,7 +42,7 @@ impl<'a, Message> Numpad<'a, Message> {
             on_back_clicked: None,
             on_delete_clicked: None,
             class: <Theme as Catalog>::default(),
-            button_size: 50.0,
+            button_size: 75.0,
             spacing: 5.0,
         }
     }
@@ -124,7 +124,7 @@ where
         use iced::{Font, Point};
 
         let bounds = layout.bounds();
-        let text_size = 16.0;
+        let text_size = 20.0;
         let font = Font::default();
         let style = Catalog::style(theme, &self.class);
 
