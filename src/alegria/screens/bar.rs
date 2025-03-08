@@ -762,7 +762,9 @@ impl Bar {
         let text = if let Some(ticket) = current_ticket {
             let mut price = 0.;
             for product in &ticket.products {
-                price += product.price.unwrap_or(0.);
+                for _ in 0..product.quantity {
+                    price += product.price.unwrap_or(0.);
+                }
             }
 
             widget::Text::new(format!("{:.2}", price))
