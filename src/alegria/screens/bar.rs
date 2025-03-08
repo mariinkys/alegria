@@ -681,10 +681,6 @@ impl Bar {
     fn view_current_ticket_products(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
-        if self.temporal_tickets_model.is_empty() {
-            return widget::Text::new("Nothing to see here...").into();
-        }
-
         // TODO: We could do this OnTableClick and save the Option<TemporalTicket> on state and do not search for it here and on the colors functions
         let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
             x.ticket_location
@@ -702,20 +698,23 @@ impl Bar {
                 let product_price_str = product.price.unwrap_or_default().to_string();
 
                 let product_row = widget::Row::new()
-                    .push(widget::Text::new(&product.name).width(Length::Fill)) // TODO: Can I make this bold?
+                    .push(
+                        widget::Text::new(&product.name)
+                            .size(Pixels::from(25.))
+                            .width(Length::Fill)
+                            .wrapping(widget::text::Wrapping::None),
+                    )
                     .push(
                         text_input(&product_quantity_str, &product_quantity_str)
                             .on_focus(move |_| Message::FocusProductQuantity(product.clone()))
-                            .on_input(|value| {
-                                Message::TemporalProductInput(product.clone(), value)
-                            }),
+                            .on_input(|value| Message::TemporalProductInput(product.clone(), value))
+                            .size(Pixels::from(25.)),
                     )
                     .push(
                         text_input(&product_price_str, &product_price_str)
                             .on_focus(move |_| Message::FocusProductPrice(product.clone()))
-                            .on_input(|value| {
-                                Message::TemporalProductInput(product.clone(), value)
-                            }),
+                            .on_input(|value| Message::TemporalProductInput(product.clone(), value))
+                            .size(Pixels::from(25.)),
                     )
                     .spacing(spacing)
                     .align_y(Alignment::Center);
@@ -725,7 +724,15 @@ impl Bar {
 
             products_column.into()
         } else {
-            widget::Text::new("No products yet...").into()
+            widget::Row::new()
+                .push(
+                    widget::Text::new("No products yet...")
+                        .size(Pixels::from(25.))
+                        .width(Length::Fill)
+                        .align_x(Alignment::Center),
+                )
+                .width(Length::Fill)
+                .into()
         }
     }
 
