@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use iced::{
     Alignment, Element, Length, Padding, Pixels, Task,
-    widget::{self},
+    widget::{self, text::LineHeight},
 };
 use sqlx::{Pool, Sqlite};
 use sweeten::widget::text_input;
@@ -493,6 +493,7 @@ impl Bar {
         let left_side_upper_row = widget::Row::new()
             .push(left_side_upper_row_left_col)
             .push(left_side_upper_row_right_col)
+            .align_y(Alignment::Center)
             .spacing(spacing);
         let left_side_down_row = self.view_current_ticket_products();
         let left_side_container = widget::Column::new()
@@ -764,9 +765,13 @@ impl Bar {
                 price += product.price.unwrap_or(0.);
             }
 
-            widget::Text::new(price).size(Pixels::from(25.))
+            widget::Text::new(format!("{:.2}", price))
+                .size(Pixels::from(25.))
+                .line_height(LineHeight::Relative(2.))
         } else {
-            widget::Text::new("Unknown").size(Pixels::from(25.))
+            widget::Text::new("Unknown")
+                .size(Pixels::from(25.))
+                .line_height(LineHeight::Relative(2.))
         };
 
         widget::Container::new(text)
