@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use iced::{
-    Alignment, Element, Length, Pixels, Task,
+    Alignment, Element, Length, Padding, Pixels, Task,
     widget::{self},
 };
 use sqlx::{Pool, Sqlite};
@@ -485,9 +485,10 @@ impl Bar {
 
         // BOTTOM LEFT SIDE
         let left_side_upper_row_left_col = self.view_tables_grid();
-        // TODO: Add ticket total overview above numpad
         let left_side_upper_row_right_col = widget::Column::new()
+            .push(self.view_current_ticket_total_price())
             .push(self.view_numpad())
+            .width(Length::Fixed(235.)) //TODO: Maybe this should not be like this but the custom widget also gives some trouble
             .spacing(spacing);
         let left_side_upper_row = widget::Row::new()
             .push(left_side_upper_row_left_col)
@@ -743,6 +744,36 @@ impl Bar {
             .on_back_clicked(Message::OnNumpadKeyClicked(NumPadAction::Erase))
             .on_delete_clicked(Message::OnNumpadKeyClicked(NumPadAction::Delete))
             .on_comma_clicked(Message::OnNumpadKeyClicked(NumPadAction::Decimal))
+            .into()
+    }
+
+    /// Returns the view of the product (list) of the currently selected ticket
+    fn view_current_ticket_total_price(&self) -> Element<Message> {
+        // TODO: We could do this OnTableClick and save the Option<TemporalTicket> on state and do not search for it here and on the colors functions
+        let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
+            x.ticket_location
+                == match_table_location_with_number(
+                    self.currently_selected_pos_state.location.clone(),
+                )
+                && x.table_id == self.currently_selected_pos_state.table_index as i32
+        });
+
+        let text = if let Some(ticket) = current_ticket {
+            let mut price = 0.;
+            for product in &ticket.products {
+                price += product.price.unwrap_or(0.);
+            }
+
+            widget::Text::new(price).size(Pixels::from(25.))
+        } else {
+            widget::Text::new("Unknown").size(Pixels::from(25.))
+        };
+
+        widget::Container::new(text)
+            .style(widget::container::bordered_box)
+            .align_x(Alignment::Center)
+            .align_y(Alignment::Center)
+            .width(Length::Fill)
             .into()
     }
 
