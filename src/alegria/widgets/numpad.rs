@@ -22,10 +22,7 @@ use iced::{Color, Element, Length, Rectangle, Size};
 /// - Row 4: A full-width “delete” button.
 ///
 /// Callback closures are invoked when a button is clicked.
-pub struct Numpad<'a, Message: 'a, Theme = iced::Theme>
-where
-    Theme: Catalog + 'a,
-{
+pub struct Numpad<'a, Message: 'a> {
     on_number_clicked: Option<Box<dyn Fn(u8) -> Message + 'a>>,
     on_comma_clicked: Option<Box<dyn Fn() -> Message + 'a>>,
     on_back_clicked: Option<Box<dyn Fn() -> Message + 'a>>,
@@ -97,10 +94,9 @@ impl<'a, Message> Numpad<'a, Message> {
     }
 }
 
-impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Numpad<'_, Message>
+impl<'a, Message, Renderer> Widget<Message, iced::Theme, Renderer> for Numpad<'a, Message>
 where
     Message: Clone + 'a,
-    Theme: Catalog + 'a,
     Renderer: iced::advanced::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
 {
     fn size(&self) -> Size<Length> {
@@ -149,13 +145,13 @@ where
                     renderer::Quad {
                         bounds: rect,
                         border: Border {
-                            color: Color::BLACK,
+                            color: style.border.color,
                             width: 1.0,
                             radius: 3.0.into(),
                         },
                         ..renderer::Quad::default()
                     },
-                    Color::from_rgb(0.9, 0.9, 0.9),
+                    style.background.base.color,
                 );
 
                 // Determine the label
@@ -193,7 +189,7 @@ where
                     Point::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
 
                 // Draw the text
-                renderer.fill_text(text, text_position, Color::BLACK, bounds);
+                renderer.fill_text(text, text_position, style.text_color, bounds);
             }
         }
 
@@ -211,13 +207,13 @@ where
             renderer::Quad {
                 bounds: rect,
                 border: Border {
-                    color: Color::BLACK,
+                    color: style.border.color,
                     width: 1.0,
                     radius: 5.0.into(),
                 },
                 ..renderer::Quad::default()
             },
-            Color::from_rgb(0.9, 0.9, 0.9),
+            style.background.base.color,
         );
 
         // Delete button text
@@ -235,7 +231,7 @@ where
 
         let text_position = Point::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
 
-        renderer.fill_text(text, text_position, Color::BLACK, bounds);
+        renderer.fill_text(text, text_position, style.text_color, bounds);
     }
 
     fn layout(
@@ -330,11 +326,10 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<Numpad<'a, Message>>
-    for Element<'a, Message, Theme, Renderer>
+impl<'a, Message, Renderer> From<Numpad<'a, Message>>
+    for Element<'a, Message, iced::Theme, Renderer>
 where
     Message: Clone + 'a,
-    Theme: Catalog + 'a,
     Renderer: renderer::Renderer + iced::advanced::text::Renderer<Font = iced::Font> + 'a,
 {
     fn from(numpad: Numpad<'a, Message>) -> Self {
@@ -392,7 +387,7 @@ impl Catalog for iced::Theme {
 pub fn default(theme: &Theme) -> Style {
     let palette = theme.extended_palette();
 
-    let active = Style {
+    Style {
         text_color: palette.background.base.text,
         disabled_text_color: palette.background.weak.text,
         background: Background {
@@ -410,7 +405,5 @@ pub fn default(theme: &Theme) -> Style {
             width: 1.0,
             color: palette.background.strong.color,
         },
-    };
-
-    active
+    }
 }
