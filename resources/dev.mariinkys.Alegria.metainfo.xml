@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+    <id>dev.mariinkys.Alegria</id>
+    <developer id="dev.mariinkys">
+        <name>mariinkys</name>
+    </developer>
+    <url type="homepage">https://github.com/mariinkys/iced-alegria</url>
+    <url type="bugtracker">https://github.com/mariinkys/iced-alegria/issues</url>
+    <url type="donation">https://buymeacoffee.com/mariinkys</url>
+
+    <name>Alegría</name>
+    <summary>Software básico TPV Hostelería</summary>
+
+    <metadata_license>CC0-1.0</metadata_license>
+    <project_license>GPL-3.0-only</project_license>
+
+    <provides>
+        <id>dev.mariinkys.Alegria</id>
+        <binaries>
+            <binary>iced-alegria</binary>
+        </binaries>
+    </provides>
+
+    <description>
+      <p>
+        Software básico TPV Hostelería
+      </p>
+    </description>
+
+    <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/mariinkys/iced-alegria/main/resources/icons/hicolor/scalable/apps/icon.svg</icon>
+    <launchable type="desktop-id">dev.mariinkys.Alegria.desktop</launchable>
+    <content_rating type="oars-1.1"/>
+
+    <screenshots>
+        <screenshot type="default" xml:lang="en">
+            <image>https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/screenshot1.png</image>
+            <caption>Screenshot 1</caption>
+        </screenshot>
+        <screenshot xml:lang="en">
+            <image>https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/screenshot2.png</image>
+            <caption>Screenshot 2</caption>
+        </screenshot>
+    </screenshots>
+
+    <branding>
+      <color type="primary" scheme_preference="light">#FF0000</color>
+      <color type="primary" scheme_preference="dark">#B30000</color>
+    </branding>
+
+    <categories>
+        <category>Utility</category>
+    </categories>
+
+    <keywords>
+        <keyword>Tool</keyword>
+    </keywords>
+
+    <releases>
+        <release version="0.1.0" date="2025-03-09">
+            <description>
+                <p>Placeholder text...</p>
+            </description>
+        </release>
+    </releases>
+</component>

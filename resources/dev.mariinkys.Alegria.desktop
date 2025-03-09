@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Alegría
+Comment=Software básico TPV Hostelería
+Exec=iced-alegria %F
+Terminal=false
+Type=Application
+StartupNotify=true
+Icon=dev.mariinkys.Alegria
+Categories=Utility;
+Keywords=Tool;
