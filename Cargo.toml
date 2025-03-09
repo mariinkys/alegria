@@ -23,6 +23,9 @@ serde = { version = "1.0.218", features = ["derive"] }
 i18n-embed-fl = "0.9.3"
 rust-embed = "8.6.0"
 sweeten = { git = "https://github.com/airstrike/sweeten" } # needed for on_focus text input
+iced_aw = { version = "0.12.2", default-features = false, features = [
+    "date_picker",
+] }
 
 [dependencies.i18n-embed]
 version = "0.15.3"
