@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use app::IcedAlegria;
-use iced::{Task, window::Settings};
+use iced::{
+    Task,
+    window::{Settings, icon},
+};
 
 mod alegria;
 mod app;
@@ -11,6 +14,12 @@ mod i18n;
 const APP_ID: &str = "dev.mariinkys.IcedAlegria";
 
 fn main() -> Result<(), iced::Error> {
+    // Get the window  icon
+    let icon = icon::from_file_data(
+        include_bytes!("../resources/icons/hicolor/scalable/apps/icon.svg"),
+        None,
+    );
+
     // Get the system's preferred languages.
     let requested_languages = i18n_embed::DesktopLanguageRequester::requested_languages();
 
@@ -28,6 +37,7 @@ fn main() -> Result<(), iced::Error> {
     iced::application(APP_ID, IcedAlegria::update, IcedAlegria::view)
         .window(Settings {
             position: iced::window::Position::Centered,
+            icon: icon.ok(),
             resizable: true,
             ..Default::default()
         })

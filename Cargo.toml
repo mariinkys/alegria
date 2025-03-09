@@ -8,6 +8,7 @@ iced = { version = "0.13.1", default-features = false, features = [
     "tokio",
     "tiny-skia",
     "advanced",
+    "image",
 ] }
 sqlx = { version = "0.8.3", features = [
     "runtime-tokio",
