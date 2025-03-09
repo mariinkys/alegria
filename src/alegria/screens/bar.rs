@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use iced::{
-    Alignment, Element, Length, Padding, Pixels, Task,
+    Alignment, Element, Length, Pixels, Task,
     widget::{self, text::LineHeight},
 };
 use sqlx::{Pool, Sqlite};
@@ -724,7 +724,7 @@ impl Bar {
                 products_column = products_column.push(product_row);
             }
 
-            products_column.into()
+            widget::Scrollable::new(products_column).into()
         } else {
             widget::Row::new()
                 .push(
