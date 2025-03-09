@@ -1,6 +1,6 @@
 <div align="center">
   <br>
-  <img src="https://raw.githubusercontent.com/mariinkys/iced-alegria/main/resources/icons/hicolor/scalable/apps/icon.svg" width="150" />
+  <img src="./resources/icons/hicolor/scalable/apps/icon.svg" width="150" />
   <h1>Alegría</h1>
 
   ![GitHub License](https://img.shields.io/github/license/mariinkys/iced-alegria)
@@ -9,8 +9,8 @@
 
   <h3>Software básico TPV Hostelería.</h3>
 
-  <img alt="Screenshot 1" src="https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/screenshot1.png"/>
-  <img alt="Screenshot 2" src="https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/screenshot2.png"/>
+  <img alt="Screenshot 1" src="./screenshots/screenshot1.png"/>
+  <img alt="Screenshot 2" src="./screenshots/screenshot2.png"/>
 
 </div>
 
