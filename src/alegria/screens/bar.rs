@@ -88,6 +88,8 @@ pub struct Bar {
     is_decimal_next: bool,
     /// Holds the pagination state and config for the product categories list
     product_categories_pagination_state: PaginationConfig,
+    /// Holds the pagination state and config for the product category products list
+    product_category_products_pagination_state: PaginationConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -115,6 +117,7 @@ pub enum Message {
     TemporalProductInput(TemporalProduct, String),
 
     ProductCategoriesPaginationAction(PaginationAction),
+    ProductCategoryProductsPaginationAction(PaginationAction),
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -140,6 +143,10 @@ impl Bar {
                 items_per_page: 13,
                 current_page: 0,
             },
+            product_category_products_pagination_state: PaginationConfig {
+                items_per_page: 13,
+                current_page: 0,
+            },
         }
     }
 
@@ -157,6 +164,10 @@ impl Bar {
             active_temporal_product_field: None,
             is_decimal_next: false,
             product_categories_pagination_state: PaginationConfig {
+                items_per_page: 13,
+                current_page: 0,
+            },
+            product_category_products_pagination_state: PaginationConfig {
                 items_per_page: 13,
                 current_page: 0,
             },
@@ -500,6 +511,31 @@ impl Bar {
                     }
                 }
             },
+            Message::ProductCategoryProductsPaginationAction(action) => match action {
+                PaginationAction::Up => {
+                    if self.product_category_products_pagination_state.current_page > 0 {
+                        self.product_category_products_pagination_state.current_page -= 1;
+                    }
+                }
+                PaginationAction::Down => {
+                    let next_page_start =
+                        (self.product_category_products_pagination_state.current_page + 1)
+                            * self
+                                .product_category_products_pagination_state
+                                .items_per_page;
+                    if next_page_start
+                        < self
+                            .product_category_products
+                            .as_ref()
+                            .map(|v| v.len())
+                            .unwrap_or(0)
+                            .try_into()
+                            .unwrap_or_default()
+                    {
+                        self.product_category_products_pagination_state.current_page += 1;
+                    }
+                }
+            },
         }
 
         action
@@ -733,11 +769,28 @@ impl Bar {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
+        // Calculate the indices for the current page
+        let start_index: usize = self.product_category_products_pagination_state.current_page
+            as usize
+            * self
+                .product_category_products_pagination_state
+                .items_per_page as usize;
+        let end_index = usize::min(
+            start_index
+                + self
+                    .product_category_products_pagination_state
+                    .items_per_page as usize,
+            self.product_category_products
+                .as_ref()
+                .map(|v| v.len())
+                .unwrap_or(0),
+        );
+
         let products_buttons: Vec<_> = self
             .product_category_products
             .as_ref()
             .map(|products| {
-                products
+                products[start_index..end_index]
                     .iter()
                     .map(|product| {
                         widget::Button::new(
@@ -757,7 +810,40 @@ impl Bar {
             .spacing(spacing)
             .height(Length::Fill);
 
-        widget::Container::new(products_col)
+        let pagination_buttons = widget::Row::new()
+            .push(
+                widget::Button::new(
+                    widget::Text::new("Up")
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center),
+                )
+                .on_press(Message::ProductCategoryProductsPaginationAction(
+                    PaginationAction::Up,
+                ))
+                .height(button_height)
+                .width(Length::Fill),
+            )
+            .push(
+                widget::Button::new(
+                    widget::Text::new("Down")
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center),
+                )
+                .on_press(Message::ProductCategoryProductsPaginationAction(
+                    PaginationAction::Down,
+                ))
+                .height(button_height)
+                .width(Length::Fill),
+            )
+            .spacing(spacing)
+            .height(Length::Shrink);
+
+        let result_column = widget::Column::new()
+            .push(products_col)
+            .push(pagination_buttons)
+            .height(Length::Fill);
+
+        widget::Container::new(result_column)
             .height(Length::Fill)
             .width(Length::Fill)
             .into()
