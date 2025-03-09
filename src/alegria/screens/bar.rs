@@ -116,8 +116,8 @@ pub enum Message {
     FocusProductPrice(TemporalProduct),
     TemporalProductInput(TemporalProduct, String),
 
-    ProductCategoriesPaginationAction(PaginationAction),
-    ProductCategoryProductsPaginationAction(PaginationAction),
+    ProductCategoriesPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategories
+    ProductCategoryProductsPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategoryProducts
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -139,6 +139,7 @@ impl Bar {
             active_temporal_product: None,
             active_temporal_product_field: None,
             is_decimal_next: false,
+            // TODO: This should ideally come from a configfile (modifiable from another screen)
             product_categories_pagination_state: PaginationConfig {
                 items_per_page: 13,
                 current_page: 0,
@@ -494,6 +495,7 @@ impl Bar {
                 }
             }
 
+            // Try to go up or down a page on the ProductCategories
             Message::ProductCategoriesPaginationAction(action) => match action {
                 PaginationAction::Up => {
                     if self.product_categories_pagination_state.current_page > 0 {
@@ -511,6 +513,7 @@ impl Bar {
                     }
                 }
             },
+            // Try to go up or down a page on the ProductCategoryProducts
             Message::ProductCategoryProductsPaginationAction(action) => match action {
                 PaginationAction::Up => {
                     if self.product_category_products_pagination_state.current_page > 0 {
