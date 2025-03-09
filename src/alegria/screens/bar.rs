@@ -514,6 +514,7 @@ impl Bar {
                                 mutable_product.quantity = 0;
                             }
                         }
+                        // TODO: You can't input smt.0smth ej: 2.05
                         TemporalProductField::Price => {
                             // if we can parse to f32
                             if let Ok(mut num) = new_value.parse::<f32>() {
