@@ -84,8 +84,6 @@ pub struct Bar {
     active_temporal_product: Option<TemporalProduct>,
     /// Keeps track of which temporal product field is active (within a temporal product) in order to be able to modify it with the NumPad
     active_temporal_product_field: Option<TemporalProductField>,
-    /// Helps us when converting a string text input to a decimal field (for price modification).
-    is_decimal_next: bool,
     /// Holds the pagination state and config for the product categories list
     product_categories_pagination_state: PaginationConfig,
     /// Holds the pagination state and config for the product category products list
@@ -138,7 +136,6 @@ impl Bar {
             temporal_tickets_model: Vec::new(),
             active_temporal_product: None,
             active_temporal_product_field: None,
-            is_decimal_next: false,
             // TODO: This should ideally come from a configfile (modifiable from another screen)
             product_categories_pagination_state: PaginationConfig {
                 items_per_page: 13,
@@ -163,7 +160,6 @@ impl Bar {
             temporal_tickets_model: Vec::new(),
             active_temporal_product: None,
             active_temporal_product_field: None,
-            is_decimal_next: false,
             product_categories_pagination_state: PaginationConfig {
                 items_per_page: 13,
                 current_page: 0,
@@ -203,14 +199,21 @@ impl Bar {
                 self.temporal_tickets_model = res;
 
                 // we need to update the active_temporal_product to so we can keep updating fields without having to focus again on the field
-                // to update the active_temporal_product
+                // to update the active_temporal_product, also we want to keep the input of the text field of the currently selected
+                // product, so we don't lose the '.' and we can input decimals
                 if let Some(active_product) = &self.active_temporal_product {
-                    self.active_temporal_product = self
+                    let old_price_input = active_product.price_input.clone();
+                    if let Some(product) = self
                         .temporal_tickets_model
-                        .iter()
-                        .flat_map(|ticket| ticket.products.iter())
+                        .iter_mut()
+                        .flat_map(|ticket| ticket.products.iter_mut())
                         .find(|product| product.id == active_product.id)
-                        .cloned();
+                    {
+                        if self.active_temporal_product_field == Some(TemporalProductField::Price) {
+                            product.price_input = old_price_input;
+                        }
+                        self.active_temporal_product = Some(product.clone());
+                    }
                 }
             }
 
@@ -319,7 +322,7 @@ impl Bar {
                                     .update(Message::TemporalProductInput(product.clone(), value));
                             }
                             TemporalProductField::Price => {
-                                let value = format!("{}{}", product.price.unwrap_or_default(), num);
+                                let value = format!("{}{}", product.price_input, num);
                                 return self
                                     .update(Message::TemporalProductInput(product.clone(), value));
                             }
@@ -442,27 +445,18 @@ impl Bar {
                                     }
                                 }
                                 TemporalProductField::Price => {
-                                    let product_price =
-                                        product.price.unwrap_or_default().to_string();
+                                    let product_price = &product.price_input;
                                     if product_price.len() > 1 {
-                                        let mut value = &product_price[..product_price.len() - 1];
-
-                                        // this if is here because if we pass a value ending with '.' the
-                                        // input function thinks we want to input a decimal next and we don't
-                                        // want that
-                                        if value.ends_with('.') {
-                                            value = &value[..value.len() - 1];
-                                        }
+                                        let value = &product_price[..product_price.len() - 1];
 
                                         return self.update(Message::TemporalProductInput(
                                             product.clone(),
                                             value.to_string(),
                                         ));
                                     } else {
-                                        // if we only have one "char" we put a 0
                                         return self.update(Message::TemporalProductInput(
                                             product.clone(),
-                                            0.to_string(),
+                                            String::new(),
                                         ));
                                     }
                                 }
@@ -476,12 +470,10 @@ impl Bar {
                         if let Some(field) = &self.active_temporal_product_field {
                             // only the price can be decimal
                             if *field == TemporalProductField::Price {
-                                let product_price = product.price.unwrap_or_default().to_string();
-                                if !product_price.contains(".") {
-                                    self.is_decimal_next = true;
-                                }
-                            } else {
-                                self.is_decimal_next = false;
+                                return self.update(Message::TemporalProductInput(
+                                    product.clone(),
+                                    format!("{}.", product.price_input),
+                                ));
                             }
                         }
                     }
@@ -492,13 +484,11 @@ impl Bar {
             Message::FocusProductQuantity(product) => {
                 self.active_temporal_product = Some(product);
                 self.active_temporal_product_field = Some(TemporalProductField::Quantity);
-                self.is_decimal_next = false;
             }
             // Callback after user focus the price field of a TemporalProduct
             Message::FocusProductPrice(product) => {
                 self.active_temporal_product = Some(product);
                 self.active_temporal_product_field = Some(TemporalProductField::Price);
-                self.is_decimal_next = false;
             }
             // text_input of a temporal product
             Message::TemporalProductInput(product, new_value) => {
@@ -514,43 +504,33 @@ impl Bar {
                                 mutable_product.quantity = 0;
                             }
                         }
-                        // TODO: You can't input smt.0smth ej: 2.05
                         TemporalProductField::Price => {
-                            // if we can parse to f32
-                            if let Ok(mut num) = new_value.parse::<f32>() {
-                                // we only want to keep two decimals and ignore the rest of the input numbers if we already have
-                                // two numbers, however we need to be able to erase that's why we only do this if we
-                                // are not erasing ak. the current price str is smaller than the new_value.
-                                if mutable_product.price.unwrap_or(0.).to_string().len()
-                                    < new_value.len()
-                                {
-                                    num = (num * 100.0).trunc() / 100.0;
-                                }
+                            //let new_value = new_value.trim_start_matches('0').to_string();
+                            // We ignore the input if we already have two decimals and we're trying to add more
+                            let ignore_action = new_value.len() > mutable_product.price_input.len()
+                                && mutable_product
+                                    .price_input
+                                    .find('.')
+                                    .is_some_and(|idx| mutable_product.price_input.len() - idx > 2);
 
-                                // if we are not expecting a decimal next we assign the num as is
-                                if !self.is_decimal_next {
+                            if !ignore_action {
+                                if let Ok(num) = new_value.parse::<f32>() {
                                     mutable_product.price = Some(num);
-                                } else {
-                                    // if we are expecting a decimal we add the last input number as a decimal to
-                                    // the value we got before.
-                                    let new_price = mutable_product.price.unwrap_or(0.0)
-                                        + (num / 10.0)
-                                        - mutable_product.price.unwrap_or_default();
-                                    // Round to two decimal places
-                                    let new_price = (new_price * 100.0).round() / 100.0;
 
-                                    mutable_product.price = Some(new_price);
-                                    self.is_decimal_next = false;
+                                    if let Some(active_product) = &mut self.active_temporal_product
+                                    {
+                                        active_product.price_input = new_value;
+                                    }
+                                } else if new_value.is_empty() {
+                                    mutable_product.price = Some(0.0);
+
+                                    if let Some(active_product) = &mut self.active_temporal_product
+                                    {
+                                        active_product.price_input = new_value;
+                                    }
                                 }
-                            } else if new_value.is_empty() {
-                                // if we can't parse to f32 and the value is empty we put a 0 as price
-                                mutable_product.price = Some(0.);
-                                self.is_decimal_next = false;
+                                dbg!(&mutable_product.price);
                             }
-
-                            // if we input a '.' we declare the next input will be a decimal
-                            self.is_decimal_next = new_value.ends_with(".")
-                                && (new_value.find('.') == Some(new_value.len() - 1));
                         }
                     }
 
@@ -944,7 +924,6 @@ impl Bar {
 
             for product in &current_ticket.unwrap().products {
                 let product_quantity_str = product.quantity.to_string();
-                let product_price_str = product.price.unwrap_or_default().to_string();
 
                 let product_row = widget::Row::new()
                     .push(
@@ -960,7 +939,7 @@ impl Bar {
                             .size(Pixels::from(25.)),
                     )
                     .push(
-                        text_input(&product_price_str, &product_price_str)
+                        text_input(&product.price_input, &product.price_input)
                             .on_focus(move |_| Message::FocusProductPrice(product.clone()))
                             .on_input(|value| Message::TemporalProductInput(product.clone(), value))
                             .size(Pixels::from(25.)),

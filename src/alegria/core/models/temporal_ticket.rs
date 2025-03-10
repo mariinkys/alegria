@@ -71,6 +71,7 @@ impl TemporalTicket {
                     name: product_name,
                     quantity: product_quantity,
                     price: product_price,
+                    price_input: product_price.unwrap_or_default().to_string(),
                 };
 
                 ticket.products.push(product);

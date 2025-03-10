@@ -13,6 +13,9 @@ pub struct TemporalProduct {
     pub name: String,
     pub quantity: i32,
     pub price: Option<f32>,
+
+    // Not in the db
+    pub price_input: String, // Helps us input prices on TextInputs
 }
 
 impl TemporalProduct {
