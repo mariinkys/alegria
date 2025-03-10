@@ -42,12 +42,14 @@ pub struct CurrentPositionState {
     table_index: usize,
 }
 
+/// What field of a TemporalProduct are we currently focusing on?
 #[derive(Debug, Clone, PartialEq)]
 pub enum TemporalProductField {
     Quantity,
     Price,
 }
 
+/// Identifies an action of the numpad
 #[derive(Debug, Clone, PartialEq)]
 pub enum NumPadAction {
     Delete,
@@ -55,12 +57,14 @@ pub enum NumPadAction {
     Decimal,
 }
 
+/// Holds the pagination state (generic, for various entities)
 #[derive(Debug, Clone)]
 pub struct PaginationConfig {
     items_per_page: i32,
     current_page: i32,
 }
 
+/// Identifies a pagination action
 #[derive(Debug, Clone, PartialEq)]
 pub enum PaginationAction {
     Up,
