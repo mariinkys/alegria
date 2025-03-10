@@ -533,7 +533,6 @@ impl Bar {
                                         active_product.price_input = new_value;
                                     }
                                 }
-                                dbg!(&mutable_product.price);
                             }
                         }
                     }
