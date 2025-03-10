@@ -6,7 +6,10 @@ use iced::{Alignment, Length, Padding, Pixels, Task, widget};
 use sqlx::{Pool, Sqlite};
 
 use crate::{
-    alegria::screens::bar::{self, Bar},
+    alegria::screens::{
+        bar::{self, Bar},
+        hotel::{self, Hotel},
+    },
     fl,
 };
 
@@ -14,6 +17,7 @@ use crate::{
 pub enum Screen {
     Home,
     Bar,
+    Hotel,
 }
 
 pub struct IcedAlegria {
@@ -23,6 +27,8 @@ pub struct IcedAlegria {
     screen: Screen,
     /// Holds the state of the bar screen
     bar: Bar,
+    /// Holds the state of the hotel screen
+    hotel: Hotel,
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +37,7 @@ pub enum Message {
     ChangeScreen(Screen),
 
     Bar(bar::Message),
+    Hotel(hotel::Message),
 }
 
 impl IcedAlegria {
@@ -39,6 +46,7 @@ impl IcedAlegria {
             database: None,
             screen: Screen::Home,
             bar: Bar::init(),
+            hotel: Hotel::init(),
         }
     }
 
@@ -62,6 +70,7 @@ impl IcedAlegria {
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
+                        .on_press(Message::ChangeScreen(Screen::Hotel))
                         .width(Length::Fixed(100.))
                         .height(Length::Fixed(100.)),
                     )
@@ -84,6 +93,7 @@ impl IcedAlegria {
                     .into()
             }
             Screen::Bar => self.bar.view().map(Message::Bar),
+            Screen::Hotel => self.hotel.view().map(Message::Hotel),
         };
 
         widget::Container::new(content)
@@ -106,10 +116,15 @@ impl IcedAlegria {
                     self.screen = screen;
                     self.bar =
                         crate::alegria::screens::bar::Bar::clean_state(self.database.clone());
+                    self.hotel =
+                        crate::alegria::screens::hotel::Hotel::clean_state(self.database.clone());
                 }
                 Screen::Bar => {
                     tasks.push(self.update(Message::Bar(bar::Message::FetchProductCategories)));
                     tasks.push(self.update(Message::Bar(bar::Message::FetchTemporalTickets)));
+                    self.screen = screen;
+                }
+                Screen::Hotel => {
                     self.screen = screen;
                 }
             },
@@ -123,9 +138,27 @@ impl IcedAlegria {
                     .collect();
                 tasks.extend(bar_tasks);
 
-                for bar_task in action.instructions {
-                    match bar_task {
+                for bar_instruction in action.instructions {
+                    match bar_instruction {
                         bar::BarInstruction::Back => {
+                            let _ = self.update(Message::ChangeScreen(Screen::Home));
+                        }
+                    }
+                }
+            }
+            Message::Hotel(message) => {
+                let action = self.hotel.update(message);
+                // TODO: Can I abstract this into action?
+                let hotel_tasks: Vec<Task<Message>> = action
+                    .tasks
+                    .into_iter()
+                    .map(|task| task.map(Message::Hotel))
+                    .collect();
+                tasks.extend(hotel_tasks);
+
+                for hotel_instruction in action.instructions {
+                    match hotel_instruction {
+                        hotel::HotelInstruction::Back => {
                             let _ = self.update(Message::ChangeScreen(Screen::Home));
                         }
                     }
