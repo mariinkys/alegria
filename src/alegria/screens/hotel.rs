@@ -7,7 +7,13 @@ use sqlx::{Pool, Sqlite};
 
 use crate::{alegria::action::AlegriaAction, fl};
 
-use super::hotel_subscreens::reservations::{self, Reservations, SubScreen};
+use super::hotel_subscreens::reservations::{self, Reservations};
+
+#[derive(Debug, Clone)]
+pub enum SubScreen {
+    Home,
+    Reservations,
+}
 
 pub struct Hotel {
     /// Database of the application

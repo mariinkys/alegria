@@ -2,16 +2,10 @@
 
 use std::sync::Arc;
 
-use iced::{Alignment, Element, Length, Pixels, Task, widget};
+use iced::{Alignment, Element, Length, Pixels, widget};
 use sqlx::{Pool, Sqlite};
 
 use crate::{alegria::action::AlegriaAction, fl};
-
-#[derive(Debug, Clone)]
-pub enum SubScreen {
-    Home,
-    Reservations,
-}
 
 pub struct Reservations {
     /// Database of the application
@@ -30,12 +24,12 @@ pub enum ReservationsInstruction {
 }
 
 impl Reservations {
-    /// Initializes the bar screen
+    /// Initializes the screen
     pub fn init() -> Self {
         Self { database: None }
     }
 
-    /// Cleans the state of the bar screen preserving the database
+    /// Cleans the state of the screen preserving the database
     /// intended to be called when switching to another screen in order to save memory.
     pub fn clean_state(database: Option<Arc<Pool<Sqlite>>>) -> Self {
         Self { database }
