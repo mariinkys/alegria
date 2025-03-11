@@ -59,7 +59,7 @@ impl Reservations {
     const GLOBAL_SPACING: f32 = 6.;
     const GLOBAL_BUTTON_HEIGHT: f32 = 60.;
 
-    /// Returns the view of the hotel screen
+    /// Returns the view of the subscreen
     pub fn view(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
