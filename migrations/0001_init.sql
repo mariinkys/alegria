@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS products (
     FOREIGN KEY (category_id) REFERENCES product_categories(id) ON DELETE SET NULL
 );
 
--- Create SimpleInvoice Table (parent of SoldProduct)
+-- Create SimpleInvoice Table 
 CREATE TABLE IF NOT EXISTS simple_invoices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     paid INTEGER NOT NULL DEFAULT 0, -- Use INTEGER for paid field
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS simple_invoices (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create SoldProduct Table (child of SimpleInvoice)
+-- Create SoldProduct Table 
 CREATE TABLE IF NOT EXISTS sold_products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     simple_invoice_id INTEGER NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS sold_products (
         ON DELETE CASCADE -- Delete sold products if invoice is deleted
 );
 
--- Create TemporalTicket Table (parent of TemporalProduct)
+-- Create TemporalTicket Table 
 CREATE TABLE IF NOT EXISTS temporal_tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     table_id INTEGER NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS temporal_tickets (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create TemporalProduct Table (child of TemporalTicket)
+-- Create TemporalProduct Table 
 CREATE TABLE IF NOT EXISTS temporal_products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     original_product_id INTEGER NOT NULL,
@@ -64,6 +64,16 @@ CREATE TABLE IF NOT EXISTS temporal_products (
     FOREIGN KEY (temporal_ticket_id) 
         REFERENCES temporal_tickets(id) 
         ON DELETE CASCADE -- Delete products if ticket is deleted
+);
+
+-- Create RoomTypes Table 
+CREATE TABLE IF NOT EXISTS room_types (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    price REAL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Add Triggers to Update 'updated_at' Timestamps ------------------------------
@@ -100,6 +110,15 @@ CREATE TRIGGER IF NOT EXISTS update_temporal_tickets_updated_at
 AFTER UPDATE ON temporal_tickets
 BEGIN
     UPDATE temporal_tickets 
+    SET updated_at = CURRENT_TIMESTAMP 
+    WHERE id = OLD.id;
+END;
+
+-- Trigger for room_types
+CREATE TRIGGER IF NOT EXISTS update_room_types_updated_at
+AFTER UPDATE ON room_types
+BEGIN
+    UPDATE room_types 
     SET updated_at = CURRENT_TIMESTAMP 
     WHERE id = OLD.id;
 END;
