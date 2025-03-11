@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use iced::{Alignment, Element, Length, Pixels, Task, widget};
+use iced::{Alignment, Element, Length, Padding, Pixels, Task, widget};
 use sqlx::{Pool, Sqlite};
 
 use crate::{
@@ -106,8 +106,12 @@ impl RoomTypes {
     //  VIEW COMPOSING
     //
 
+    const TITLE_TEXT_SIZE: f32 = 25.0;
+    const TEXT_SIZE: f32 = 18.0;
+
     /// Returns the view of the header row of the subscreen
     fn view_header_row(&self) -> Element<Message> {
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
         let back_button = widget::Button::new(
@@ -120,7 +124,14 @@ impl RoomTypes {
 
         widget::Row::new()
             .push(back_button)
+            .push(
+                widget::Text::new(fl!("room-types"))
+                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                    .align_y(Alignment::Center),
+            )
             .width(Length::Fill)
+            .align_y(Alignment::Center)
+            .spacing(spacing)
             .into()
     }
 
@@ -128,16 +139,83 @@ impl RoomTypes {
     fn view_room_types_grid(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
-        let mut grid = widget::Column::new().spacing(spacing).width(Length::Fill);
-        let mut current_row = widget::Row::new().spacing(spacing).width(Length::Fill);
-        for room_type in &self.room_types {
-            current_row = current_row.push(widget::Text::new(&room_type.name));
+        let title_row = widget::Row::new()
+            .push(
+                widget::Text::new(fl!("name"))
+                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                    .width(Length::Fixed(300.))
+                    .align_y(Alignment::Center),
+            )
+            .push(
+                widget::Text::new(fl!("price"))
+                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                    .width(Length::Fixed(200.))
+                    .align_y(Alignment::Center),
+            )
+            .push(
+                widget::Text::new(fl!("edit"))
+                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                    .width(Length::Fixed(200.))
+                    .align_y(Alignment::Center),
+            )
+            .width(Length::Shrink)
+            .align_y(Alignment::Center);
 
-            grid = grid.push(current_row);
-            current_row = widget::Row::new().spacing(spacing).width(Length::Fill);
+        let mut grid = widget::Column::new()
+            .push(title_row)
+            .align_x(Alignment::Center)
+            .spacing(spacing)
+            .width(Length::Shrink);
+
+        for room_type in &self.room_types {
+            let row = widget::Row::new()
+                .width(Length::Shrink)
+                .push(
+                    widget::Text::new(&room_type.name)
+                        .size(Pixels::from(Self::TEXT_SIZE))
+                        .width(Length::Fixed(300.))
+                        .align_y(Alignment::Center),
+                )
+                .push(
+                    widget::Text::new(format!("{:.2} €", room_type.price.unwrap_or(0.)))
+                        .size(Pixels::from(Self::TEXT_SIZE))
+                        .width(Length::Fixed(200.))
+                        .align_y(Alignment::Center),
+                )
+                .push(
+                    widget::Container::new(
+                        widget::Button::new(
+                            widget::Text::new(fl!("edit"))
+                                .size(Pixels::from(Self::TEXT_SIZE))
+                                .align_y(Alignment::Center),
+                        )
+                        .width(Length::Shrink),
+                    )
+                    .width(Length::Fixed(200.))
+                    .align_x(Alignment::Start)
+                    .align_y(Alignment::Center),
+                )
+                .align_y(Alignment::Center);
+
+            // Limit Rule size to sum of all column widths
+            grid = grid.push(
+                widget::Row::new()
+                    .width(Length::Fixed(700.))
+                    .push(widget::Rule::horizontal(Pixels::from(1.))),
+            );
+            grid = grid.push(row);
         }
 
-        widget::Container::new(grid).width(Length::Fill).into()
+        grid = grid.push(
+            widget::Row::new()
+                .width(Length::Fixed(700.))
+                .push(widget::Rule::horizontal(Pixels::from(1.))),
+        );
+        widget::Container::new(grid)
+            .width(Length::Fill)
+            .align_x(Alignment::Center)
+            .padding(Padding::new(50.))
+            .into()
     }
 
     //
