@@ -699,7 +699,7 @@ impl Bar {
             )
             .push(
                 widget::Button::new(
-                    widget::Text::new("Restaurant")
+                    widget::Text::new(fl!("restaurant"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -712,7 +712,7 @@ impl Bar {
             )
             .push(
                 widget::Button::new(
-                    widget::Text::new("Garden")
+                    widget::Text::new(fl!("garden"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -788,7 +788,7 @@ impl Bar {
         let pagination_buttons = widget::Row::new()
             .push(
                 widget::Button::new(
-                    widget::Text::new("Up")
+                    widget::Text::new(fl!("up"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -800,7 +800,7 @@ impl Bar {
             )
             .push(
                 widget::Button::new(
-                    widget::Text::new("Down")
+                    widget::Text::new(fl!("down"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -873,7 +873,7 @@ impl Bar {
         let pagination_buttons = widget::Row::new()
             .push(
                 widget::Button::new(
-                    widget::Text::new("Up")
+                    widget::Text::new(fl!("up"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -885,7 +885,7 @@ impl Bar {
             )
             .push(
                 widget::Button::new(
-                    widget::Text::new("Down")
+                    widget::Text::new(fl!("down"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -957,7 +957,7 @@ impl Bar {
         } else {
             widget::Row::new()
                 .push(
-                    widget::Text::new("No products yet...")
+                    widget::Text::new(fl!("no-products"))
                         .size(Pixels::from(25.))
                         .width(Length::Fill)
                         .align_x(Alignment::Center),
@@ -1000,7 +1000,7 @@ impl Bar {
                 .size(Pixels::from(25.))
                 .line_height(LineHeight::Relative(2.))
         } else {
-            widget::Text::new("Unknown")
+            widget::Text::new(fl!("unknown"))
                 .size(Pixels::from(25.))
                 .line_height(LineHeight::Relative(2.))
         };

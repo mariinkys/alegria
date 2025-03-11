@@ -156,7 +156,7 @@ impl Hotel {
                 let buttons_row = widget::Row::new()
                     .push(
                         widget::Button::new(
-                            widget::Text::new("Reservations")
+                            widget::Text::new(fl!("reservations"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
@@ -166,7 +166,7 @@ impl Hotel {
                     )
                     .push(
                         widget::Button::new(
-                            widget::Text::new("Room Types")
+                            widget::Text::new(fl!("room-types"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
