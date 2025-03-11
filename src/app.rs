@@ -110,6 +110,7 @@ impl IcedAlegria {
             Message::DatabaseLoaded(pool) => {
                 self.database = Some(pool);
                 self.bar.database = self.database.clone();
+                self.hotel.set_database(self.database.clone());
             }
             Message::ChangeScreen(screen) => match screen {
                 Screen::Home => {

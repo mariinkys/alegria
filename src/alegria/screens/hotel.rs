@@ -21,7 +21,7 @@ pub enum SubScreen {
 
 pub struct Hotel {
     /// Database of the application
-    pub database: Option<Arc<Pool<Sqlite>>>,
+    database: Option<Arc<Pool<Sqlite>>>,
     /// Represents a SubScreen of the Reservations Page
     sub_screen: SubScreen,
     /// Reservations Subscreen of the HotelPage
@@ -56,6 +56,12 @@ impl Hotel {
         }
     }
 
+    pub fn set_database(&mut self, database: Option<Arc<Pool<Sqlite>>>) {
+        self.database = database.clone();
+        self.room_types.database = database.clone();
+        self.reservations.database = database;
+    }
+
     /// Cleans the state of the bar screen preserving the database
     /// intended to be called when switching to another screen in order to save memory.
     pub fn clean_state(database: Option<Arc<Pool<Sqlite>>>) -> Self {
@@ -83,13 +89,12 @@ impl Hotel {
                 }
                 SubScreen::Reservations => {
                     self.sub_screen = sub_screen;
-                    // TODO: This was just for testing (I'll keep it around for now but I'll have to delete it later)
-                    // let reservation_action =
-                    //     self.update(Message::Reservations(reservations::Message::Test));
-                    // action.tasks.extend(reservation_action.tasks);
                 }
                 SubScreen::RoomTypes => {
                     self.sub_screen = sub_screen;
+                    let room_types_action =
+                        self.update(Message::RoomTypes(room_types::Message::FetchRoomTypes));
+                    action.tasks.extend(room_types_action.tasks);
                 }
             },
 
