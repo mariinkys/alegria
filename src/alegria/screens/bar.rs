@@ -658,8 +658,11 @@ impl Bar {
     //  VIEW COMPOSING
     //
 
+    const TITLE_TEXT_SIZE: f32 = 25.0;
+
     /// Returns the view of the header row of the bar screen
     fn view_header_row(&self) -> Element<Message> {
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
         let back_button = widget::Button::new(
@@ -672,7 +675,14 @@ impl Bar {
 
         widget::Row::new()
             .push(back_button)
+            .push(
+                widget::Text::new(fl!("bar"))
+                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                    .align_y(Alignment::Center),
+            )
             .width(Length::Fill)
+            .align_y(Alignment::Center)
+            .spacing(spacing)
             .into()
     }
 

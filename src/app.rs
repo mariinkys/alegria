@@ -83,11 +83,26 @@ impl IcedAlegria {
                         .width(Length::Fixed(100.))
                         .height(Length::Fixed(100.)),
                     )
-                    .spacing(Pixels::from(5.));
+                    .spacing(Pixels::from(5.))
+                    .height(Length::Shrink);
 
-                widget::Container::new(buttons_row)
+                let centered_buttons = widget::Container::new(buttons_row)
+                    .width(Length::Fill)
                     .align_x(Alignment::Center)
-                    .align_y(Alignment::Center)
+                    .height(Length::Fill)
+                    .align_y(Alignment::Center);
+
+                let app_text = widget::Text::new("dev.mariinkys.Alegría dev-0.1.0")
+                    .align_x(Alignment::End)
+                    .width(Length::Fill);
+
+                let content = widget::Column::new()
+                    .push(centered_buttons)
+                    .push(app_text)
+                    .width(Length::Fill)
+                    .height(Length::Fill);
+
+                widget::Container::new(content)
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .into()
