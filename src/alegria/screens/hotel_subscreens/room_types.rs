@@ -339,6 +339,16 @@ impl RoomTypes {
     fn view_room_types_grid(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
+        if self.room_types.is_empty() {
+            return widget::Container::new(
+                widget::Text::new(fl!("no-room-types")).size(Pixels::from(Self::TITLE_TEXT_SIZE)),
+            )
+            .width(Length::Fill)
+            .align_x(Alignment::Center)
+            .padding(Padding::new(50.))
+            .into();
+        }
+
         let title_row = widget::Row::new()
             .push(
                 widget::Text::new(fl!("name"))

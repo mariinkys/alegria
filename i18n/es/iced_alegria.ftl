@@ -24,3 +24,6 @@ no-products = Nada todavía...
 reservations = Reservas
 room-types = Tipos de Habitación
 
+<#-- RoomTypes SubScreen -->
+no-room-types = Nada todavía...
+

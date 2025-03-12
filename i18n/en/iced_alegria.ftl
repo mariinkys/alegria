@@ -24,3 +24,6 @@ no-products = No products yet...
 reservations = Reservations
 room-types = Room Types
 
+<#-- RoomTypes SubScreen -->
+no-room-types = No Room Types yet...
+
