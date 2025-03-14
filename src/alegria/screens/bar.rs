@@ -275,7 +275,7 @@ impl Bar {
                 self.currently_selected_pos_state.table_index = table_index;
                 self.active_temporal_product = None;
                 self.active_temporal_product_field = None;
-                self.update(Message::FetchTemporalTickets);
+                return self.update(Message::FetchTemporalTickets);
             }
             // Callback after we ask to change our current TableLocation
             Message::ChangeCurrentTablesLocation(location) => {
