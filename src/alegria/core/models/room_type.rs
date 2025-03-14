@@ -3,7 +3,7 @@
 use chrono::NaiveDateTime;
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Row, Sqlite};
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +35,7 @@ impl Default for RoomType {
 }
 
 impl RoomType {
-    pub async fn get_all(pool: Arc<Pool<Sqlite>>) -> Result<Vec<RoomType>, sqlx::Error> {
+    pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<RoomType>, sqlx::Error> {
         let mut rows = sqlx::query(
             "SELECT id, name, price, is_deleted, created_at, updated_at FROM room_types WHERE is_deleted = $1 ORDER BY id ASC",
         )
@@ -68,8 +68,8 @@ impl RoomType {
         Ok(result)
     }
 
-    pub async fn add(pool: Arc<Pool<Sqlite>>, room_type: RoomType) -> Result<(), sqlx::Error> {
-        sqlx::query("INSERT INTO room_types (name, price) VALUES (?, ?)")
+    pub async fn add(pool: Arc<PgPool>, room_type: RoomType) -> Result<(), sqlx::Error> {
+        sqlx::query("INSERT INTO room_types (name, price) VALUES ($1, $2)")
             .bind(room_type.name)
             .bind(room_type.price)
             .execute(pool.as_ref())
@@ -78,7 +78,7 @@ impl RoomType {
         Ok(())
     }
 
-    pub async fn edit(pool: Arc<Pool<Sqlite>>, room_type: RoomType) -> Result<(), sqlx::Error> {
+    pub async fn edit(pool: Arc<PgPool>, room_type: RoomType) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE room_types SET name = $1, price = $2 WHERE id = $3")
             .bind(room_type.name)
             .bind(room_type.price)
@@ -89,7 +89,7 @@ impl RoomType {
         Ok(())
     }
 
-    pub async fn delete(pool: Arc<Pool<Sqlite>>, room_type_id: i32) -> Result<(), sqlx::Error> {
+    pub async fn delete(pool: Arc<PgPool>, room_type_id: i32) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE room_types SET is_deleted = $1 WHERE id = $2")
             .bind(true)
             .bind(room_type_id)

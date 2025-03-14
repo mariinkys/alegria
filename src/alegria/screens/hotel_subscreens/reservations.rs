@@ -3,13 +3,13 @@
 use std::sync::Arc;
 
 use iced::{Alignment, Element, Length, Pixels, widget};
-use sqlx::{Pool, Sqlite};
+use sqlx::PgPool;
 
 use crate::{alegria::action::AlegriaAction, fl};
 
 pub struct Reservations {
     /// Database of the application
-    pub database: Option<Arc<Pool<Sqlite>>>,
+    pub database: Option<Arc<PgPool>>,
 }
 
 #[derive(Debug, Clone)]
@@ -31,7 +31,7 @@ impl Reservations {
 
     /// Cleans the state of the screen preserving the database
     /// intended to be called when switching to another screen in order to save memory.
-    pub fn clean_state(database: Option<Arc<Pool<Sqlite>>>) -> Self {
+    pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
         Self { database }
     }
 

@@ -6,7 +6,7 @@ use iced::{
     Alignment, Element, Length, Padding, Pixels, Task,
     widget::{self, Space},
 };
-use sqlx::{Pool, Sqlite};
+use sqlx::PgPool;
 
 use crate::{
     alegria::{action::AlegriaAction, core::models::room_type::RoomType},
@@ -27,7 +27,7 @@ pub enum RoomTypeTextInputFields {
 
 pub struct RoomTypes {
     /// Database of the application
-    pub database: Option<Arc<Pool<Sqlite>>>,
+    pub database: Option<Arc<PgPool>>,
     /// Determines which is the current view of the subscreen
     current_screen: RoomTypesScreen,
     /// Holds the state of all the room_types
@@ -74,7 +74,7 @@ impl RoomTypes {
 
     /// Cleans the state of the screen preserving the database
     /// intended to be called when switching to another screen in order to save memory.
-    pub fn clean_state(database: Option<Arc<Pool<Sqlite>>>) -> Self {
+    pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
         Self {
             database,
             current_screen: RoomTypesScreen::List,

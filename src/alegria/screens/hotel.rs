@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use iced::{Alignment, Element, Length, Pixels, Task, widget};
-use sqlx::{Pool, Sqlite};
+use sqlx::PgPool;
 
 use crate::{alegria::action::AlegriaAction, fl};
 
@@ -21,7 +21,7 @@ pub enum SubScreen {
 
 pub struct Hotel {
     /// Database of the application
-    database: Option<Arc<Pool<Sqlite>>>,
+    database: Option<Arc<PgPool>>,
     /// Represents a SubScreen of the Reservations Page
     sub_screen: SubScreen,
     /// Reservations Subscreen of the HotelPage
@@ -56,7 +56,7 @@ impl Hotel {
         }
     }
 
-    pub fn set_database(&mut self, database: Option<Arc<Pool<Sqlite>>>) {
+    pub fn set_database(&mut self, database: Option<Arc<PgPool>>) {
         self.database = database.clone();
         self.room_types.database = database.clone();
         self.reservations.database = database;
@@ -64,7 +64,7 @@ impl Hotel {
 
     /// Cleans the state of the bar screen preserving the database
     /// intended to be called when switching to another screen in order to save memory.
-    pub fn clean_state(database: Option<Arc<Pool<Sqlite>>>) -> Self {
+    pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
         Self {
             database: database.clone(),
             sub_screen: SubScreen::Home,

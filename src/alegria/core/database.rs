@@ -1,26 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-use std::{fs, sync::Arc};
+use dotenvy::dotenv;
+use sqlx::PgPool;
+use std::{env, sync::Arc};
 
-use sqlx::{Pool, Sqlite, SqlitePool};
+pub async fn init_database() -> Arc<PgPool> {
+    // Load .env file
+    dotenv().ok();
 
-const DB_NAME: &str = "alegria.db";
-
-pub async fn init_database(app_id: &str) -> Arc<Pool<Sqlite>> {
-    let db_path = dirs::data_dir()
-        .unwrap()
-        .join(app_id)
-        .join("database")
-        .join(DB_NAME);
-    if let Some(parent) = db_path.parent() {
-        fs::create_dir_all(parent).expect("Failed to create directories for database file");
-    }
-
-    if !db_path.exists() {
-        fs::File::create(&db_path).expect("Failed to create the database file");
-    }
-
-    let pool = SqlitePool::connect(db_path.into_os_string().to_str().unwrap())
+    let pool = PgPool::connect(&env::var("DATABASE_URL").expect("No database URL set"))
         .await
         .expect("Error creating database");
 

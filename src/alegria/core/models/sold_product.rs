@@ -2,7 +2,7 @@
 
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Row, Sqlite};
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

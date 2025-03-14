@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use iced::{Alignment, Length, Padding, Pixels, Task, widget};
-use sqlx::{Pool, Sqlite};
+use sqlx::PgPool;
 
 use crate::{
     alegria::screens::{
@@ -22,7 +22,7 @@ pub enum Screen {
 
 pub struct IcedAlegria {
     /// Database of the application
-    database: Option<Arc<Pool<Sqlite>>>,
+    database: Option<Arc<PgPool>>,
     /// Represents a Screen of the App
     screen: Screen,
     /// Holds the state of the bar screen
@@ -33,7 +33,7 @@ pub struct IcedAlegria {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    DatabaseLoaded(Arc<Pool<Sqlite>>),
+    DatabaseLoaded(Arc<PgPool>),
     ChangeScreen(Screen),
 
     Bar(bar::Message),

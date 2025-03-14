@@ -13,3 +13,6 @@ target/
 .flatpak-builder
 flatpak-cargo-generator.py
 repo
+
+# Credentials
+.env

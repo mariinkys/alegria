@@ -6,7 +6,7 @@ use iced::{
     Alignment, Element, Length, Pixels, Task,
     widget::{self, text::LineHeight},
 };
-use sqlx::{Pool, Sqlite};
+use sqlx::PgPool;
 use sweeten::widget::text_input;
 
 use crate::{
@@ -73,7 +73,7 @@ pub enum PaginationAction {
 
 pub struct Bar {
     /// Database of the application
-    pub database: Option<Arc<Pool<Sqlite>>>,
+    pub database: Option<Arc<PgPool>>,
     /// Product Categories (for listing and then selecting products)
     product_categories: Vec<ProductCategory>,
     /// Selected product category products (if we clicked a category we will show it's products)
@@ -154,7 +154,7 @@ impl Bar {
 
     /// Cleans the state of the bar screen preserving the database
     /// intended to be called when switching to another screen in order to save memory.
-    pub fn clean_state(database: Option<Arc<Pool<Sqlite>>>) -> Self {
+    pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
         Self {
             database,
             product_categories: Vec::new(),
@@ -270,6 +270,8 @@ impl Bar {
             // Callback after a table has been clicked
             Message::OnTableChange(table_index) => {
                 self.currently_selected_pos_state.table_index = table_index;
+                self.active_temporal_product = None;
+                self.active_temporal_product_field = None;
                 self.update(Message::FetchTemporalTickets);
             }
             // Callback after we ask to change our current TableLocation

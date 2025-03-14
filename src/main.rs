@@ -30,7 +30,7 @@ fn main() -> Result<(), iced::Error> {
     let mut tasks = vec![];
 
     tasks.push(iced::Task::perform(
-        async move { alegria::core::database::init_database(APP_ID).await },
+        async move { alegria::core::database::init_database().await },
         app::Message::DatabaseLoaded,
     ));
 

@@ -3,7 +3,7 @@
 use chrono::NaiveDateTime;
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Row, Sqlite};
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,7 +16,7 @@ pub struct ProductCategory {
 }
 
 impl ProductCategory {
-    pub async fn get_all(pool: Arc<Pool<Sqlite>>) -> Result<Vec<ProductCategory>, sqlx::Error> {
+    pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<ProductCategory>, sqlx::Error> {
         let mut rows = sqlx::query(
             "SELECT id, name, is_deleted, created_at, updated_at FROM product_categories ORDER BY id ASC",
         )
@@ -46,10 +46,10 @@ impl ProductCategory {
     }
 
     pub async fn add(
-        pool: Arc<Pool<Sqlite>>,
+        pool: Arc<PgPool>,
         product_category: ProductCategory,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query("INSERT INTO product_categories (name, is_deleted) VALUES (?, ?)")
+        sqlx::query("INSERT INTO product_categories (name, is_deleted) VALUES ($1, $2)")
             .bind(product_category.name)
             .bind(false)
             .execute(pool.as_ref())
@@ -59,7 +59,7 @@ impl ProductCategory {
     }
 
     pub async fn edit(
-        pool: Arc<Pool<Sqlite>>,
+        pool: Arc<PgPool>,
         product_category: ProductCategory,
     ) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE product_categories SET name = $1 WHERE id = $2")
@@ -71,10 +71,7 @@ impl ProductCategory {
         Ok(())
     }
 
-    pub async fn delete(
-        pool: Arc<Pool<Sqlite>>,
-        product_category_id: i32,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn delete(pool: Arc<PgPool>, product_category_id: i32) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE product_categories SET is_deleted = $1 WHERE id = $2")
             .bind(true)
             .bind(product_category_id)

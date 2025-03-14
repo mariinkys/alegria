@@ -2,7 +2,7 @@
 
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Row, Sqlite};
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,7 +20,7 @@ pub struct TemporalProduct {
 
 impl TemporalProduct {
     pub async fn edit(
-        pool: Arc<Pool<Sqlite>>,
+        pool: Arc<PgPool>,
         temporal_product: TemporalProduct,
     ) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE temporal_products SET quantity = $1, price = $2 WHERE id = $3")
@@ -33,11 +33,8 @@ impl TemporalProduct {
         Ok(())
     }
 
-    pub async fn delete(
-        pool: Arc<Pool<Sqlite>>,
-        temporal_product_id: i32,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query("DELETE FROM temporal_products WHERE id = ?")
+    pub async fn delete(pool: Arc<PgPool>, temporal_product_id: i32) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM temporal_products WHERE id = $1")
             .bind(temporal_product_id)
             .execute(pool.as_ref())
             .await?;
