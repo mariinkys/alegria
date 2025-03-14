@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use chrono::NaiveDateTime;
-use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
@@ -23,15 +22,15 @@ impl Product {
         pool: Arc<PgPool>,
         category_id: i32,
     ) -> Result<Vec<Product>, sqlx::Error> {
-        let mut rows = sqlx::query(
+        let rows = sqlx::query(
             "SELECT id, category_id, name, inside_price, outside_price, is_deleted, created_at, updated_at FROM products WHERE category_id = $1 ORDER BY id ASC",
         )
         .bind(category_id)
-        .fetch(pool.as_ref());
+        .fetch_all(pool.as_ref()).await?;
 
         let mut result = Vec::<Product>::new();
 
-        while let Some(row) = rows.try_next().await? {
+        for row in rows {
             let id: Option<i32> = row.try_get("id")?;
             let category_id: Option<i32> = row.try_get("category_id")?;
             let name: String = row.try_get("name")?;

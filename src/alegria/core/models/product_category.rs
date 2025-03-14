@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use chrono::NaiveDateTime;
-use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
@@ -17,14 +16,14 @@ pub struct ProductCategory {
 
 impl ProductCategory {
     pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<ProductCategory>, sqlx::Error> {
-        let mut rows = sqlx::query(
+        let rows = sqlx::query(
             "SELECT id, name, is_deleted, created_at, updated_at FROM product_categories ORDER BY id ASC",
         )
-        .fetch(pool.as_ref());
+        .fetch_all(pool.as_ref()).await?;
 
         let mut result = Vec::<ProductCategory>::new();
 
-        while let Some(row) = rows.try_next().await? {
+        for row in rows {
             let id: Option<i32> = row.try_get("id")?;
             let name: String = row.try_get("name")?;
             let is_deleted: bool = row.try_get("is_deleted")?;

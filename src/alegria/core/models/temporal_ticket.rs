@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use chrono::NaiveDateTime;
-use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::{collections::HashMap, sync::Arc};
@@ -19,7 +18,7 @@ pub struct TemporalTicket {
 
 impl TemporalTicket {
     pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<TemporalTicket>, sqlx::Error> {
-        let mut rows = sqlx::query(
+        let rows = sqlx::query(
             "SELECT 
                 t.id as ticket_id,
                 t.table_id,
