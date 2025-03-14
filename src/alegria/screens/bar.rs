@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+/// The main issue or dificulty with this page for now is the fact that everytime the user does something
+/// we need to save it on the database and refresh, that way the data persists even if there is a power
+/// shortage...
 use std::sync::Arc;
 
 use iced::{
