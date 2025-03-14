@@ -434,10 +434,14 @@ impl RoomTypes {
         if let Some(room_type) = &self.add_edit_room_type {
             let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
+            let name_label = widget::Text::new(fl!("name")).width(Length::Fill);
+
             let name_input = widget::TextInput::new(fl!("name").as_str(), &room_type.name)
                 .on_input(|c| Message::TextInputUpdate(c, RoomTypeTextInputFields::Name))
                 .size(Pixels::from(Self::TEXT_SIZE))
                 .width(Length::Fill);
+
+            let price_label = widget::Text::new(fl!("price")).width(Length::Fill);
 
             let price_input = widget::TextInput::new(fl!("price").as_str(), &room_type.price_input)
                 .on_input(|c| Message::TextInputUpdate(c, RoomTypeTextInputFields::Price))
@@ -464,9 +468,21 @@ impl RoomTypes {
                 .width(Length::Fill)
             };
 
-            let form_column = widget::Column::new()
+            let name_input_column = widget::Column::new()
+                .push(name_label)
                 .push(name_input)
+                .width(Length::Fixed(700.))
+                .spacing(1.);
+
+            let price_input_column = widget::Column::new()
+                .push(price_label)
                 .push(price_input)
+                .width(Length::Fixed(700.))
+                .spacing(1.);
+
+            let form_column = widget::Column::new()
+                .push(name_input_column)
+                .push(price_input_column)
                 .push(submit_button)
                 .width(Length::Fixed(700.))
                 .spacing(spacing);
