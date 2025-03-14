@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 iced = { version = "0.13.1", default-features = false, features = [
     "tokio",
+    "wgpu",
     "tiny-skia",
     "advanced",
     "image",
