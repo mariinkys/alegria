@@ -86,6 +86,43 @@ CREATE TABLE IF NOT EXISTS rooms (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create IdentityDocumentTypes Table
+CREATE TABLE IF NOT EXISTS identity_document_types (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+-- Create Genders Table
+CREATE TABLE IF NOT EXISTS genders (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+-- Create Clients Table
+CREATE TABLE IF NOT EXISTS clients (
+    id SERIAL PRIMARY KEY,
+    gender_id INTEGER NOT NULL,
+    identity_document_type_id INTEGER NOT NULL,
+    identity_document TEXT NOT NULL,
+    identity_document_expedition_date TIMESTAMP NOT NULL,
+    identity_document_expiration_date TIMESTAMP NOT NULL,
+    name TEXT NOT NULL,
+    first_surname TEXT NOT NULL,
+    second_surname TEXT NOT NULL,
+    birthdate TIMESTAMP NOT NULL,
+    address TEXT,
+    postal_code TEXT,
+    city TEXT,
+    province TEXT,
+    country TEXT,
+    nationality TEXT,
+    phone_number TEXT,
+    mobile_phone TEXT,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Add Functions and Triggers to Update 'updated_at' Timestamps ------------------------------
 
 -- Create update timestamp function
@@ -130,5 +167,11 @@ EXECUTE FUNCTION update_timestamp();
 -- Trigger for room_types
 CREATE TRIGGER update_room_types_updated_at
 BEFORE UPDATE ON rooms
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+-- Trigger for clients
+CREATE TRIGGER update_clients_updated_at
+BEFORE UPDATE ON clients
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();

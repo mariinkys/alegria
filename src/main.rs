@@ -5,6 +5,7 @@ use iced::{
     Task,
     window::{Settings, icon},
 };
+use iced_aw::iced_fonts;
 
 mod alegria;
 mod app;
@@ -41,6 +42,7 @@ fn main() -> Result<(), iced::Error> {
             resizable: true,
             ..Default::default()
         })
+        .font(iced_fonts::REQUIRED_FONT_BYTES)
         .theme(IcedAlegria::theme)
         .run_with(|| (IcedAlegria::new(), Task::batch(tasks)))
 }

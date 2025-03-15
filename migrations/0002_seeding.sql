@@ -15,3 +15,12 @@ INSERT INTO room_types (name, price) VALUES ('Doble', 75.00);
 INSERT INTO rooms (name, room_type_id) VALUES ('113', 2);
 INSERT INTO rooms (name, room_type_id) VALUES ('112', 1);
 INSERT INTO rooms (name, room_type_id) VALUES ('213', 2);
+
+-- Seed identity document types 
+INSERT INTO identity_document_types (name) VALUES ('DNI');
+INSERT INTO identity_document_types (name) VALUES ('NIE');
+INSERT INTO identity_document_types (name) VALUES ('NIF');
+
+-- Seed genders
+INSERT INTO genders (name) VALUES ('Hombre');
+INSERT INTO genders (name) VALUES ('Mujer');

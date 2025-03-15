@@ -24,6 +24,7 @@ no-products = Nada todavía...
 reservations = Reservas
 room-types = Tipos de Habitación
 rooms = Habitaciones
+clients = Clientes
 
 <#-- RoomTypes SubScreen -->
 no-room-types = Nada todavía...
@@ -31,3 +32,23 @@ no-room-types = Nada todavía...
 <#-- Rooms SubScreen -->
 no-rooms = Nada todavía...
 room-type = Tipo de Habitación
+
+<#-- Clients SubScreen -->
+no-clients = Nada todavía...
+client = Cliente
+identity-document-type = Tipo de Documento
+identity-document = Documento de Identidad
+identity-document-expedition-date = Fecha de Expedición
+identity-document-expiration-date = Fecha de Caducidad
+first-surname = Primer Apellido
+second-surname = Segundo Apellido
+birthdate = Fecha de Nacimiento
+address = Dirección
+postal-code = Código Postal
+city = Ciudad
+province = Provincia
+country = País
+nationality = Nacionalidad
+phone-number = Número de Teléfono
+mobile-phone = Número de Móvil
+gender = Género
