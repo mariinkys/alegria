@@ -33,6 +33,7 @@ impl Default for RoomType {
     }
 }
 
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for RoomType {
     fn to_string(&self) -> String {
         self.name.to_string()
