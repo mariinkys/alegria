@@ -366,7 +366,8 @@ impl RoomTypes {
                 widget::Text::new(fl!("edit"))
                     .size(Pixels::from(Self::TITLE_TEXT_SIZE))
                     .width(Length::Fixed(200.))
-                    .align_y(Alignment::Center),
+                    .align_y(Alignment::Center)
+                    .align_x(Alignment::End),
             )
             .width(Length::Shrink)
             .align_y(Alignment::Center);
@@ -403,7 +404,7 @@ impl RoomTypes {
                         .width(Length::Shrink),
                     )
                     .width(Length::Fixed(200.))
-                    .align_x(Alignment::Start)
+                    .align_x(Alignment::End)
                     .align_y(Alignment::Center),
                 )
                 .align_y(Alignment::Center);
