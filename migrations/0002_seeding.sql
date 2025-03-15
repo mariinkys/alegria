@@ -10,3 +10,8 @@ INSERT INTO products (category_id, name, inside_price, outside_price, is_deleted
 -- Seed room types
 INSERT INTO room_types (name, price) VALUES ('Individual', 60.00);
 INSERT INTO room_types (name, price) VALUES ('Doble', 75.00);
+
+-- Seed rooms 
+INSERT INTO rooms (name, room_type_id) VALUES ('113', 2);
+INSERT INTO rooms (name, room_type_id) VALUES ('112', 1);
+INSERT INTO rooms (name, room_type_id) VALUES ('213', 2);
