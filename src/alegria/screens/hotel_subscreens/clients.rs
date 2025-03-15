@@ -639,7 +639,7 @@ impl Clients {
             let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
             // First Name
-            let name_label = widget::Text::new(fl!("name")).width(Length::Fill);
+            let name_label = widget::Text::new(format!("{}*", fl!("name"))).width(Length::Fill);
             let name_input = widget::TextInput::new(fl!("name").as_str(), &client.name)
                 .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Name))
                 .size(Pixels::from(Self::TEXT_SIZE))
@@ -671,7 +671,8 @@ impl Clients {
                 .width(Length::Fill);
 
             //  BirthDate
-            let birthdate_date_label = widget::Text::new(fl!("birthdate")).width(Length::Fill);
+            let birthdate_date_label =
+                widget::Text::new(format!("{} (yyyy-mm-dd)", fl!("birthdate"))).width(Length::Fill);
             let birthdate_iced_aw_date = if let Some(db_date) = &client.birthdate {
                 Date {
                     year: db_date.year(),
@@ -712,7 +713,7 @@ impl Clients {
 
             // Identity Document
             let identity_document_label =
-                widget::Text::new(fl!("identity-document")).width(Length::Fill);
+                widget::Text::new(format!("{}*", fl!("identity-document"))).width(Length::Fill);
             let identity_document_input = widget::TextInput::new(
                 fl!("identity-document").as_str(),
                 &client.identity_document,
@@ -723,7 +724,8 @@ impl Clients {
 
             // Identity Document Type
             let identity_document_type_label =
-                widget::Text::new(fl!("identity-document-type")).width(Length::Fill);
+                widget::Text::new(format!("{}*", fl!("identity-document-type")))
+                    .width(Length::Fill);
             let selected_identity_document_type = self
                 .identity_document_types
                 .iter()
@@ -736,8 +738,11 @@ impl Clients {
             .width(Length::Fill);
 
             // Identity Document Expedition Date
-            let identity_document_expedition_date_label =
-                widget::Text::new(fl!("identity-document-expedition-date")).width(Length::Fill);
+            let identity_document_expedition_date_label = widget::Text::new(format!(
+                "{} (yyyy-mm-dd)",
+                fl!("identity-document-expedition-date")
+            ))
+            .width(Length::Fill);
             let expedition_iced_aw_date =
                 if let Some(db_date) = &client.identity_document_expedition_date {
                     Date {
@@ -788,8 +793,11 @@ impl Clients {
                 .spacing(spacing);
 
             // Identity Document Expiration Date
-            let identity_document_expiration_date_label =
-                widget::Text::new(fl!("identity-document-expiration-date")).width(Length::Fill);
+            let identity_document_expiration_date_label = widget::Text::new(format!(
+                "{} (yyyy-mm-dd)",
+                fl!("identity-document-expiration-date")
+            ))
+            .width(Length::Fill);
             let expiration_iced_aw_date =
                 if let Some(db_date) = &client.identity_document_expiration_date {
                     Date {
@@ -869,7 +877,8 @@ impl Clients {
                 .width(Length::Fill);
 
             // Country
-            let country_label = widget::Text::new(fl!("country")).width(Length::Fill);
+            let country_label =
+                widget::Text::new(format!("{}*", fl!("country"))).width(Length::Fill);
             let country_input = widget::TextInput::new(fl!("country").as_str(), &client.country)
                 .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Country))
                 .size(Pixels::from(Self::TEXT_SIZE))
