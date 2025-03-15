@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RoomType {
     pub id: Option<i32>,
     pub name: String,
@@ -30,6 +30,12 @@ impl Default for RoomType {
             updated_at: Default::default(),
             price_input: String::new(),
         }
+    }
+}
+
+impl ToString for RoomType {
+    fn to_string(&self) -> String {
+        self.name.to_string()
     }
 }
 

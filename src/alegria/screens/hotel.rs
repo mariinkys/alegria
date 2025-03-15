@@ -10,6 +10,7 @@ use crate::{alegria::action::AlegriaAction, fl};
 use super::hotel_subscreens::{
     reservations::{self, Reservations},
     room_types::{self, RoomTypes},
+    rooms::{self, Rooms},
 };
 
 #[derive(Debug, Clone)]
@@ -17,6 +18,7 @@ pub enum SubScreen {
     Home,
     Reservations,
     RoomTypes,
+    Rooms,
 }
 
 pub struct Hotel {
@@ -28,6 +30,8 @@ pub struct Hotel {
     reservations: Reservations,
     /// RoomTypes Subscreen of the HotelPage
     room_types: RoomTypes,
+    /// Rooms Subscreen of the HotelPage
+    rooms: Rooms,
 }
 
 #[derive(Debug, Clone)]
@@ -37,6 +41,7 @@ pub enum Message {
 
     Reservations(reservations::Message),
     RoomTypes(room_types::Message),
+    Rooms(rooms::Message),
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -53,12 +58,14 @@ impl Hotel {
             sub_screen: SubScreen::Home,
             reservations: Reservations::init(),
             room_types: RoomTypes::init(),
+            rooms: Rooms::init(),
         }
     }
 
     pub fn set_database(&mut self, database: Option<Arc<PgPool>>) {
         self.database = database.clone();
         self.room_types.database = database.clone();
+        self.rooms.database = database.clone();
         self.reservations.database = database;
     }
 
@@ -69,7 +76,8 @@ impl Hotel {
             database: database.clone(),
             sub_screen: SubScreen::Home,
             reservations: Reservations::clean_state(database.clone()),
-            room_types: RoomTypes::clean_state(database),
+            room_types: RoomTypes::clean_state(database.clone()),
+            rooms: Rooms::clean_state(database),
         }
     }
 
@@ -94,6 +102,14 @@ impl Hotel {
                     self.sub_screen = sub_screen;
                     let room_types_action =
                         self.update(Message::RoomTypes(room_types::Message::FetchRoomTypes));
+                    action.tasks.extend(room_types_action.tasks);
+                }
+                SubScreen::Rooms => {
+                    self.sub_screen = sub_screen;
+                    let rooms_action = self.update(Message::Rooms(rooms::Message::FetchRooms));
+                    let room_types_action =
+                        self.update(Message::Rooms(rooms::Message::FetchRoomTypes));
+                    action.tasks.extend(rooms_action.tasks);
                     action.tasks.extend(room_types_action.tasks);
                 }
             },
@@ -130,6 +146,25 @@ impl Hotel {
                 for instructions in room_type_action.instructions {
                     match instructions {
                         room_types::RoomTypesInstruction::Back => {
+                            let _ = self.update(Message::ChangeSubScreen(SubScreen::Home));
+                        }
+                    }
+                }
+            }
+
+            Message::Rooms(message) => {
+                let room_action = self.rooms.update(message);
+
+                let rooms_tasks: Vec<Task<Message>> = room_action
+                    .tasks
+                    .into_iter()
+                    .map(|task| task.map(Message::Rooms))
+                    .collect();
+                action.tasks.extend(rooms_tasks);
+
+                for instructions in room_action.instructions {
+                    match instructions {
+                        rooms::RoomsInstruction::Back => {
                             let _ = self.update(Message::ChangeSubScreen(SubScreen::Home));
                         }
                     }
@@ -174,6 +209,16 @@ impl Hotel {
                         .width(Length::Fixed(Self::SQUAREBUTTONXY))
                         .height(Length::Fixed(Self::SQUAREBUTTONXY)),
                     )
+                    .push(
+                        widget::Button::new(
+                            widget::Text::new(fl!("rooms"))
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .on_press(Message::ChangeSubScreen(SubScreen::Rooms))
+                        .width(Length::Fixed(Self::SQUAREBUTTONXY))
+                        .height(Length::Fixed(Self::SQUAREBUTTONXY)),
+                    )
                     .spacing(Pixels::from(5.));
 
                 let content = widget::Container::new(buttons_row)
@@ -192,6 +237,7 @@ impl Hotel {
             }
             SubScreen::Reservations => self.reservations.view().map(Message::Reservations),
             SubScreen::RoomTypes => self.room_types.view().map(Message::RoomTypes),
+            SubScreen::Rooms => self.rooms.view().map(Message::Rooms),
         };
 
         widget::Container::new(content)

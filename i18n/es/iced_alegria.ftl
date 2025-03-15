@@ -23,7 +23,11 @@ no-products = Nada todavía...
 <#-- Hotel Screen -->
 reservations = Reservas
 room-types = Tipos de Habitación
+rooms = Habitaciones
 
 <#-- RoomTypes SubScreen -->
 no-room-types = Nada todavía...
 
+<#-- Rooms SubScreen -->
+no-rooms = Nada todavía...
+room-type = Tipo de Habitación

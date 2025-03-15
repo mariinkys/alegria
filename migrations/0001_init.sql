@@ -76,6 +76,16 @@ CREATE TABLE IF NOT EXISTS room_types (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create RoomTypes Table
+CREATE TABLE IF NOT EXISTS rooms (
+    id SERIAL PRIMARY KEY,
+    room_type_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Add Functions and Triggers to Update 'updated_at' Timestamps ------------------------------
 
 -- Create update timestamp function
@@ -114,5 +124,11 @@ EXECUTE FUNCTION update_timestamp();
 -- Trigger for room_types
 CREATE TRIGGER update_room_types_updated_at
 BEFORE UPDATE ON room_types
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+-- Trigger for room_types
+CREATE TRIGGER update_room_types_updated_at
+BEFORE UPDATE ON rooms
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
