@@ -97,9 +97,9 @@ pub enum Message {
     TextInputUpdate(String, ClientTextInputFields), // Callback when using the text inputs to add or edit a client
     UpdatedSelectedDocumentTypeId(i32), // Callback after selecting a new DocumentTypeId for the current client
     UpdatedSelectedGenderId(i32), // Callback after selecting a new GenderId for the current client
-    ShowDatePicker(ClientDateInputFields),
-    CancelDateOperation,
-    UpdateDateField(date_picker::Date, ClientDateInputFields),
+    ShowDatePicker(ClientDateInputFields), // Toggles the variable to show the specified date picker
+    CancelDateOperation,          // Cancels the datepicker changes
+    UpdateDateField(date_picker::Date, ClientDateInputFields), // Callback after submiting a new date via datepicker
 
     AddCurrentClient,      // Tries to Add the current client to the database
     EditCurrentClient,     // Tries to Edit the current client on the database
@@ -289,6 +289,7 @@ impl Clients {
                     client.gender_id = Some(new_id);
                 }
             }
+            // Toggles the variable to show the specified date picker
             Message::ShowDatePicker(date_field) => match date_field {
                 ClientDateInputFields::IdentityDocumentExpeditionDate => {
                     self.show_expedition_date_picker = true;
@@ -300,11 +301,13 @@ impl Clients {
                     self.show_birthdate_date_picker = true;
                 }
             },
+            // Cancels the datepicker changes
             Message::CancelDateOperation => {
                 self.show_expedition_date_picker = false;
                 self.show_expiration_date_picker = false;
                 self.show_birthdate_date_picker = false;
             }
+            // Callback after submiting a new date via datepicker
             Message::UpdateDateField(iced_aw_date, field) => {
                 if let Some(client) = &mut self.add_edit_client {
                     let new_date = NaiveDate::from_ymd_opt(
