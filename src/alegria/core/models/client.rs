@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-use chrono::NaiveDateTime;
+use chrono::{Datelike, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
@@ -33,6 +33,9 @@ pub struct Client {
     // Not in the db
     pub identity_document_type_name: String, // Helps us JOIN and return the name of the selected identity_document_type_id
     pub gender_name: String, // Helps us JOIN and return the name of the selected gender
+    pub birthdate_string: String, // Helps us input the date as a string
+    pub identity_document_expedition_date_string: String, // Helps us input the date as a string
+    pub identity_document_expiration_date_string: String, // Helps us input the date as a string
 }
 
 #[allow(clippy::derivable_impls)]
@@ -63,6 +66,9 @@ impl Default for Client {
 
             identity_document_type_name: String::new(),
             gender_name: String::new(),
+            birthdate_string: String::new(),
+            identity_document_expedition_date_string: String::new(),
+            identity_document_expiration_date_string: String::new(),
         }
     }
 }
@@ -195,6 +201,26 @@ impl Client {
             .unwrap_or_default();
         let gender_name: String = row.try_get("gender_name").unwrap_or_default();
 
+        let birthdate_string: String = if let Some(date) = birthdate {
+            format!("{}-{}-{}", date.year(), date.month(), date.day())
+        } else {
+            String::new()
+        };
+
+        let identity_document_expedition_date_string: String =
+            if let Some(date) = identity_document_expedition_date {
+                format!("{}-{}-{}", date.year(), date.month(), date.day())
+            } else {
+                String::new()
+            };
+
+        let identity_document_expiration_date_string: String =
+            if let Some(date) = identity_document_expiration_date {
+                format!("{}-{}-{}", date.year(), date.month(), date.day())
+            } else {
+                String::new()
+            };
+
         let client = Client {
             id,
             gender_id,
@@ -219,6 +245,9 @@ impl Client {
             updated_at,
             identity_document_type_name,
             gender_name,
+            birthdate_string,
+            identity_document_expedition_date_string,
+            identity_document_expiration_date_string,
         };
 
         Ok(client)

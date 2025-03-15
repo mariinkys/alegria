@@ -19,6 +19,7 @@ use crate::{
         core::models::{
             client::Client, gender::Gender, identity_document_type::IdentityDocumentType,
         },
+        utils::{check_date_format, parse_date_to_naive_datetime},
     },
     fl,
 };
@@ -43,6 +44,9 @@ pub enum ClientTextInputFields {
     Nationality,
     PhoneNumber,
     MobilePhone,
+    IdentityDocumentExpeditionDate,
+    IdentityDocumentExpirationDate,
+    Birthdate,
 }
 
 #[derive(Debug, Clone)]
@@ -263,6 +267,13 @@ impl Clients {
                         ClientTextInputFields::Nationality => client.nationality = new_value,
                         ClientTextInputFields::PhoneNumber => client.phone_number = new_value,
                         ClientTextInputFields::MobilePhone => client.mobile_phone = new_value,
+                        ClientTextInputFields::IdentityDocumentExpeditionDate => {
+                            client.identity_document_expedition_date_string = new_value
+                        }
+                        ClientTextInputFields::IdentityDocumentExpirationDate => {
+                            client.identity_document_expiration_date_string = new_value
+                        }
+                        ClientTextInputFields::Birthdate => client.birthdate_string = new_value,
                     }
                 }
             }
@@ -308,14 +319,20 @@ impl Clients {
                                 ClientDateInputFields::IdentityDocumentExpeditionDate => {
                                     client.identity_document_expedition_date =
                                         Some(NaiveDateTime::new(date, NaiveTime::MIN));
+                                    client.identity_document_expedition_date_string =
+                                        format!("{}-{}-{}", date.year(), date.month(), date.day())
                                 }
                                 ClientDateInputFields::IdentityDocumentExpirationDate => {
                                     client.identity_document_expiration_date =
                                         Some(NaiveDateTime::new(date, NaiveTime::MIN));
+                                    client.identity_document_expiration_date_string =
+                                        format!("{}-{}-{}", date.year(), date.month(), date.day())
                                 }
                                 ClientDateInputFields::Birthdate => {
                                     client.birthdate =
                                         Some(NaiveDateTime::new(date, NaiveTime::MIN));
+                                    client.birthdate_string =
+                                        format!("{}-{}-{}", date.year(), date.month(), date.day())
                                 }
                             }
                             self.show_expedition_date_picker = false;
@@ -340,9 +357,16 @@ impl Clients {
 
             // Tries to Add the current client to the database
             Message::AddCurrentClient => {
-                if let Some(client) = &self.add_edit_client {
-                    // TODO: Proper validation
+                if let Some(client) = &mut self.add_edit_client {
                     if is_client_valid(client) && client.id.is_none() {
+                        client.birthdate = parse_date_to_naive_datetime(&client.birthdate_string);
+                        client.identity_document_expedition_date = parse_date_to_naive_datetime(
+                            &client.identity_document_expedition_date_string,
+                        );
+                        client.identity_document_expiration_date = parse_date_to_naive_datetime(
+                            &client.identity_document_expiration_date_string,
+                        );
+
                         if let Some(pool) = &self.database {
                             action.add_task(Task::perform(
                                 Client::add(pool.clone(), client.clone()),
@@ -360,9 +384,16 @@ impl Clients {
             }
             // Tries to Edit the current client on the database
             Message::EditCurrentClient => {
-                if let Some(client) = &self.add_edit_client {
-                    // TODO: Proper validation
+                if let Some(client) = &mut self.add_edit_client {
                     if is_client_valid(client) && client.id.is_some() {
+                        client.birthdate = parse_date_to_naive_datetime(&client.birthdate_string);
+                        client.identity_document_expedition_date = parse_date_to_naive_datetime(
+                            &client.identity_document_expedition_date_string,
+                        );
+                        client.identity_document_expiration_date = parse_date_to_naive_datetime(
+                            &client.identity_document_expiration_date_string,
+                        );
+
                         if let Some(pool) = &self.database {
                             action.add_task(Task::perform(
                                 Client::edit(pool.clone(), client.clone()),
@@ -397,7 +428,7 @@ impl Clients {
                     }
                 }
             }
-            // Callback after add/update/delete of the current Room
+            // Callback after add/update/delete of the current Client
             Message::ModifiedCurrentClient => {
                 self.add_edit_client = None;
                 self.current_screen = ClientsScreen::List;
@@ -690,21 +721,12 @@ impl Clients {
                 Message::CancelDateOperation,
                 |date| Message::UpdateDateField(date, ClientDateInputFields::Birthdate),
             );
-            let birthdate_input = match &client.birthdate {
-                Some(_) => widget::TextInput::new(
-                    fl!("birthdate").as_str(),
-                    &birthdate_iced_aw_date.to_string(),
-                )
-                .style(|t, _| widget::text_input::default(t, widget::text_input::Status::Active))
-                .size(Pixels::from(Self::TEXT_SIZE))
-                .width(Length::Fill),
-                None => widget::TextInput::new(fl!("birthdate").as_str(), "")
-                    .style(|t, _| {
-                        widget::text_input::default(t, widget::text_input::Status::Active)
-                    })
+            let birthdate_input =
+                widget::TextInput::new(fl!("birthdate").as_str(), &client.birthdate_string)
+                    .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Birthdate))
                     .size(Pixels::from(Self::TEXT_SIZE))
-                    .width(Length::Fill),
-            };
+                    .width(Length::Fill);
+
             let birthdate_input_row = widget::Row::new()
                 .push(birthdate_input)
                 .push(birthdate_date_picker)
@@ -767,25 +789,15 @@ impl Clients {
                     )
                 },
             );
-            let identity_document_expedition_date_input = match &client
-                .identity_document_expedition_date
-            {
-                Some(_) => widget::TextInput::new(
-                    fl!("identity-document-expedition-date").as_str(),
-                    &expedition_iced_aw_date.to_string(),
-                )
-                .style(|t, _| widget::text_input::default(t, widget::text_input::Status::Active))
-                .size(Pixels::from(Self::TEXT_SIZE))
-                .width(Length::Fill),
-                None => {
-                    widget::TextInput::new(fl!("identity-document-expedition-date").as_str(), "")
-                        .style(|t, _| {
-                            widget::text_input::default(t, widget::text_input::Status::Active)
-                        })
-                        .size(Pixels::from(Self::TEXT_SIZE))
-                        .width(Length::Fill)
-                }
-            };
+            let identity_document_expedition_date_input = widget::TextInput::new(
+                fl!("identity-document-expedition-date").as_str(),
+                &client.identity_document_expedition_date_string,
+            )
+            .on_input(|c| {
+                Message::TextInputUpdate(c, ClientTextInputFields::IdentityDocumentExpeditionDate)
+            })
+            .size(Pixels::from(Self::TEXT_SIZE))
+            .width(Length::Fill);
             let identity_document_expedition_date_input_row = widget::Row::new()
                 .push(identity_document_expedition_date_input)
                 .push(identity_document_expedition_date_picker)
@@ -822,25 +834,15 @@ impl Clients {
                     )
                 },
             );
-            let identity_document_expiration_date_input = match &client
-                .identity_document_expiration_date
-            {
-                Some(_) => widget::TextInput::new(
-                    fl!("identity-document-expiration-date").as_str(),
-                    &expiration_iced_aw_date.to_string(),
-                )
-                .style(|t, _| widget::text_input::default(t, widget::text_input::Status::Active))
-                .size(Pixels::from(Self::TEXT_SIZE))
-                .width(Length::Fill),
-                None => {
-                    widget::TextInput::new(fl!("identity-document-expiration-date").as_str(), "")
-                        .style(|t, _| {
-                            widget::text_input::default(t, widget::text_input::Status::Active)
-                        })
-                        .size(Pixels::from(Self::TEXT_SIZE))
-                        .width(Length::Fill)
-                }
-            };
+            let identity_document_expiration_date_input = widget::TextInput::new(
+                fl!("identity-document-expiration-date").as_str(),
+                &client.identity_document_expiration_date_string,
+            )
+            .on_input(|c| {
+                Message::TextInputUpdate(c, ClientTextInputFields::IdentityDocumentExpirationDate)
+            })
+            .size(Pixels::from(Self::TEXT_SIZE))
+            .width(Length::Fill);
             let identity_document_expiration_date_input_row = widget::Row::new()
                 .push(identity_document_expiration_date_input)
                 .push(identity_document_expiration_date_picker)
@@ -1120,5 +1122,21 @@ fn is_client_valid(client: &Client) -> bool {
     } else if client.country.is_empty() {
         return false;
     }
+
+    if !client.birthdate_string.is_empty() {
+        let v = check_date_format(&client.birthdate_string);
+        return v;
+    }
+
+    if !client.identity_document_expedition_date_string.is_empty() {
+        let v = check_date_format(&client.identity_document_expedition_date_string);
+        return v;
+    }
+
+    if !client.identity_document_expiration_date_string.is_empty() {
+        let v = check_date_format(&client.identity_document_expiration_date_string);
+        return v;
+    }
+
     true
 }
