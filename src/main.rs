@@ -11,30 +11,31 @@ mod alegria;
 mod app;
 mod i18n;
 
+#[allow(clippy::empty_line_after_doc_comments)]
 /// Access glibc malloc tunables.
-#[cfg(target_env = "gnu")]
-mod malloc {
-    use std::os::raw::c_int;
-    const M_MMAP_THRESHOLD: c_int = -3;
+// #[cfg(target_env = "gnu")]
+// mod malloc {
+//     use std::os::raw::c_int;
+//     const M_MMAP_THRESHOLD: c_int = -3;
 
-    unsafe extern "C" {
-        fn mallopt(param: c_int, value: c_int) -> c_int;
-    }
+//     unsafe extern "C" {
+//         fn mallopt(param: c_int, value: c_int) -> c_int;
+//     }
 
-    /// Prevents glibc from hoarding memory via memory fragmentation.
-    pub fn limit_mmap_threshold() {
-        unsafe {
-            mallopt(M_MMAP_THRESHOLD, 65536);
-        }
-    }
-}
+//     /// Prevents glibc from hoarding memory via memory fragmentation.
+//     pub fn limit_mmap_threshold() {
+//         unsafe {
+//             mallopt(M_MMAP_THRESHOLD, 65536);
+//         }
+//     }
+// }
 
 /// Unique identifier in RDNN (reverse domain name notation) format.
 const APP_ID: &str = "dev.mariinkys.IcedAlegria";
 
 fn main() -> Result<(), iced::Error> {
-    #[cfg(target_env = "gnu")]
-    malloc::limit_mmap_threshold();
+    // #[cfg(target_env = "gnu")]
+    // malloc::limit_mmap_threshold();
 
     // Get the window  icon
     let icon = icon::from_file_data(
