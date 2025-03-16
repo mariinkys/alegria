@@ -103,6 +103,8 @@ impl Hotel {
                     self.reservations =
                         reservations::Reservations::clean_state(self.database.clone());
                     self.room_types = room_types::RoomTypes::clean_state(self.database.clone());
+                    self.rooms = rooms::Rooms::clean_state(self.database.clone());
+                    self.clients = clients::Clients::clean_state(self.database.clone());
                 }
                 SubScreen::Reservations => {
                     self.sub_screen = sub_screen;
