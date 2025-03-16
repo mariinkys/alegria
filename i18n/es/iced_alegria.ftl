@@ -1,5 +1,6 @@
 <#-- Generic -->
 back = Atrás
+next = Siguiente
 name = Nombre
 price = Precio
 edit = Editar

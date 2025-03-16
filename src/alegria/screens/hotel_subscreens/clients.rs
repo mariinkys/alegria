@@ -56,6 +56,20 @@ pub enum ClientDateInputFields {
     Birthdate,
 }
 
+/// Holds the pagination state (generic, for various entities)
+#[derive(Debug, Clone)]
+pub struct PaginationConfig {
+    items_per_page: i32,
+    current_page: i32,
+}
+
+/// Identifies a pagination action
+#[derive(Debug, Clone, PartialEq)]
+pub enum PaginationAction {
+    Back,
+    Forward,
+}
+
 pub struct Clients {
     /// Database of the application
     pub database: Option<Arc<PgPool>>,
@@ -75,6 +89,8 @@ pub struct Clients {
     show_expiration_date_picker: bool,
     /// Controls wether or not the birthdate date picker should be shown
     show_birthdate_date_picker: bool,
+    /// Holds the pagination state and config for the clients list
+    clients_pagination_state: PaginationConfig,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -105,6 +121,8 @@ pub enum Message {
     EditCurrentClient,     // Tries to Edit the current client on the database
     DeleteCurrentClient,   // Tries to delete the current Client
     ModifiedCurrentClient, // Callback after delete/update/add of a current Client
+
+    ClientsPaginationAction(PaginationAction), // Try to go left or right a page on the ClientsList
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -126,6 +144,10 @@ impl Clients {
             show_expedition_date_picker: false,
             show_expiration_date_picker: false,
             show_birthdate_date_picker: false,
+            clients_pagination_state: PaginationConfig {
+                items_per_page: 10,
+                current_page: 0,
+            },
         }
     }
 
@@ -142,6 +164,10 @@ impl Clients {
             show_expedition_date_picker: false,
             show_expiration_date_picker: false,
             show_birthdate_date_picker: false,
+            clients_pagination_state: PaginationConfig {
+                items_per_page: 10,
+                current_page: 0,
+            },
         }
     }
 
@@ -437,6 +463,22 @@ impl Clients {
                 self.current_screen = ClientsScreen::List;
                 return self.update(Message::FetchClients);
             }
+
+            // Try to go left or right a page on the ClientsList
+            Message::ClientsPaginationAction(action) => match action {
+                PaginationAction::Back => {
+                    if self.clients_pagination_state.current_page > 0 {
+                        self.clients_pagination_state.current_page -= 1;
+                    }
+                }
+                PaginationAction::Forward => {
+                    let next_page_start = (self.clients_pagination_state.current_page + 1)
+                        * self.clients_pagination_state.items_per_page;
+                    if next_page_start < self.clients.len().try_into().unwrap_or_default() {
+                        self.clients_pagination_state.current_page += 1;
+                    }
+                }
+            },
         };
 
         action
@@ -548,6 +590,7 @@ impl Clients {
     /// Returns the view of the clients grid
     fn view_clients_grid(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
+        let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
         if self.clients.is_empty() {
             return widget::Container::new(
@@ -594,13 +637,21 @@ impl Clients {
             .width(Length::Shrink)
             .align_y(Alignment::Center);
 
+        // Calculate the indices for the current page
+        let start_index: usize = self.clients_pagination_state.current_page as usize
+            * self.clients_pagination_state.items_per_page as usize;
+        let end_index = usize::min(
+            start_index + self.clients_pagination_state.items_per_page as usize,
+            self.clients.len(),
+        );
+
         let mut grid = widget::Column::new()
             .push(title_row)
             .align_x(Alignment::Center)
             .spacing(spacing)
             .width(Length::Shrink);
 
-        for client in &self.clients {
+        for client in &self.clients[start_index..end_index] {
             let row = widget::Row::new()
                 .width(Length::Shrink)
                 .push(
@@ -659,6 +710,31 @@ impl Clients {
             widget::Row::new()
                 .width(Length::Fixed(850.))
                 .push(widget::Rule::horizontal(Pixels::from(1.))),
+        );
+        grid = grid.push(
+            widget::Row::new()
+                .width(Length::Fixed(850.))
+                .push(
+                    widget::Button::new(
+                        widget::Text::new(fl!("back"))
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(button_height),
+                    )
+                    .on_press(Message::ClientsPaginationAction(PaginationAction::Back)),
+                )
+                .push(
+                    widget::Button::new(
+                        widget::Text::new(fl!("next"))
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(button_height),
+                    )
+                    .on_press(Message::ClientsPaginationAction(PaginationAction::Forward)),
+                )
+                .spacing(spacing),
         );
         widget::Container::new(grid)
             .width(Length::Fill)
