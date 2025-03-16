@@ -36,6 +36,7 @@ pub struct Client {
     pub birthdate_string: String, // Helps us input the date as a string
     pub identity_document_expedition_date_string: String, // Helps us input the date as a string
     pub identity_document_expiration_date_string: String, // Helps us input the date as a string
+    pub search_field: String, // Helps us search, this field will have all the data you can search a client for on a string
 }
 
 #[allow(clippy::derivable_impls)]
@@ -69,6 +70,7 @@ impl Default for Client {
             birthdate_string: String::new(),
             identity_document_expedition_date_string: String::new(),
             identity_document_expiration_date_string: String::new(),
+            search_field: String::new(),
         }
     }
 }
@@ -93,7 +95,7 @@ impl Client {
             FROM clients 
             LEFT JOIN identity_document_types ON clients.identity_document_type_id = identity_document_types.id 
             WHERE clients.is_deleted = $1 
-            ORDER BY clients.id ASC",
+            ORDER BY clients.id DESC",
         )
         .bind(false)
         .fetch_all(pool.as_ref())
@@ -117,6 +119,16 @@ impl Client {
                 .try_get("identity_document_type_name")
                 .unwrap_or_default();
 
+            let search_field: String = format!(
+                "{} {} {} {} {} {}",
+                id.unwrap_or_default(),
+                identity_document,
+                name,
+                first_surname,
+                second_surname,
+                country
+            );
+
             let client = Client {
                 id,
                 identity_document_type_id,
@@ -129,6 +141,7 @@ impl Client {
                 created_at,
                 updated_at,
                 identity_document_type_name,
+                search_field,
                 ..Default::default()
             };
 
@@ -166,8 +179,7 @@ impl Client {
             FROM clients 
             LEFT JOIN identity_document_types ON clients.identity_document_type_id = identity_document_types.id 
             LEFT JOIN genders ON clients.gender_id = genders.id 
-            WHERE clients.id = $1
-            ORDER BY clients.id ASC",
+            WHERE clients.id = $1",
         )
         .bind(client_id)
         .fetch_one(pool.as_ref())
@@ -248,6 +260,7 @@ impl Client {
             birthdate_string,
             identity_document_expedition_date_string,
             identity_document_expiration_date_string,
+            ..Default::default()
         };
 
         Ok(client)

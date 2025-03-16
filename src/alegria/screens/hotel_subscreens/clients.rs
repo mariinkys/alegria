@@ -63,8 +63,17 @@ pub struct PaginationConfig {
     current_page: i32,
 }
 
+impl Default for PaginationConfig {
+    fn default() -> Self {
+        PaginationConfig {
+            items_per_page: 10,
+            current_page: 0,
+        }
+    }
+}
+
 /// Identifies a pagination action
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum PaginationAction {
     Back,
     Forward,
@@ -91,6 +100,8 @@ pub struct Clients {
     show_birthdate_date_picker: bool,
     /// Holds the pagination state and config for the clients list
     clients_pagination_state: PaginationConfig,
+    /// Search Bar value
+    current_search: String,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -123,6 +134,9 @@ pub enum Message {
     ModifiedCurrentClient, // Callback after delete/update/add of a current Client
 
     ClientsPaginationAction(PaginationAction), // Try to go left or right a page on the ClientsList
+    SearchUpdate(String),                      // Callback after writing on the search box
+    SubmitSearch,                              // Callback after pressing enter on the search bar
+    ClearSearch,                               // Callback after clicking on the clear search button
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -144,10 +158,8 @@ impl Clients {
             show_expedition_date_picker: false,
             show_expiration_date_picker: false,
             show_birthdate_date_picker: false,
-            clients_pagination_state: PaginationConfig {
-                items_per_page: 10,
-                current_page: 0,
-            },
+            clients_pagination_state: PaginationConfig::default(),
+            current_search: String::new(),
         }
     }
 
@@ -164,10 +176,8 @@ impl Clients {
             show_expedition_date_picker: false,
             show_expiration_date_picker: false,
             show_birthdate_date_picker: false,
-            clients_pagination_state: PaginationConfig {
-                items_per_page: 10,
-                current_page: 0,
-            },
+            clients_pagination_state: PaginationConfig::default(),
+            current_search: String::new(),
         }
     }
 
@@ -479,6 +489,31 @@ impl Clients {
                     }
                 }
             },
+            // Callback after writing on the search box
+            Message::SearchUpdate(value) => {
+                self.current_search = value;
+            }
+            // Callback after pressing enter on the search bar
+            Message::SubmitSearch => {
+                if self.current_search.is_empty() {
+                    return self.update(Message::FetchClients);
+                } else if !self.clients.is_empty() {
+                    self.clients = self
+                        .clients
+                        .iter()
+                        .filter(|client| client.search_field.contains(&self.current_search))
+                        .cloned()
+                        .collect();
+                }
+
+                self.clients_pagination_state = Default::default();
+            }
+            // Callback after clicking on the clear search button
+            Message::ClearSearch => {
+                self.current_search = String::new();
+                self.clients_pagination_state = Default::default();
+                return self.update(Message::FetchClients);
+            }
         };
 
         action
@@ -496,7 +531,42 @@ impl Clients {
 
         // ROOM TYPES CONTENT
         let content = match &self.current_screen {
-            ClientsScreen::List => self.view_clients_grid(),
+            ClientsScreen::List => {
+                let grid = self.view_clients_grid();
+
+                let search_bar = widget::Row::new()
+                    .push(
+                        widget::TextInput::new(fl!("search").as_str(), &self.current_search)
+                            .on_input(Message::SearchUpdate)
+                            .on_submit(Message::SubmitSearch)
+                            .size(Pixels::from(Self::TEXT_SIZE))
+                            .width(Length::Fill),
+                    )
+                    .push(
+                        widget::Button::new(
+                            widget::Text::new(fl!("clear"))
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center)
+                                .size(Pixels::from(Self::TEXT_SIZE)),
+                        )
+                        .on_press(Message::ClearSearch)
+                        .width(Length::Shrink),
+                    )
+                    .spacing(spacing)
+                    .width(Length::Fixed(850.));
+
+                let content = widget::Column::new()
+                    .push(search_bar)
+                    .push(grid)
+                    .spacing(spacing)
+                    .width(Length::Fixed(850.));
+
+                widget::Container::new(content)
+                    .width(Length::Fill)
+                    .align_x(Alignment::Center)
+                    .padding(Padding::new(50.))
+                    .into()
+            }
             ClientsScreen::AddEdit => self.view_add_edit_screen(),
         };
 
@@ -736,11 +806,13 @@ impl Clients {
                 )
                 .spacing(spacing),
         );
-        widget::Container::new(grid)
-            .width(Length::Fill)
-            .align_x(Alignment::Center)
-            .padding(Padding::new(50.))
-            .into()
+
+        // widget::Container::new(grid)
+        //     .width(Length::Fill)
+        //     .align_x(Alignment::Center)
+        //     .padding(Padding::new(50.))
+        //     .into()
+        grid.into()
     }
 
     /// Returns the view of the room types add/edit screen

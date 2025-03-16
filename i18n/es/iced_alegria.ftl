@@ -8,6 +8,8 @@ add = Crear
 cancel = Cancelar
 up = Subir
 down = Bajar
+search = Buscar
+clear = Limpiar
 delete = Borrar
 
 <#-- Main Menu -->
