@@ -20,9 +20,16 @@ CREATE TABLE IF NOT EXISTS products (
     FOREIGN KEY (category_id) REFERENCES product_categories(id) ON DELETE SET NULL
 );
 
+-- Create Payment Methods Table
+CREATE TABLE IF NOT EXISTS payment_methods (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
 -- Create SimpleInvoice Table
 CREATE TABLE IF NOT EXISTS simple_invoices (
     id SERIAL PRIMARY KEY,
+    payment_method_id INTEGER NOT NULL,
     paid BOOLEAN NOT NULL DEFAULT FALSE,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -123,6 +130,70 @@ CREATE TABLE IF NOT EXISTS clients (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create SoldRooms Table
+CREATE TABLE IF NOT EXISTS sold_rooms (
+    id SERIAL PRIMARY KEY,
+    room_id INTEGER NOT NULL,
+    price NUMERIC,
+    FOREIGN KEY (room_id)
+        REFERENCES rooms(id)
+        ON DELETE CASCADE -- Delete sold rooms if room is deleted
+);
+
+-- Create SoldRoomClients Join Table
+CREATE TABLE IF NOT EXISTS sold_room_clients (
+    sold_room_id INTEGER NOT NULL,
+    client_id INTEGER NOT NULL,
+    PRIMARY KEY (sold_room_id, client_id),
+    FOREIGN KEY (sold_room_id)
+        REFERENCES sold_rooms(id)
+        ON DELETE CASCADE, -- Delete guest association if sold room is deleted
+    FOREIGN KEY (client_id)
+        REFERENCES clients(id)
+        ON DELETE CASCADE -- Remove guest association if client is deleted
+);
+
+-- Create Reservations Table
+CREATE TABLE IF NOT EXISTS reservations (
+    id SERIAL PRIMARY KEY,
+    client_id INTEGER NOT NULL,
+    entry_date TIMESTAMP NOT NULL,
+    departure_date TIMESTAMP NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) 
+        REFERENCES clients(id) 
+        ON DELETE CASCADE -- Delete reservations if client is deleted
+);
+
+-- Create ReservationSoldRooms Join Table
+CREATE TABLE IF NOT EXISTS reservation_sold_rooms (
+    reservation_id INTEGER NOT NULL,
+    sold_room_id INTEGER NOT NULL,
+    PRIMARY KEY (reservation_id, sold_room_id),
+    FOREIGN KEY (reservation_id) 
+        REFERENCES reservations(id) 
+        ON DELETE CASCADE, -- Delete sold rooms associated with a reservation if reservation is deleted
+    FOREIGN KEY (sold_room_id) 
+        REFERENCES sold_rooms(id) 
+        ON DELETE CASCADE -- If a sold_room entry is deleted, any related records in reservation_sold_rooms will also be deleted automatically.
+);
+
+-- Create ReservationInvoices Join Table
+CREATE TABLE IF NOT EXISTS reservation_invoices (
+    reservation_id INTEGER NOT NULL,
+    simple_invoice_id INTEGER NOT NULL,
+    PRIMARY KEY (reservation_id, simple_invoice_id),
+    FOREIGN KEY (reservation_id) 
+        REFERENCES reservations(id) 
+        ON DELETE CASCADE, -- Delete invoice associations if reservation is deleted
+    FOREIGN KEY (simple_invoice_id) 
+        REFERENCES simple_invoices(id) 
+        ON DELETE CASCADE -- Delete reservation invoice entry if invoice is deleted
+);
+
+
 -- Add Functions and Triggers to Update 'updated_at' Timestamps ------------------------------
 
 -- Create update timestamp function
@@ -173,5 +244,11 @@ EXECUTE FUNCTION update_timestamp();
 -- Trigger for clients
 CREATE TRIGGER update_clients_updated_at
 BEFORE UPDATE ON clients
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+-- Trigger for reservations
+CREATE TRIGGER update_reservations_updated_at
+BEFORE UPDATE ON reservations
 FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();

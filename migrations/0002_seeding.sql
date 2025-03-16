@@ -24,3 +24,8 @@ INSERT INTO identity_document_types (name) VALUES ('NIF');
 -- Seed genders
 INSERT INTO genders (name) VALUES ('Hombre');
 INSERT INTO genders (name) VALUES ('Mujer');
+
+-- Seed payment_methods
+INSERT INTO payment_methods (name) VALUES ('Efectivo');
+INSERT INTO payment_methods (name) VALUES ('Tarjeta');
+INSERT INTO payment_methods (name) VALUES ('Adeudo');

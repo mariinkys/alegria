@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
+use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, Row};
+use std::sync::Arc;
+
+use super::client::Client;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SoldRoom {
+    pub id: Option<i32>,
+    pub room_id: Option<i32>,
+    pub guests: Vec<Client>,
+    pub price: Option<f32>,
+}

@@ -41,16 +41,6 @@ impl Reservations {
 
         match message {
             Message::Back => action.add_instruction(ReservationsInstruction::Back),
-            // Message::Test => {
-            //     println!("Testing");
-            //     // TODO: Erase this, is just for testing
-            //     action.add_task(Task::perform(
-            //         async {
-            //             println!("Task is running!");
-            //         },
-            //         |_| Message::Back,
-            //     ));
-            // }
         };
 
         action
