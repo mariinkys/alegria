@@ -2,7 +2,7 @@
 
 use app::IcedAlegria;
 use iced::{
-    Task,
+    Size, Task,
     window::{Settings, icon},
 };
 use iced_aw::iced_fonts;
@@ -62,6 +62,7 @@ fn main() -> Result<(), iced::Error> {
             position: iced::window::Position::Centered,
             icon: icon.ok(),
             resizable: true,
+            min_size: Some(Size::new(1200., 800.)),
             ..Default::default()
         })
         .font(iced_fonts::REQUIRED_FONT_BYTES)
