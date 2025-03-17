@@ -172,7 +172,7 @@ impl Reservations {
                     let intial_date =
                         parse_date_to_naive_datetime(&self.date_filters.initial_date_string);
                     let last_date =
-                        parse_date_to_naive_datetime(&self.date_filters.initial_date_string);
+                        parse_date_to_naive_datetime(&self.date_filters.last_date_string);
 
                     if intial_date.is_some() && last_date.is_some() {
                         self.date_filters.initial_date = intial_date.unwrap().date();
@@ -201,6 +201,7 @@ impl Reservations {
             }
             // Sets the reservations on the app state
             Message::SetReservations(res) => {
+                dbg!(res.len());
                 self.reservations = res;
             }
 
@@ -291,9 +292,13 @@ impl Reservations {
 
         // HEADER
         let header_row = self.view_header_row();
+        let content = match self.current_screen {
+            ReservationsScreen::Home => self.view_reservations_calendar(),
+        };
 
         widget::Column::new()
             .push(header_row)
+            .push(content)
             .spacing(spacing)
             .height(Length::Fill)
             .width(Length::Fill)
@@ -430,6 +435,93 @@ impl Reservations {
             .align_y(Alignment::Center)
             .spacing(spacing)
             .into()
+    }
+
+    /// Returns the view of the header row of the subscreen
+    fn view_reservations_calendar(&self) -> Element<Message> {
+        let cell_width = Length::Fixed(50.);
+        let cell_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
+
+        // header row with days
+        let mut header_row = widget::Row::new();
+
+        // top left empty cell
+        header_row = header_row
+            .push(
+                widget::Text::new("")
+                    .size(16)
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .width(cell_width)
+                    .height(cell_height),
+            )
+            .width(Length::Fill)
+            .spacing(spacing);
+
+        // add each day of range as a header
+        let mut current_date = self.date_filters.initial_date;
+        while current_date <= self.date_filters.last_date {
+            header_row = header_row.push(
+                widget::Text::new(format!("{}/{}", current_date.day(), current_date.month()))
+                    .size(16)
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .width(cell_width)
+                    .height(cell_height),
+            );
+            current_date += chrono::Duration::days(1);
+        }
+
+        // final calendar view
+        let mut calendar_view = widget::Column::new().push(header_row).spacing(spacing);
+
+        for room in &self.rooms {
+            // each room is a row
+            let mut row = widget::Row::new();
+            row = row.push(
+                widget::Text::new(&room.name)
+                    .size(16)
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .width(cell_width)
+                    .height(cell_height),
+            );
+
+            // loop through each day in the range and check for reservations
+            let mut current_date = self.date_filters.initial_date;
+            while current_date <= self.date_filters.last_date {
+                let mut cell_content = widget::Text::new("N")
+                    .size(16)
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .width(cell_width)
+                    .height(cell_height);
+
+                for reservation in &self.reservations {
+                    // check if the current room is part of the reservation and if it overlaps with the day
+                    if reservation.rooms.iter().any(|r| r.id == room.id)
+                        && reservation.entry_date.unwrap_or_default().date() == current_date
+                    {
+                        //&reservation.client_name
+                        cell_content = widget::Text::new("S")
+                            .size(16)
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(cell_width)
+                            .height(cell_height);
+                        break; //each room can only have one reservation per day
+                    }
+                }
+
+                row = row.push(cell_content);
+                current_date += chrono::Duration::days(1);
+            }
+
+            calendar_view = calendar_view.push(row);
+        }
+
+        widget::Container::new(calendar_view).into()
     }
 
     //
