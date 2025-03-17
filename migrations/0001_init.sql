@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS sold_products (
     id SERIAL PRIMARY KEY,
     simple_invoice_id INTEGER NOT NULL,
     original_product_id INTEGER NOT NULL,
-    price NUMERIC,
+    price REAL,
     FOREIGN KEY (simple_invoice_id)
         REFERENCES simple_invoices(id)
         ON DELETE CASCADE -- Delete sold products if invoice is deleted
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS clients (
 CREATE TABLE IF NOT EXISTS sold_rooms (
     id SERIAL PRIMARY KEY,
     room_id INTEGER NOT NULL,
-    price NUMERIC,
+    price REAL,
     FOREIGN KEY (room_id)
         REFERENCES rooms(id)
         ON DELETE CASCADE -- Delete sold rooms if room is deleted
