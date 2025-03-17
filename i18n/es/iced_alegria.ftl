@@ -55,3 +55,8 @@ nationality = Nacionalidad
 phone-number = Número de Teléfono
 mobile-phone = Número de Móvil
 gender = Género
+
+<#-- Reservations SubScreen -->
+initial-date = Fecha Inicial
+last-date = Fecha Final
+refresh = Actualizar

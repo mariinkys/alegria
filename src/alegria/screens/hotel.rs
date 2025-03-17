@@ -108,6 +108,9 @@ impl Hotel {
                 }
                 SubScreen::Reservations => {
                     self.sub_screen = sub_screen;
+                    let reservations_action =
+                        self.update(Message::Reservations(reservations::Message::InitPage));
+                    action.tasks.extend(reservations_action.tasks);
                 }
                 SubScreen::RoomTypes => {
                     self.sub_screen = sub_screen;
