@@ -201,7 +201,6 @@ impl Reservations {
             }
             // Sets the reservations on the app state
             Message::SetReservations(res) => {
-                dbg!(res.len());
                 self.reservations = res;
             }
 
@@ -439,7 +438,7 @@ impl Reservations {
 
     /// Returns the view of the header row of the subscreen
     fn view_reservations_calendar(&self) -> Element<Message> {
-        let cell_width = Length::Fixed(50.);
+        let cell_width = Length::Fill; // If I put a fixed width here I also have to put it on the Header Row or everything breaks
         let cell_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
@@ -499,18 +498,23 @@ impl Reservations {
                     .height(cell_height);
 
                 for reservation in &self.reservations {
-                    // check if the current room is part of the reservation and if it overlaps with the day
+                    // check if the current room is part of the reservation and if the date falls within the reservation period
                     if reservation.rooms.iter().any(|r| r.id == room.id)
-                        && reservation.entry_date.unwrap_or_default().date() == current_date
+                        && reservation.entry_date.unwrap_or_default().date() <= current_date
+                        && reservation.departure_date.unwrap_or_default().date() > current_date
                     {
-                        //&reservation.client_name
-                        cell_content = widget::Text::new("S")
-                            .size(16)
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center)
-                            .width(cell_width)
-                            .height(cell_height);
-                        break; //each room can only have one reservation per day
+                        // &reservation.client_name
+                        cell_content = widget::Text::new(format!(
+                            "S:{}/{}",
+                            reservation.entry_date.unwrap_or_default().date().day(),
+                            reservation.departure_date.unwrap_or_default().date().day()
+                        ))
+                        .size(16)
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center)
+                        .width(cell_width)
+                        .height(cell_height);
+                        break; // each room can only have one reservation per day
                     }
                 }
 
