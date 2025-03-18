@@ -175,24 +175,27 @@ impl Reservations {
                         parse_date_to_naive_datetime(&self.date_filters.last_date_string);
 
                     if intial_date.is_some() && last_date.is_some() {
-                        self.date_filters.initial_date = intial_date.unwrap().date();
-                        self.date_filters.last_date = last_date.unwrap().date();
+                        #[allow(clippy::collapsible_if)]
+                        if intial_date.unwrap().date() < last_date.unwrap().date() {
+                            self.date_filters.initial_date = intial_date.unwrap().date();
+                            self.date_filters.last_date = last_date.unwrap().date();
 
-                        if let Some(pool) = &self.database {
-                            action.add_task(Task::perform(
-                                Reservation::get_all(
-                                    pool.clone(),
-                                    self.date_filters.initial_date,
-                                    self.date_filters.last_date,
-                                ),
-                                |res| match res {
-                                    Ok(res) => Message::SetReservations(res),
-                                    Err(err) => {
-                                        eprintln!("{err}");
-                                        Message::SetReservations(Vec::new())
-                                    }
-                                },
-                            ));
+                            if let Some(pool) = &self.database {
+                                action.add_task(Task::perform(
+                                    Reservation::get_all(
+                                        pool.clone(),
+                                        self.date_filters.initial_date,
+                                        self.date_filters.last_date,
+                                    ),
+                                    |res| match res {
+                                        Ok(res) => Message::SetReservations(res),
+                                        Err(err) => {
+                                            eprintln!("{err}");
+                                            Message::SetReservations(Vec::new())
+                                        }
+                                    },
+                                ));
+                            }
                         }
                     };
                 } else {
@@ -244,14 +247,18 @@ impl Reservations {
                     Some(date) => {
                         match field {
                             ReservationDateInputFields::FilterInitialDate => {
-                                self.date_filters.initial_date = date;
-                                self.date_filters.initial_date_string =
-                                    format!("{}-{}-{}", date.year(), date.month(), date.day())
+                                if date < self.date_filters.last_date {
+                                    self.date_filters.initial_date = date;
+                                    self.date_filters.initial_date_string =
+                                        format!("{}-{}-{}", date.year(), date.month(), date.day())
+                                }
                             }
                             ReservationDateInputFields::FilterLastDate => {
-                                self.date_filters.last_date = date;
-                                self.date_filters.last_date_string =
-                                    format!("{}-{}-{}", date.year(), date.month(), date.day())
+                                if date > self.date_filters.initial_date {
+                                    self.date_filters.last_date = date;
+                                    self.date_filters.last_date_string =
+                                        format!("{}-{}-{}", date.year(), date.month(), date.day())
+                                }
                             }
                         }
                         self.date_filters.show_initial_date_picker = false;
