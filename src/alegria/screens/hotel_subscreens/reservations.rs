@@ -501,9 +501,9 @@ impl Reservations {
                     // check if the current room is part of the reservation and if the date falls within the reservation period
                     if reservation.rooms.iter().any(|r| r.id == room.id)
                         && reservation.entry_date.unwrap_or_default().date() <= current_date
+                        // departure date does not have an equal because we can book a room the day someone departs
                         && reservation.departure_date.unwrap_or_default().date() > current_date
                     {
-                        // &reservation.client_name
                         cell_content = widget::Text::new(format!(
                             "S:{}/{}",
                             reservation.entry_date.unwrap_or_default().date().day(),
@@ -525,7 +525,7 @@ impl Reservations {
             calendar_view = calendar_view.push(row);
         }
 
-        widget::Container::new(calendar_view).into()
+        widget::Container::new(widget::Scrollable::new(calendar_view)).into()
     }
 
     //
