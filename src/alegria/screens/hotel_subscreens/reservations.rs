@@ -477,7 +477,7 @@ impl Reservations {
 
         for room in &self.rooms {
             // each room is a row
-            let mut row = widget::Row::new();
+            let mut row = widget::Row::new().spacing(spacing);
             row = row.push(
                 widget::Text::new(&room.name)
                     .size(16)
@@ -490,10 +490,8 @@ impl Reservations {
             // loop through each day in the range and check for reservations
             let mut current_date = self.date_filters.initial_date;
             while current_date <= self.date_filters.last_date {
-                let mut cell_content = widget::Text::new("N")
-                    .size(16)
-                    .align_x(Alignment::Center)
-                    .align_y(Alignment::Center)
+                let mut cell_content = widget::Button::new("")
+                    .style(widget::button::secondary)
                     .width(cell_width)
                     .height(cell_height);
 
@@ -504,16 +502,20 @@ impl Reservations {
                         // departure date does not have an equal because we can book a room the day someone departs
                         && reservation.departure_date.unwrap_or_default().date() > current_date
                     {
-                        cell_content = widget::Text::new(format!(
-                            "S:{}/{}",
-                            reservation.entry_date.unwrap_or_default().date().day(),
-                            reservation.departure_date.unwrap_or_default().date().day()
-                        ))
-                        .size(16)
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center)
-                        .width(cell_width)
-                        .height(cell_height);
+                        match reservation.occupied {
+                            true => {
+                                cell_content = widget::Button::new("")
+                                    .style(widget::button::success)
+                                    .width(cell_width)
+                                    .height(cell_height)
+                            }
+                            false => {
+                                cell_content = widget::Button::new("")
+                                    .style(widget::button::danger)
+                                    .width(cell_width)
+                                    .height(cell_height)
+                            }
+                        }
                         break; // each room can only have one reservation per day
                     }
                 }
