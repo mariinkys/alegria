@@ -15,6 +15,7 @@ pub struct Reservation {
     pub entry_date: Option<NaiveDateTime>,
     pub departure_date: Option<NaiveDateTime>,
     //pub room_invoices: Vec<SimpleInvoice>,
+    pub occupied: bool,
     pub is_deleted: bool,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
@@ -33,6 +34,7 @@ impl Default for Reservation {
             entry_date: None,
             departure_date: None,
             //room_invoices: Vec::new(),
+            occupied: false,
             is_deleted: false,
             created_at: None,
             updated_at: None,
@@ -58,6 +60,7 @@ impl Reservation {
                 reservations.client_id, 
                 reservations.entry_date, 
                 reservations.departure_date, 
+                reservations.occupied, 
                 reservations.is_deleted, 
                 reservations.created_at, 
                 reservations.updated_at,
@@ -87,6 +90,7 @@ impl Reservation {
             let client_id: Option<i32> = row.try_get("client_id")?;
             let entry_date: Option<NaiveDateTime> = row.try_get("entry_date")?;
             let departure_date: Option<NaiveDateTime> = row.try_get("departure_date")?;
+            let occupied: bool = row.try_get("occupied")?;
             let is_deleted: bool = row.try_get("is_deleted")?;
             let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
             let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
@@ -138,6 +142,7 @@ impl Reservation {
                 rooms,
                 entry_date,
                 departure_date,
+                occupied,
                 //room_invoices: Vec::new(),
                 is_deleted,
                 created_at,
