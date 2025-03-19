@@ -250,19 +250,20 @@ impl Reservations {
                                 if date < self.date_filters.last_date {
                                     self.date_filters.initial_date = date;
                                     self.date_filters.initial_date_string =
-                                        format!("{}-{}-{}", date.year(), date.month(), date.day())
+                                        format!("{}-{}-{}", date.year(), date.month(), date.day());
                                 }
                             }
                             ReservationDateInputFields::FilterLastDate => {
                                 if date > self.date_filters.initial_date {
                                     self.date_filters.last_date = date;
                                     self.date_filters.last_date_string =
-                                        format!("{}-{}-{}", date.year(), date.month(), date.day())
+                                        format!("{}-{}-{}", date.year(), date.month(), date.day());
                                 }
                             }
                         }
                         self.date_filters.show_initial_date_picker = false;
                         self.date_filters.show_last_date_picker = false;
+                        return self.update(Message::FetchReservations);
                     }
                     None => {
                         eprintln!("Could not parse new date");
@@ -281,6 +282,7 @@ impl Reservations {
                                     self.date_filters.last_date.to_string();
                             }
                         }
+                        return self.update(Message::FetchReservations);
                     }
                 }
             }
@@ -349,7 +351,6 @@ impl Reservations {
     /// Returns the row of date pickers (for the heaeder row)
     fn view_date_pickers_row(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
-        let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
         // Initial Date
         let initial_date_label =
@@ -373,6 +374,7 @@ impl Reservations {
             &self.date_filters.initial_date_string,
         )
         .on_input(|c| Message::TextInputUpdate(c, ReservationTextInputFields::FilterInitialDate))
+        .on_submit(Message::FetchReservations)
         .size(Pixels::from(Self::TEXT_SIZE))
         .width(Length::Fill);
 
@@ -409,6 +411,7 @@ impl Reservations {
             &self.date_filters.last_date_string,
         )
         .on_input(|c| Message::TextInputUpdate(c, ReservationTextInputFields::FilterLastDate))
+        .on_submit(Message::FetchReservations)
         .size(Pixels::from(Self::TEXT_SIZE))
         .width(Length::Fill);
 
@@ -423,21 +426,9 @@ impl Reservations {
             .width(Length::Fill)
             .spacing(1.);
 
-        // Submit button
-        let submit_button = widget::Button::new(
-            widget::Text::new(fl!("refresh"))
-                .align_x(Alignment::Center)
-                .align_y(Alignment::Center)
-                .size(Pixels::from(Self::TEXT_SIZE)),
-        )
-        .on_press(Message::FetchReservations)
-        .height(button_height)
-        .width(Length::Shrink);
-
         widget::Row::new()
             .push(initial_date_input_column)
             .push(last_date_input_column)
-            .push(submit_button)
             .align_y(Alignment::Center)
             .spacing(spacing)
             .into()
