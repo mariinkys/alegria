@@ -181,17 +181,17 @@ CREATE TABLE IF NOT EXISTS reservation_sold_rooms (
         ON DELETE CASCADE -- If a sold_room entry is deleted, any related records in reservation_sold_rooms will also be deleted automatically.
 );
 
--- Create ReservationInvoices Join Table
-CREATE TABLE IF NOT EXISTS reservation_invoices (
-    reservation_id INTEGER NOT NULL,
+-- Create SoldRoomInvoices Join Table
+CREATE TABLE IF NOT EXISTS sold_room_invoices (
+    sold_room_id INTEGER NOT NULL,
     simple_invoice_id INTEGER NOT NULL,
-    PRIMARY KEY (reservation_id, simple_invoice_id),
-    FOREIGN KEY (reservation_id) 
-        REFERENCES reservations(id) 
-        ON DELETE CASCADE, -- Delete invoice associations if reservation is deleted
+    PRIMARY KEY (sold_room_id, simple_invoice_id),
+    FOREIGN KEY (sold_room_id) 
+        REFERENCES sold_rooms(id) 
+        ON DELETE CASCADE, -- Delete invoice associations if sold room is deleted
     FOREIGN KEY (simple_invoice_id) 
         REFERENCES simple_invoices(id) 
-        ON DELETE CASCADE -- Delete reservation invoice entry if invoice is deleted
+        ON DELETE CASCADE -- Delete sold_room invoice entry if invoice is deleted
 );
 
 

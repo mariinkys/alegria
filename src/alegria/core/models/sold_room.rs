@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
-use super::client::Client;
+use super::{client::Client, simple_invoice::SimpleInvoice};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SoldRoom {
@@ -13,4 +13,5 @@ pub struct SoldRoom {
     pub room_id: Option<i32>,
     pub guests: Vec<Client>,
     pub price: Option<f32>,
+    pub invoices: Vec<SimpleInvoice>,
 }
