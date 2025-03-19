@@ -10,7 +10,10 @@ pub async fn init_database() -> Arc<PgPool> {
 
     let pool = PgPool::connect(&env::var("DATABASE_URL").expect("No database URL set"))
         .await
-        .expect("Error creating database");
+        .unwrap_or_else(|_| {
+            eprintln!("Could not connect to database");
+            std::process::exit(1)
+        });
 
     match sqlx::migrate!("./migrations").run(&pool).await {
         Ok(_) => println!("Migrations run successfully"),
