@@ -738,7 +738,7 @@ impl Clients {
                     .align_y(Alignment::Center),
                 )
                 .push(
-                    widget::Text::new(&client.identity_document_type_name)
+                    widget::Text::new(&*client.identity_document_type_name)
                         .size(Pixels::from(Self::TEXT_SIZE))
                         .width(Length::Fixed(100.))
                         .align_y(Alignment::Center),

@@ -31,12 +31,12 @@ pub struct Client {
     pub updated_at: Option<NaiveDateTime>,
 
     // Not in the db
-    pub identity_document_type_name: String, // Helps us JOIN and return the name of the selected identity_document_type_id
-    pub gender_name: String, // Helps us JOIN and return the name of the selected gender
+    pub identity_document_type_name: Box<str>, // Helps us JOIN and return the name of the selected identity_document_type_id
+    pub gender_name: Box<str>, // Helps us JOIN and return the name of the selected gender
     pub birthdate_string: String, // Helps us input the date as a string
     pub identity_document_expedition_date_string: String, // Helps us input the date as a string
     pub identity_document_expiration_date_string: String, // Helps us input the date as a string
-    pub search_field: String, // Helps us search, this field will have all the data you can search a client for on a string
+    pub search_field: Box<str>, // Helps us search, this field will have all the data you can search a client for on a string
 }
 
 #[allow(clippy::derivable_impls)]
@@ -65,12 +65,12 @@ impl Default for Client {
             created_at: None,
             updated_at: None,
 
-            identity_document_type_name: String::new(),
-            gender_name: String::new(),
+            identity_document_type_name: String::new().into_boxed_str(),
+            gender_name: String::new().into_boxed_str(),
             birthdate_string: String::new(),
             identity_document_expedition_date_string: String::new(),
             identity_document_expiration_date_string: String::new(),
-            search_field: String::new(),
+            search_field: String::new().into_boxed_str(),
         }
     }
 }
@@ -140,8 +140,8 @@ impl Client {
                 is_deleted,
                 created_at,
                 updated_at,
-                identity_document_type_name,
-                search_field,
+                identity_document_type_name: identity_document_type_name.into_boxed_str(),
+                search_field: search_field.into_boxed_str(),
                 ..Default::default()
             };
 
@@ -255,8 +255,8 @@ impl Client {
             is_deleted,
             created_at,
             updated_at,
-            identity_document_type_name,
-            gender_name,
+            identity_document_type_name: identity_document_type_name.into_boxed_str(),
+            gender_name: gender_name.into_boxed_str(),
             birthdate_string,
             identity_document_expedition_date_string,
             identity_document_expiration_date_string,
