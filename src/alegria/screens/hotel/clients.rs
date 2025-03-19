@@ -500,7 +500,12 @@ impl Clients {
                     self.clients = self
                         .clients
                         .iter()
-                        .filter(|client| client.search_field.contains(&self.current_search))
+                        .filter(|client| {
+                            client
+                                .search_field
+                                .to_lowercase()
+                                .contains(&self.current_search.to_lowercase())
+                        })
                         .cloned()
                         .collect();
                 }
