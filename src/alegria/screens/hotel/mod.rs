@@ -42,7 +42,6 @@ pub struct Hotel {
     clients: Clients,
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum Message {
     Back, // Asks the parent (app.rs) to go back

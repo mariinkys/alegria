@@ -104,7 +104,6 @@ pub struct Clients {
     current_search: String,
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum Message {
     Back, // Asks the parent (app.rs) to go back
@@ -116,7 +115,7 @@ pub enum Message {
     SetIdentityDocumentTypes(Vec<IdentityDocumentType>), // Sets the identity document types on the app state
     SetGenders(Vec<Gender>), // Sets the identity document types on the app state
 
-    SetAddEditClient(Client), // changes the screen and the add_edit_client state (after asking for an edit Client)
+    SetAddEditClient(Box<Client>), // changes the screen and the add_edit_client state (after asking for an edit Client)
     AskEditClient(i32), // Callback after asking to edit a client, searches the client on the db
     AskAddClient, // Callback after asking to add a room, changes the screen and the add_edit_client state
     CancelClientOperation, // Callback after asking to cancel an add or an edit
@@ -255,7 +254,7 @@ impl Clients {
 
             // changes the screen and the add_edit_client state (after asking for an edit Client)
             Message::SetAddEditClient(client) => {
-                self.add_edit_client = Some(client);
+                self.add_edit_client = Some(*client);
                 self.current_screen = ClientsScreen::AddEdit;
             }
             // Callback after asking to edit a client, searches the client on the db
@@ -264,10 +263,10 @@ impl Clients {
                     action.add_task(Task::perform(
                         Client::get_single(pool.clone(), client_id),
                         |res| match res {
-                            Ok(res) => Message::SetAddEditClient(res),
+                            Ok(res) => Message::SetAddEditClient(Box::new(res)),
                             Err(err) => {
                                 eprintln!("{err}");
-                                Message::SetAddEditClient(Client::default())
+                                Message::SetAddEditClient(Box::default())
                             }
                         },
                     ));
