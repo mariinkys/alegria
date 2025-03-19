@@ -2,4 +2,3 @@
 
 pub mod bar;
 pub mod hotel;
-pub mod hotel_subscreens;

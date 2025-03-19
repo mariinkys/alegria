@@ -31,6 +31,7 @@ pub struct IcedAlegria {
     hotel: Hotel,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum Message {
     DatabaseLoaded(Arc<PgPool>),
@@ -132,8 +133,7 @@ impl IcedAlegria {
                     self.screen = screen;
                     self.bar =
                         crate::alegria::screens::bar::Bar::clean_state(self.database.clone());
-                    self.hotel =
-                        crate::alegria::screens::hotel::Hotel::clean_state(self.database.clone());
+                    self.hotel = hotel::Hotel::clean_state(self.database.clone());
                 }
                 Screen::Bar => {
                     tasks.push(self.update(Message::Bar(bar::Message::FetchProductCategories)));

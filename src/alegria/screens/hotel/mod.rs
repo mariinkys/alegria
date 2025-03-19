@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+mod clients;
+mod reservations;
+mod room_types;
+mod rooms;
+
+//
+// HOTEL PAGE IMPLEMENTATION
+//
+
 use std::sync::Arc;
 
 use iced::{Alignment, Element, Length, Pixels, Task, widget};
@@ -7,12 +16,7 @@ use sqlx::PgPool;
 
 use crate::{alegria::action::AlegriaAction, fl};
 
-use super::hotel_subscreens::{
-    clients::{self, Clients},
-    reservations::{self, Reservations},
-    room_types::{self, RoomTypes},
-    rooms::{self, Rooms},
-};
+use {clients::Clients, reservations::Reservations, room_types::RoomTypes, rooms::Rooms};
 
 #[derive(Debug, Clone)]
 pub enum SubScreen {
