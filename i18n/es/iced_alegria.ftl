@@ -59,4 +59,6 @@ gender = Género
 <#-- Reservations SubScreen -->
 initial-date = Fecha Inicial
 last-date = Fecha Final
-refresh = Actualizar
+entry-date = Fecha de Entrada
+departure-date = Fecha de Salida
+occupied = Ocupada

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Room {
     pub id: Option<i32>,
     pub room_type_id: Option<i32>,
@@ -16,6 +16,7 @@ pub struct Room {
 
     // Not in the db
     pub room_type_name: String, // Helps us JOIN adn return the room type name of the selected room_type_id
+    pub default_room_price: Option<f32>, // Helps us JOIN the room_type_id and return the default price for this room
 }
 
 #[allow(clippy::derivable_impls)]
@@ -29,7 +30,15 @@ impl Default for Room {
             created_at: Default::default(),
             updated_at: Default::default(),
             room_type_name: String::new(),
+            default_room_price: None,
         }
+    }
+}
+
+#[allow(clippy::to_string_trait_impl)]
+impl ToString for Room {
+    fn to_string(&self) -> String {
+        self.name.to_string()
     }
 }
 
@@ -43,7 +52,8 @@ impl Room {
                 rooms.is_deleted, 
                 rooms.created_at, 
                 rooms.updated_at,
-                room_types.name as room_type_name 
+                room_types.name as room_type_name,
+                room_types.price as default_room_price 
             FROM rooms 
             LEFT JOIN room_types ON rooms.room_type_id = room_types.id 
             WHERE rooms.is_deleted = $1 
@@ -63,6 +73,7 @@ impl Room {
             let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
             let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
             let room_type_name: String = row.try_get("room_type_name").unwrap_or_default();
+            let default_room_price: Option<f32> = row.try_get("default_room_price").unwrap_or(None);
 
             let room = Room {
                 id,
@@ -72,6 +83,7 @@ impl Room {
                 created_at,
                 updated_at,
                 room_type_name,
+                default_room_price,
             };
             result.push(room);
         }
