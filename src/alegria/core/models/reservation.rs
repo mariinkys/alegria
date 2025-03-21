@@ -153,4 +153,91 @@ impl Reservation {
 
         Ok(result)
     }
+
+    /// Adds the given reservation with it's rooms to the database
+    pub async fn add(pool: Arc<PgPool>, reservation: Reservation) -> Result<(), sqlx::Error> {
+        let mut tx = pool.begin().await?;
+
+        // check if rooms are available for the given date range
+        if let (Some(entry_date), Some(departure_date)) =
+            (reservation.entry_date, reservation.departure_date)
+        {
+            if entry_date >= departure_date {
+                return Err(sqlx::Error::Protocol(
+                    "entry date must be before departure date".to_string(),
+                ));
+            }
+
+            for sold_room in &reservation.rooms {
+                let overlapping_count = sqlx::query(
+                    "SELECT COUNT(*) FROM reservations r
+                        JOIN reservation_sold_rooms rsr ON r.id = rsr.reservation_id
+                        JOIN sold_rooms sr ON rsr.sold_room_id = sr.id
+                        WHERE sr.room_id = $1
+                        AND r.is_deleted = false
+                        AND r.entry_date < $3  -- existing entry is before new departure
+                        AND r.departure_date > $2  -- existing departure is after new entry
+                        AND NOT (r.departure_date = $2)  -- allow booking when existing departure equals new entry
+                    "
+                )
+                .bind(sold_room.room_id)
+                .bind(entry_date)
+                .bind(departure_date)
+                .fetch_one(&mut *tx)
+                .await?;
+
+                let count: i64 = overlapping_count.get(0);
+                if count > 0 {
+                    return Err(sqlx::Error::Protocol(format!(
+                        "Room {:?} is already reserved for the selected date range",
+                        sold_room.room_id
+                    )));
+                }
+            }
+        } else {
+            return Err(sqlx::Error::Protocol(
+                "entry and departure dates are required".to_string(),
+            ));
+        }
+
+        // Insert the reservation
+        let reservation_id = sqlx::query("INSERT INTO reservations (client_id, entry_date, departure_date, occupied, is_deleted, created_at, updated_at) 
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+            RETURNING id",
+        )
+        .bind(reservation.client_id)
+        .bind(reservation.entry_date)
+        .bind(reservation.departure_date)
+        .bind(reservation.occupied)
+        .bind(reservation.is_deleted)
+        .fetch_one(&mut *tx)
+        .await?
+        .get::<i32, _>(0);
+
+        // create all sold_rooms for the reservation
+        for sold_room in &reservation.rooms {
+            // create sold_room
+            let sold_room_id =
+                sqlx::query("INSERT INTO sold_rooms (room_id, price) VALUES ($1, $2) RETURNING id")
+                    .bind(sold_room.room_id)
+                    .bind(sold_room.price)
+                    .fetch_one(&mut *tx)
+                    .await?
+                    .get::<i32, _>(0);
+
+            // insert association in reservation_sold_rooms
+            sqlx::query(
+                "INSERT INTO reservation_sold_rooms (reservation_id, sold_room_id) VALUES ($1, $2)",
+            )
+            .bind(reservation_id)
+            .bind(sold_room_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        // Commit the transaction
+        tx.commit().await?;
+
+        Ok(())
+    }
 }

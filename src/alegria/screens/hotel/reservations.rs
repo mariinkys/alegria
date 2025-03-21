@@ -124,6 +124,8 @@ pub enum Message {
     RemoveReservationRoom(i32), // Asks to remove a room to the vec of booked rooms of the current add/edit reservation
 
     Clients(clients::Message), // Messages of the clients (selector) page
+
+    AddReservation, // Tries to add the current reservation to the database
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -231,7 +233,10 @@ impl Reservations {
 
                 // we only add the clicked room to the reservation if it's available on the selected dates
                 let can_add_room = !self.reservations.iter().any(|reservation| {
-                    reservation.rooms.iter().any(|r| r.id == clicked_room.id)
+                    reservation
+                        .rooms
+                        .iter()
+                        .any(|r| r.room_id == clicked_room.id)
                         && reservation.entry_date.unwrap()
                             <= self
                                 .add_edit_reservation
@@ -484,6 +489,28 @@ impl Reservations {
                     }
                 }
             }
+
+            // Tries to add the current reservation to the database
+            Message::AddReservation => {
+                if let Some(reservation) = &self.add_edit_reservation {
+                    let valid = is_new_reservation_valid(reservation);
+                    if valid {
+                        if let Some(pool) = &self.database {
+                            action.add_task(Task::perform(
+                                Reservation::add(pool.clone(), reservation.clone()),
+                                |res| match res {
+                                    Ok(_) => Message::Back,
+                                    Err(err) => {
+                                        eprintln!("{err}");
+                                        // TODO: Toast (and remove CancelDateOperation)
+                                        Message::CancelDateOperation
+                                    }
+                                },
+                            ));
+                        }
+                    }
+                }
+            }
         };
 
         action
@@ -707,7 +734,7 @@ impl Reservations {
 
                 for reservation in &self.reservations {
                     // check if the current room is part of the reservation and if the date falls within the reservation period
-                    if reservation.rooms.iter().any(|r| r.id == room.id)
+                    if reservation.rooms.iter().any(|r| r.room_id == room.id)
                         && reservation.entry_date.unwrap_or_default().date() <= current_date
                         // departure date does not have an equal because we can book a room the day someone departs
                         && reservation.departure_date.unwrap_or_default().date() > current_date
@@ -837,7 +864,7 @@ impl Reservations {
                     .filter(|room| {
                         // check if this room can be booked with the current selected dates...
                         !self.reservations.iter().any(|reservation| {
-                            reservation.rooms.iter().any(|r| r.id == room.id)
+                            reservation.rooms.iter().any(|r| r.room_id == room.id)
                                 && reservation.entry_date.unwrap_or_default().date()
                                     <= new_reservation.departure_date.unwrap_or_default().date()
                                 && reservation.departure_date.unwrap_or_default().date()
@@ -907,6 +934,16 @@ impl Reservations {
                     .width(Length::Fill)
                     .spacing(1.);
 
+                // Submit
+                let submit_button = widget::Button::new(
+                    widget::Text::new(fl!("add"))
+                        .width(Length::Fill)
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center),
+                )
+                .on_press(Message::AddReservation)
+                .width(Length::Fill);
+
                 // Layout
                 let date_inputs = widget::Column::new()
                     .push(entry_date_input_column)
@@ -929,6 +966,7 @@ impl Reservations {
                 let result = widget::Column::new()
                     .push(client_selection_col)
                     .push(second_row)
+                    .push(submit_button)
                     .spacing(spacing)
                     .width(Length::Fixed(850.));
 
@@ -963,4 +1001,21 @@ impl Reservations {
     //
     //  END OF VIEW COMPOSING
     //
+}
+
+fn is_new_reservation_valid(reservation: &Reservation) -> bool {
+    if reservation.client_id.is_none() {
+        return false;
+    }
+    if reservation.rooms.is_empty() {
+        return false;
+    }
+    if reservation.entry_date.is_none() {
+        return false;
+    }
+    if reservation.departure_date.is_none() {
+        return false;
+    }
+
+    true
 }
