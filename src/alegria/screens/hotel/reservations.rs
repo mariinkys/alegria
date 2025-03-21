@@ -22,10 +22,13 @@ use crate::{
     fl,
 };
 
+use super::clients::{self, Clients, ClientsPageMode};
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReservationsScreen {
     Home,
     Add,
+    ClientSelection,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +97,8 @@ pub struct Reservations {
     add_edit_reservation: Option<Reservation>,
     /// Holds the state of the datepickers to input dates for a reservation
     add_edit_reservation_datepickers_state: ReservationDateInputState,
+    /// Clients SubScreen of the reservation page (client selection)
+    clients_selector: Clients,
 }
 
 #[derive(Debug, Clone)]
@@ -102,6 +107,7 @@ pub enum Message {
 
     InitPage, // Intended to be called from Hotel when first opening the page, asks for the necessary data and executes the appropiate callbacks
     OpenAddReservationForm(NaiveDate, Room), // Changes the current screen to add reservation and sets the needed variables for creating a new reservation
+    OpenClientSelector,                      // Asks to open the client selector page/component
 
     FetchReservations,                 // Fetches all the reservations
     SetReservations(Vec<Reservation>), // Sets the reservations on the app state
@@ -116,6 +122,8 @@ pub enum Message {
     ToggleOccupiedCheckbox(bool), // Change occupied checkbox value for the current add/edit reservation
     AddReservationRoom(i32, Option<f32>), // Asks to add a room to the vec of booked rooms of the current add/edit reservation
     RemoveReservationRoom(i32), // Asks to remove a room to the vec of booked rooms of the current add/edit reservation
+
+    Clients(clients::Message), // Messages of the clients (selector) page
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -135,6 +143,7 @@ impl Reservations {
             date_filters: DateFiltersState::default(),
             add_edit_reservation: None,
             add_edit_reservation_datepickers_state: ReservationDateInputState::default(),
+            clients_selector: Clients::init(),
         }
     }
 
@@ -142,13 +151,14 @@ impl Reservations {
     /// intended to be called when switching to another screen in order to save memory.
     pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
         Self {
-            database,
+            database: database.clone(),
             current_screen: ReservationsScreen::Home,
             reservations: Vec::new(),
             rooms: Vec::new(),
             date_filters: DateFiltersState::default(),
             add_edit_reservation: None,
             add_edit_reservation_datepickers_state: ReservationDateInputState::default(),
+            clients_selector: Clients::clean_state(database),
         }
     }
 
@@ -165,6 +175,10 @@ impl Reservations {
                         ReservationDateInputState::default();
                     self.current_screen = ReservationsScreen::Home;
                     return self.update(Message::FetchReservations);
+                }
+                ReservationsScreen::ClientSelection => {
+                    self.clients_selector = Clients::clean_state(self.database.clone());
+                    self.current_screen = ReservationsScreen::Add;
                 }
             },
 
@@ -247,6 +261,14 @@ impl Reservations {
                             invoices: Vec::new(),
                         });
                 }
+            }
+            // Asks to open the client selector page/component
+            Message::OpenClientSelector => {
+                self.clients_selector.page_mode = ClientsPageMode::Selection;
+                self.clients_selector.database = self.database.clone();
+                let clients_action = self.update(Message::Clients(clients::Message::InitPage));
+                action.tasks.extend(clients_action.tasks);
+                self.current_screen = ReservationsScreen::ClientSelection;
             }
 
             // Fetches all the reservations
@@ -426,7 +448,40 @@ impl Reservations {
                 if let Some(reservation) = self.add_edit_reservation.as_mut() {
                     reservation
                         .rooms
-                        .retain(|room| room.room_id != Some(room_id));
+                        .retain(|room| room.room_id != Some(room_id) || !room.invoices.is_empty());
+                }
+            }
+
+            // Messages of the clients (selector) page
+            Message::Clients(message) => {
+                let client_action = self.clients_selector.update(message);
+
+                let clients_tasks: Vec<Task<Message>> = client_action
+                    .tasks
+                    .into_iter()
+                    .map(|task| task.map(Message::Clients))
+                    .collect();
+                action.tasks.extend(clients_tasks);
+
+                for instructions in client_action.instructions {
+                    match instructions {
+                        clients::ClientsInstruction::Back => {
+                            let _ = self.update(Message::Back);
+                        }
+                        clients::ClientsInstruction::ClientSelected(client) => {
+                            if let Some(reservation) = self.add_edit_reservation.as_mut() {
+                                reservation.client_id = client.id;
+                                reservation.client_name = format!(
+                                    "{} {} {} | {}",
+                                    client.name,
+                                    client.first_surname,
+                                    client.second_surname,
+                                    client.country
+                                );
+                                let _ = self.update(Message::Back);
+                            }
+                        }
+                    }
                 }
             }
         };
@@ -446,6 +501,9 @@ impl Reservations {
         let content = match self.current_screen {
             ReservationsScreen::Home => self.view_reservations_calendar(),
             ReservationsScreen::Add => self.view_add_reservation_form(),
+            ReservationsScreen::ClientSelection => {
+                self.clients_selector.view().map(Message::Clients)
+            }
         };
 
         widget::Column::new()
@@ -466,6 +524,11 @@ impl Reservations {
 
     /// Returns the view of the header row of the subscreen
     fn view_header_row(&self) -> Element<Message> {
+        if self.current_screen == ReservationsScreen::ClientSelection {
+            return widget::Container::new(widget::Space::new(Length::Shrink, Length::Shrink))
+                .into();
+        }
+
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
@@ -814,12 +877,58 @@ impl Reservations {
                     }
                 }
 
-                let result = widget::Column::new()
+                // Client Selection
+                let client_text = if new_reservation.client_name.is_empty() {
+                    fl!("no-client-selected")
+                } else {
+                    new_reservation.client_name.clone()
+                };
+                let client_selection_row = widget::Row::new()
+                    .push(
+                        widget::Text::new(client_text)
+                            .size(Self::TEXT_SIZE)
+                            .width(Length::Fill),
+                    )
+                    .push(
+                        widget::Button::new(
+                            widget::Text::new(fl!("select"))
+                                .width(Length::Shrink)
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .width(Length::Shrink)
+                        .on_press(Message::OpenClientSelector),
+                    )
+                    .align_y(Alignment::Center)
+                    .width(Length::Fill);
+                let client_selection_col = widget::Column::new()
+                    .push(widget::Text::new(fl!("main-client")).width(Length::Fill))
+                    .push(client_selection_row)
+                    .width(Length::Fill)
+                    .spacing(1.);
+
+                // Layout
+                let date_inputs = widget::Column::new()
                     .push(entry_date_input_column)
                     .push(departure_date_input_column)
                     .push(occupied)
+                    .spacing(spacing)
+                    .width(Length::Fill);
+                let rooms_col = widget::Column::new()
                     .push(rooms_selector_column)
                     .push(reservation_rooms_column)
+                    .spacing(spacing)
+                    .width(Length::Fill);
+                let second_row = widget::Row::new()
+                    .push(date_inputs)
+                    .push(rooms_col)
+                    .spacing(spacing)
+                    .align_y(Alignment::Start)
+                    .width(Length::Fill);
+
+                let result = widget::Column::new()
+                    .push(client_selection_col)
+                    .push(second_row)
                     .spacing(spacing)
                     .width(Length::Fixed(850.));
 

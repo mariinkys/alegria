@@ -208,6 +208,9 @@ impl Hotel {
                         clients::ClientsInstruction::Back => {
                             let _ = self.update(Message::ChangeSubScreen(SubScreen::Home));
                         }
+                        clients::ClientsInstruction::ClientSelected(_) => {
+                            eprintln!("Client selection here it's not possible");
+                        }
                     }
                 }
             }
