@@ -726,11 +726,13 @@ impl Reservations {
             // loop through each day in the range and check for reservations
             let mut current_date = self.date_filters.initial_date;
             while current_date <= self.date_filters.last_date {
-                let mut cell_content = widget::Button::new("")
-                    .on_press(Message::OpenAddReservationForm(current_date, room.clone()))
-                    .style(widget::button::secondary)
-                    .width(cell_width)
-                    .height(cell_height);
+                let mut cell_content = widget::Container::new(
+                    widget::Button::new("")
+                        .on_press(Message::OpenAddReservationForm(current_date, room.clone()))
+                        .style(widget::button::secondary)
+                        .width(cell_width)
+                        .height(cell_height),
+                );
 
                 for reservation in &self.reservations {
                     // check if the current room is part of the reservation and if the date falls within the reservation period
@@ -741,16 +743,28 @@ impl Reservations {
                     {
                         match reservation.occupied {
                             true => {
-                                cell_content = widget::Button::new("")
-                                    .style(widget::button::success)
-                                    .width(cell_width)
-                                    .height(cell_height)
+                                cell_content = widget::Container::new(widget::Tooltip::new(
+                                    widget::Button::new("")
+                                        .style(widget::button::success)
+                                        .width(cell_width)
+                                        .height(cell_height),
+                                    widget::container(reservation.client_name.as_str())
+                                        .style(widget::container::rounded_box)
+                                        .padding(Padding::new(3.)),
+                                    widget::tooltip::Position::FollowCursor,
+                                ));
                             }
                             false => {
-                                cell_content = widget::Button::new("")
-                                    .style(widget::button::danger)
-                                    .width(cell_width)
-                                    .height(cell_height)
+                                cell_content = widget::Container::new(widget::Tooltip::new(
+                                    widget::Button::new("")
+                                        .style(widget::button::danger)
+                                        .width(cell_width)
+                                        .height(cell_height),
+                                    widget::container(reservation.client_name.as_str())
+                                        .style(widget::container::rounded_box)
+                                        .padding(Padding::new(3.)),
+                                    widget::tooltip::Position::FollowCursor,
+                                ));
                             }
                         }
                         break; // each room can only have one reservation per day
