@@ -238,7 +238,7 @@ impl Reservations {
                         .iter()
                         .any(|r| r.room_id == clicked_room.id)
                         && reservation.entry_date.unwrap()
-                            <= self
+                            < self
                                 .add_edit_reservation
                                 .as_ref()
                                 .unwrap()
@@ -862,13 +862,12 @@ impl Reservations {
                     .clone()
                     .into_iter()
                     .filter(|room| {
-                        // check if this room can be booked with the current selected dates...
                         !self.reservations.iter().any(|reservation| {
                             reservation.rooms.iter().any(|r| r.room_id == room.id)
-                                && reservation.entry_date.unwrap_or_default().date()
-                                    <= new_reservation.departure_date.unwrap_or_default().date()
-                                && reservation.departure_date.unwrap_or_default().date()
-                                    > new_reservation.entry_date.unwrap_or_default().date()
+                                && reservation.entry_date.unwrap()
+                                    < new_reservation.departure_date.unwrap()
+                                && reservation.departure_date.unwrap()
+                                    > new_reservation.entry_date.unwrap()
                         })
                     })
                     .collect::<Vec<Room>>();
