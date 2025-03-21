@@ -101,7 +101,7 @@ pub enum Message {
     Back, // Asks the parent (app.rs) to go back
 
     InitPage, // Intended to be called from Hotel when first opening the page, asks for the necessary data and executes the appropiate callbacks
-    OpenAddReservationForm(NaiveDate), // Changes the current screen to add reservation and sets the needed variables for creating a new reservation
+    OpenAddReservationForm(NaiveDate, Room), // Changes the current screen to add reservation and sets the needed variables for creating a new reservation
 
     FetchReservations,                 // Fetches all the reservations
     SetReservations(Vec<Reservation>), // Sets the reservations on the app state
@@ -201,7 +201,7 @@ impl Reservations {
                 }
             }
             // Changes the current screen of the reservations page
-            Message::OpenAddReservationForm(reservation_initial_date) => {
+            Message::OpenAddReservationForm(reservation_initial_date, clicked_room) => {
                 self.current_screen = ReservationsScreen::Add;
                 self.add_edit_reservation = Some(Reservation {
                     entry_date: Some(reservation_initial_date.and_hms_opt(0, 0, 0).unwrap()),
@@ -212,6 +212,13 @@ impl Reservations {
                             .checked_add_days(chrono::Days::new(1))
                             .unwrap(),
                     ),
+                    rooms: vec![SoldRoom {
+                        id: None,
+                        room_id: clicked_room.id,
+                        guests: Vec::new(),
+                        price: clicked_room.default_room_price,
+                        invoices: Vec::new(),
+                    }],
                     ..Default::default()
                 })
             }
@@ -604,7 +611,7 @@ impl Reservations {
             let mut current_date = self.date_filters.initial_date;
             while current_date <= self.date_filters.last_date {
                 let mut cell_content = widget::Button::new("")
-                    .on_press(Message::OpenAddReservationForm(current_date))
+                    .on_press(Message::OpenAddReservationForm(current_date, room.clone()))
                     .style(widget::button::secondary)
                     .width(cell_width)
                     .height(cell_height);
@@ -734,13 +741,27 @@ impl Reservations {
                     .on_toggle(Message::ToggleOccupiedCheckbox);
 
                 // Rooms Selector
+                let available_rooms = self
+                    .rooms
+                    .clone()
+                    .into_iter()
+                    .filter(|room| {
+                        // check if this room can be booked with the current selected dates...
+                        !self.reservations.iter().any(|reservation| {
+                            reservation.rooms.iter().any(|r| r.id == room.id)
+                                && reservation.entry_date.unwrap_or_default().date()
+                                    <= new_reservation.departure_date.unwrap_or_default().date()
+                                && reservation.departure_date.unwrap_or_default().date()
+                                    > new_reservation.entry_date.unwrap_or_default().date()
+                        })
+                    })
+                    .collect::<Vec<Room>>();
                 let rooms_label = widget::Text::new(fl!("rooms")).width(Length::Fill);
                 let selected_room = self.rooms.first().cloned();
-                let rooms_selector =
-                    widget::PickList::new(self.rooms.clone(), selected_room, |r| {
-                        Message::AddReservationRoom(r.id.unwrap(), r.default_room_price)
-                    })
-                    .width(Length::Fill);
+                let rooms_selector = widget::PickList::new(available_rooms, selected_room, |r| {
+                    Message::AddReservationRoom(r.id.unwrap(), r.default_room_price)
+                })
+                .width(Length::Fill);
                 let rooms_selector_column = widget::Column::new()
                     .push(rooms_label)
                     .push(rooms_selector)
