@@ -212,15 +212,41 @@ impl Reservations {
                             .checked_add_days(chrono::Days::new(1))
                             .unwrap(),
                     ),
-                    rooms: vec![SoldRoom {
-                        id: None,
-                        room_id: clicked_room.id,
-                        guests: Vec::new(),
-                        price: clicked_room.default_room_price,
-                        invoices: Vec::new(),
-                    }],
                     ..Default::default()
-                })
+                });
+
+                // we only add the clicked room to the reservation if it's available on the selected dates
+                let can_add_room = !self.reservations.iter().any(|reservation| {
+                    reservation.rooms.iter().any(|r| r.id == clicked_room.id)
+                        && reservation.entry_date.unwrap()
+                            <= self
+                                .add_edit_reservation
+                                .as_ref()
+                                .unwrap()
+                                .departure_date
+                                .unwrap()
+                        && reservation.departure_date.unwrap()
+                            > self
+                                .add_edit_reservation
+                                .as_ref()
+                                .unwrap()
+                                .entry_date
+                                .unwrap()
+                });
+
+                if can_add_room {
+                    self.add_edit_reservation
+                        .as_mut()
+                        .unwrap()
+                        .rooms
+                        .push(SoldRoom {
+                            id: None,
+                            room_id: clicked_room.id,
+                            guests: Vec::new(),
+                            price: clicked_room.default_room_price,
+                            invoices: Vec::new(),
+                        });
+                }
             }
 
             // Fetches all the reservations
@@ -757,7 +783,7 @@ impl Reservations {
                     })
                     .collect::<Vec<Room>>();
                 let rooms_label = widget::Text::new(fl!("rooms")).width(Length::Fill);
-                let selected_room = self.rooms.first().cloned();
+                let selected_room = available_rooms.first().cloned();
                 let rooms_selector = widget::PickList::new(available_rooms, selected_room, |r| {
                     Message::AddReservationRoom(r.id.unwrap(), r.default_room_price)
                 })
