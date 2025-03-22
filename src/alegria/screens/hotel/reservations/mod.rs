@@ -21,7 +21,8 @@ use crate::{
     alegria::{
         action::AlegriaAction,
         core::models::{reservation::Reservation, room::Room, sold_room::SoldRoom},
-        utils::{check_date_format, parse_date_to_naive_datetime},
+        utils::{check_date_format, error_toast, parse_date_to_naive_datetime},
+        widgets::toast::{self, Toast},
     },
     fl,
 };
@@ -77,6 +78,8 @@ pub enum ReservationTextInputFields {
 pub struct Reservations {
     /// Database of the application
     pub database: Option<Arc<PgPool>>,
+    /// Page Toasts
+    toasts: Vec<Toast>,
     /// Determines which is the current view of the subscreen
     current_screen: ReservationsScreen,
     /// Holds the state of all the reservations (of the given time/period)
@@ -91,8 +94,10 @@ pub struct Reservations {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    None, // Does Nothing
     Back, // Asks the parent (app.rs) to go back
+
+    AddToast(Toast),   // Adds the given toast to the state to be shown on screen
+    CloseToast(usize), // Callback after clicking the close toast button
 
     InitPage, // Intended to be called from Hotel when first opening the page, asks for the necessary data and executes the appropiate callbacks
     OpenAddReservationForm(NaiveDate, Room), // Changes the current screen to add reservation and sets the needed variables for creating a new reservation
@@ -121,6 +126,7 @@ impl Reservations {
     pub fn init() -> Self {
         Self {
             database: None,
+            toasts: Vec::new(),
             current_screen: ReservationsScreen::Home,
             reservations: Arc::default(),
             rooms: Arc::default(),
@@ -134,6 +140,7 @@ impl Reservations {
     pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
         Self {
             database: database.clone(),
+            toasts: Vec::new(),
             current_screen: ReservationsScreen::Home,
             reservations: Arc::default(),
             rooms: Arc::default(),
@@ -147,7 +154,6 @@ impl Reservations {
         let mut action = AlegriaAction::new();
 
         match message {
-            Message::None => {}
             Message::Back => match self.current_screen {
                 ReservationsScreen::Home => action.add_instruction(ReservationsInstruction::Back),
                 ReservationsScreen::Add => {
@@ -156,6 +162,15 @@ impl Reservations {
                     return self.update(Message::FetchReservations);
                 } //ReservationsScreen::Edit => todo!(),
             },
+
+            // Adds the given toast to the state to be shown on screen
+            Message::AddToast(toast) => {
+                self.toasts.push(toast);
+            }
+            // Callback after clicking the close toast button
+            Message::CloseToast(index) => {
+                self.toasts.remove(index);
+            }
 
             // Intended to be called from Hotel when first opening the page, asks for the necessary data and executes the appropiate callbacks
             Message::InitPage => {
@@ -263,7 +278,9 @@ impl Reservations {
                         }
                     };
                 } else {
-                    eprintln!("Can't parse dates"); // TODO: Toast
+                    self.toasts
+                        .push(error_toast(String::from("Can't parse dates")));
+                    eprintln!("Can't parse dates");
                 }
             }
             // Sets the reservations on the app state
@@ -333,7 +350,8 @@ impl Reservations {
                         self.date_filters.show_last_date_picker = false;
                     }
                     None => {
-                        // TODO: Toast
+                        self.toasts
+                            .push(error_toast(String::from("Could not parse new date")));
                         eprintln!("Could not parse new date");
                         return self.update(Message::FetchReservations);
                     }
@@ -364,12 +382,14 @@ impl Reservations {
                                         Ok(_) => Message::Back,
                                         Err(err) => {
                                             eprintln!("{err}");
-                                            // TODO: Toast
-                                            Message::None
+                                            Message::AddToast(error_toast(err.to_string()))
                                         }
                                     },
                                 ));
                             }
+                        }
+                        add::AddReservationsInstruction::ShowToast(toast) => {
+                            self.toasts.push(toast);
                         }
                     }
                 }
@@ -405,13 +425,17 @@ impl Reservations {
             //ReservationsScreen::Edit => todo!(),
         };
 
-        widget::Column::new()
-            .push(header_row)
-            .push(content)
-            .spacing(spacing)
-            .height(Length::Fill)
-            .width(Length::Fill)
-            .into()
+        toast::Manager::new(
+            widget::Column::new()
+                .push(header_row)
+                .push(content)
+                .spacing(spacing)
+                .height(Length::Fill)
+                .width(Length::Fill),
+            &self.toasts,
+            Message::CloseToast,
+        )
+        .into()
     }
 
     //

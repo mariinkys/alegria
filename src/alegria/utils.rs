@@ -2,7 +2,7 @@
 
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
-use super::screens::bar::TableLocation;
+use super::{screens::bar::TableLocation, widgets::toast::Toast};
 
 pub fn match_table_location_with_number(tl: TableLocation) -> i32 {
     match tl {
@@ -94,4 +94,12 @@ pub fn parse_date_to_naive_datetime(date: &str) -> Option<NaiveDateTime> {
 
     // Try to create a NaiveDate
     NaiveDate::from_ymd_opt(year, month, day).map(|date| NaiveDateTime::new(date, NaiveTime::MIN))
+}
+
+pub fn error_toast(err_msg: String) -> Toast {
+    Toast {
+        title: String::from("Error"),
+        body: err_msg,
+        status: super::widgets::toast::Status::Danger,
+    }
 }

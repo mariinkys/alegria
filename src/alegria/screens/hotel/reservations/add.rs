@@ -18,6 +18,8 @@ use crate::{
         action::AlegriaAction,
         core::models::{reservation::Reservation, room::Room, sold_room::SoldRoom},
         screens::hotel::clients::{self, Clients, ClientsPageMode},
+        utils::error_toast,
+        widgets::toast::Toast,
     },
     fl,
 };
@@ -78,6 +80,7 @@ pub enum Message {
 pub enum AddReservationsInstruction {
     Back,                           // Asks the parent (app.rs) to go back
     TryAddReservation(Reservation), // Asks the parent to add the reservation to the database
+    ShowToast(Toast),               // Asks the parent to show te given toast
 }
 
 #[allow(clippy::derivable_impls)]
@@ -242,6 +245,10 @@ impl AddReservationPage {
                         action.add_instruction(AddReservationsInstruction::TryAddReservation(
                             reservation.clone(),
                         ));
+                    } else {
+                        action.add_instruction(AddReservationsInstruction::ShowToast(error_toast(
+                            String::from("Missing required fields"),
+                        )));
                     }
                 }
             }
