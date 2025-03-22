@@ -131,9 +131,8 @@ pub enum BarInstruction {
     Back,
 }
 
-impl Bar {
-    /// Initializes the bar screen
-    pub fn init() -> Self {
+impl Default for Bar {
+    fn default() -> Self {
         Self {
             database: None,
             product_categories: Vec::new(),
@@ -154,30 +153,9 @@ impl Bar {
             },
         }
     }
+}
 
-    /// Cleans the state of the bar screen preserving the database
-    /// intended to be called when switching to another screen in order to save memory.
-    pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
-        Self {
-            database,
-            product_categories: Vec::new(),
-            product_category_products: None,
-            currently_selected_product_category: None,
-            currently_selected_pos_state: CurrentPositionState::default(),
-            temporal_tickets_model: Vec::new(),
-            active_temporal_product: None,
-            active_temporal_product_field: None,
-            product_categories_pagination_state: PaginationConfig {
-                items_per_page: 13,
-                current_page: 0,
-            },
-            product_category_products_pagination_state: PaginationConfig {
-                items_per_page: 13,
-                current_page: 0,
-            },
-        }
-    }
-
+impl Bar {
     /// Handles messages emitted by the application and its widgets.
     pub fn update(&mut self, message: Message) -> AlegriaAction<BarInstruction, Message> {
         let mut action = AlegriaAction::new();

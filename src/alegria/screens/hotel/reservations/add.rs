@@ -93,7 +93,7 @@ impl Default for AddReservationPage {
             new_reservation_datepickers_state: ReservationDateInputState::default(),
             rooms: Arc::default(),
             reservations: Arc::default(),
-            clients_selector: Clients::init(),
+            clients_selector: Clients::default(),
         }
     }
 }
@@ -113,7 +113,7 @@ impl AddReservationPage {
             new_reservation_datepickers_state: ReservationDateInputState::default(),
             rooms,
             reservations,
-            clients_selector: Clients::init(),
+            clients_selector: Clients::default(),
         }
     }
 
@@ -130,7 +130,7 @@ impl AddReservationPage {
                     action.add_instruction(AddReservationsInstruction::Back);
                 }
                 AddReservationPageMode::PickingClient => {
-                    self.clients_selector = Clients::init();
+                    self.clients_selector = Clients::default();
                     self.page_mode = AddReservationPageMode::AddingReservation;
                 }
             },

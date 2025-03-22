@@ -29,7 +29,7 @@ pub enum SubScreen {
 
 pub struct Hotel {
     /// Database of the application
-    database: Option<Arc<PgPool>>,
+    pub database: Option<Arc<PgPool>>,
     /// Represents a SubScreen of the Reservations Page
     sub_screen: SubScreen,
     /// Reservations Subscreen of the HotelPage
@@ -59,40 +59,20 @@ pub enum HotelInstruction {
     Back, // Asks the parent (app.rs) to go back
 }
 
-impl Hotel {
-    /// Initializes the bar screen
-    pub fn init() -> Self {
+impl Default for Hotel {
+    fn default() -> Self {
         Self {
             database: None,
             sub_screen: SubScreen::Home,
-            reservations: Reservations::init(),
-            room_types: RoomTypes::init(),
-            rooms: Rooms::init(),
-            clients: Clients::init(),
+            reservations: Reservations::default(),
+            room_types: RoomTypes::default(),
+            rooms: Rooms::default(),
+            clients: Clients::default(),
         }
     }
+}
 
-    pub fn set_database(&mut self, database: Option<Arc<PgPool>>) {
-        self.database = database.clone();
-        self.room_types.database = database.clone();
-        self.rooms.database = database.clone();
-        self.reservations.database = database.clone();
-        self.clients.database = database;
-    }
-
-    /// Cleans the state of the bar screen preserving the database
-    /// intended to be called when switching to another screen in order to save memory.
-    pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
-        Self {
-            database: database.clone(),
-            sub_screen: SubScreen::Home,
-            reservations: Reservations::clean_state(database.clone()),
-            room_types: RoomTypes::clean_state(database.clone()),
-            rooms: Rooms::clean_state(database.clone()),
-            clients: Clients::clean_state(database),
-        }
-    }
-
+impl Hotel {
     /// Handles messages emitted by the application and its widgets.
     pub fn update(&mut self, message: Message) -> AlegriaAction<HotelInstruction, Message> {
         let mut action = AlegriaAction::new();
@@ -103,26 +83,28 @@ impl Hotel {
             Message::ChangeSubScreen(sub_screen) => match sub_screen {
                 SubScreen::Home => {
                     self.sub_screen = sub_screen;
-                    self.reservations =
-                        reservations::Reservations::clean_state(self.database.clone());
-                    self.room_types = room_types::RoomTypes::clean_state(self.database.clone());
-                    self.rooms = rooms::Rooms::clean_state(self.database.clone());
-                    self.clients = clients::Clients::clean_state(self.database.clone());
+                    self.reservations = reservations::Reservations::default();
+                    self.room_types = room_types::RoomTypes::default();
+                    self.rooms = rooms::Rooms::default();
+                    self.clients = clients::Clients::default();
                 }
                 SubScreen::Reservations => {
                     self.sub_screen = sub_screen;
+                    self.reservations.database = self.database.clone();
                     let reservations_action =
                         self.update(Message::Reservations(reservations::Message::InitPage));
                     action.tasks.extend(reservations_action.tasks);
                 }
                 SubScreen::RoomTypes => {
                     self.sub_screen = sub_screen;
+                    self.room_types.database = self.database.clone();
                     let room_types_action =
                         self.update(Message::RoomTypes(room_types::Message::FetchRoomTypes));
                     action.tasks.extend(room_types_action.tasks);
                 }
                 SubScreen::Rooms => {
                     self.sub_screen = sub_screen;
+                    self.rooms.database = self.database.clone();
                     let rooms_action = self.update(Message::Rooms(rooms::Message::FetchRooms));
                     let room_types_action =
                         self.update(Message::Rooms(rooms::Message::FetchRoomTypes));
@@ -131,6 +113,7 @@ impl Hotel {
                 }
                 SubScreen::Clients => {
                     self.sub_screen = sub_screen;
+                    self.clients.database = self.database.clone();
                     let clients_action = self.update(Message::Clients(clients::Message::InitPage));
                     action.tasks.extend(clients_action.tasks);
                 }

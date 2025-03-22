@@ -45,8 +45,8 @@ impl IcedAlegria {
         Self {
             database: None,
             screen: Screen::Home,
-            bar: Bar::init(),
-            hotel: Hotel::init(),
+            bar: Bar::default(),
+            hotel: Hotel::default(),
         }
     }
 
@@ -124,22 +124,21 @@ impl IcedAlegria {
         match message {
             Message::DatabaseLoaded(pool) => {
                 self.database = Some(pool);
-                self.bar.database = self.database.clone();
-                self.hotel.set_database(self.database.clone());
             }
             Message::ChangeScreen(screen) => match screen {
                 Screen::Home => {
                     self.screen = screen;
-                    self.bar =
-                        crate::alegria::screens::bar::Bar::clean_state(self.database.clone());
-                    self.hotel = hotel::Hotel::clean_state(self.database.clone());
+                    self.bar = bar::Bar::default();
+                    self.hotel = hotel::Hotel::default();
                 }
                 Screen::Bar => {
+                    self.bar.database = self.database.clone();
                     tasks.push(self.update(Message::Bar(bar::Message::FetchProductCategories)));
                     tasks.push(self.update(Message::Bar(bar::Message::FetchTemporalTickets)));
                     self.screen = screen;
                 }
                 Screen::Hotel => {
+                    self.hotel.database = self.database.clone();
                     self.screen = screen;
                 }
             },
