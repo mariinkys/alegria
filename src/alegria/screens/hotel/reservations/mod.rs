@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+mod add;
+mod edit;
+
 use std::sync::Arc;
 
+use add::AddReservationPage;
 use chrono::{Datelike, Local, NaiveDate};
 use iced::{
     Alignment, Element, Length, Padding, Pixels, Task,
@@ -22,13 +26,11 @@ use crate::{
     fl,
 };
 
-use super::clients::{self, Clients, ClientsPageMode};
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReservationsScreen {
     Home,
     Add,
-    ClientSelection,
+    //Edit,
 }
 
 #[derive(Debug, Clone)]
@@ -61,13 +63,9 @@ impl Default for DateFiltersState {
 }
 
 #[derive(Debug, Clone)]
-#[allow(clippy::enum_variant_names)]
 pub enum ReservationDateInputFields {
     FilterInitialDate,
     FilterLastDate,
-
-    EntryDate,
-    DepartureDate,
 }
 
 #[derive(Debug, Clone)]
@@ -76,56 +74,40 @@ pub enum ReservationTextInputFields {
     FilterLastDate,
 }
 
-#[derive(Default, Debug, Clone)]
-struct ReservationDateInputState {
-    show_entry_date_picker: bool,
-    show_departure_date_picker: bool,
-}
-
 pub struct Reservations {
     /// Database of the application
     pub database: Option<Arc<PgPool>>,
     /// Determines which is the current view of the subscreen
     current_screen: ReservationsScreen,
     /// Holds the state of all the reservations (of the given time/period)
-    reservations: Vec<Reservation>,
+    reservations: Arc<Vec<Reservation>>,
     /// Holds the state of all the rooms (needed to create the kinda grid/calendar view)
-    rooms: Vec<Room>,
+    rooms: Arc<Vec<Room>>,
     /// Holds the state of the date filters that control which reservations are being shown
     date_filters: DateFiltersState,
-    /// Holds the state of the currently adding/editing reservation
-    add_edit_reservation: Option<Reservation>,
-    /// Holds the state of the datepickers to input dates for a reservation
-    add_edit_reservation_datepickers_state: ReservationDateInputState,
-    /// Clients SubScreen of the reservation page (client selection)
-    clients_selector: Clients,
+    /// Add SubScreen of the reservation page
+    add_reservations: AddReservationPage,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    None, // Does Nothing
     Back, // Asks the parent (app.rs) to go back
 
     InitPage, // Intended to be called from Hotel when first opening the page, asks for the necessary data and executes the appropiate callbacks
     OpenAddReservationForm(NaiveDate, Room), // Changes the current screen to add reservation and sets the needed variables for creating a new reservation
-    OpenClientSelector,                      // Asks to open the client selector page/component
 
     FetchReservations,                 // Fetches all the reservations
     SetReservations(Vec<Reservation>), // Sets the reservations on the app state
 
-    //FetchRooms, // Fetches all the rooms
     SetRooms(Vec<Room>), // Sets the rooms on the app state
 
     TextInputUpdate(String, ReservationTextInputFields), // Callback when using the text inputs of the reservations page
     ShowDatePicker(ReservationDateInputFields),          // Asks to open the requesed date picker
     CancelDateOperation,                                 // Cancels the datepicker changes
     UpdateDateField(date_picker::Date, ReservationDateInputFields), // Callback after submiting a new date via datepicker
-    ToggleOccupiedCheckbox(bool), // Change occupied checkbox value for the current add/edit reservation
-    AddReservationRoom(i32, Option<f32>), // Asks to add a room to the vec of booked rooms of the current add/edit reservation
-    RemoveReservationRoom(i32), // Asks to remove a room to the vec of booked rooms of the current add/edit reservation
 
-    Clients(clients::Message), // Messages of the clients (selector) page
-
-    AddReservation, // Tries to add the current reservation to the database
+    AddReservationPage(self::add::Message), // Messages of the add reservations page
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -140,12 +122,10 @@ impl Reservations {
         Self {
             database: None,
             current_screen: ReservationsScreen::Home,
-            reservations: Vec::new(),
-            rooms: Vec::new(),
+            reservations: Arc::default(),
+            rooms: Arc::default(),
             date_filters: DateFiltersState::default(),
-            add_edit_reservation: None,
-            add_edit_reservation_datepickers_state: ReservationDateInputState::default(),
-            clients_selector: Clients::init(),
+            add_reservations: AddReservationPage::default(),
         }
     }
 
@@ -155,12 +135,10 @@ impl Reservations {
         Self {
             database: database.clone(),
             current_screen: ReservationsScreen::Home,
-            reservations: Vec::new(),
-            rooms: Vec::new(),
+            reservations: Arc::default(),
+            rooms: Arc::default(),
             date_filters: DateFiltersState::default(),
-            add_edit_reservation: None,
-            add_edit_reservation_datepickers_state: ReservationDateInputState::default(),
-            clients_selector: Clients::clean_state(database),
+            add_reservations: AddReservationPage::default(),
         }
     }
 
@@ -169,19 +147,14 @@ impl Reservations {
         let mut action = AlegriaAction::new();
 
         match message {
+            Message::None => {}
             Message::Back => match self.current_screen {
                 ReservationsScreen::Home => action.add_instruction(ReservationsInstruction::Back),
                 ReservationsScreen::Add => {
-                    self.add_edit_reservation = None;
-                    self.add_edit_reservation_datepickers_state =
-                        ReservationDateInputState::default();
+                    self.add_reservations = AddReservationPage::default();
                     self.current_screen = ReservationsScreen::Home;
                     return self.update(Message::FetchReservations);
-                }
-                ReservationsScreen::ClientSelection => {
-                    self.clients_selector = Clients::clean_state(self.database.clone());
-                    self.current_screen = ReservationsScreen::Add;
-                }
+                } //ReservationsScreen::Edit => todo!(),
             },
 
             // Intended to be called from Hotel when first opening the page, asks for the necessary data and executes the appropiate callbacks
@@ -218,8 +191,7 @@ impl Reservations {
             }
             // Changes the current screen of the reservations page
             Message::OpenAddReservationForm(reservation_initial_date, clicked_room) => {
-                self.current_screen = ReservationsScreen::Add;
-                self.add_edit_reservation = Some(Reservation {
+                let mut reservation = Reservation {
                     entry_date: Some(reservation_initial_date.and_hms_opt(0, 0, 0).unwrap()),
                     departure_date: Some(
                         reservation_initial_date
@@ -229,51 +201,31 @@ impl Reservations {
                             .unwrap(),
                     ),
                     ..Default::default()
-                });
+                };
 
                 // we only add the clicked room to the reservation if it's available on the selected dates
-                let can_add_room = !self.reservations.iter().any(|reservation| {
-                    reservation
-                        .rooms
-                        .iter()
-                        .any(|r| r.room_id == clicked_room.id)
-                        && reservation.entry_date.unwrap()
-                            < self
-                                .add_edit_reservation
-                                .as_ref()
-                                .unwrap()
-                                .departure_date
-                                .unwrap()
-                        && reservation.departure_date.unwrap()
-                            > self
-                                .add_edit_reservation
-                                .as_ref()
-                                .unwrap()
-                                .entry_date
-                                .unwrap()
+                let can_add_room = !self.reservations.iter().any(|r| {
+                    r.rooms.iter().any(|r| r.room_id == clicked_room.id)
+                        && r.entry_date.unwrap() < reservation.departure_date.unwrap()
+                        && r.departure_date.unwrap() > reservation.entry_date.unwrap()
                 });
-
                 if can_add_room {
-                    self.add_edit_reservation
-                        .as_mut()
-                        .unwrap()
-                        .rooms
-                        .push(SoldRoom {
-                            id: None,
-                            room_id: clicked_room.id,
-                            guests: Vec::new(),
-                            price: clicked_room.default_room_price,
-                            invoices: Vec::new(),
-                        });
+                    reservation.rooms.push(SoldRoom {
+                        id: None,
+                        room_id: clicked_room.id,
+                        guests: Vec::new(),
+                        price: clicked_room.default_room_price,
+                        invoices: Vec::new(),
+                    });
                 }
-            }
-            // Asks to open the client selector page/component
-            Message::OpenClientSelector => {
-                self.clients_selector.page_mode = ClientsPageMode::Selection;
-                self.clients_selector.database = self.database.clone();
-                let clients_action = self.update(Message::Clients(clients::Message::InitPage));
-                action.tasks.extend(clients_action.tasks);
-                self.current_screen = ReservationsScreen::ClientSelection;
+
+                self.add_reservations = AddReservationPage::open_reservation(
+                    self.database.clone(),
+                    reservation,
+                    self.rooms.clone(),
+                    self.reservations.clone(),
+                );
+                self.current_screen = ReservationsScreen::Add;
             }
 
             // Fetches all the reservations
@@ -316,12 +268,12 @@ impl Reservations {
             }
             // Sets the reservations on the app state
             Message::SetReservations(res) => {
-                self.reservations = res;
+                self.reservations = Arc::from(res);
             }
 
             // Sets the rooms on the app state
             Message::SetRooms(res) => {
-                self.rooms = res;
+                self.rooms = Arc::from(res);
             }
 
             // Callback when using the text inputs of the reservations page
@@ -341,23 +293,11 @@ impl Reservations {
                 ReservationDateInputFields::FilterLastDate => {
                     self.date_filters.show_last_date_picker = true;
                 }
-                ReservationDateInputFields::EntryDate => {
-                    self.add_edit_reservation_datepickers_state
-                        .show_entry_date_picker = true;
-                }
-                ReservationDateInputFields::DepartureDate => {
-                    self.add_edit_reservation_datepickers_state
-                        .show_departure_date_picker = true;
-                }
             },
             // Cancels the datepicker changes
             Message::CancelDateOperation => {
                 self.date_filters.show_initial_date_picker = false;
                 self.date_filters.show_last_date_picker = false;
-                self.add_edit_reservation_datepickers_state
-                    .show_entry_date_picker = false;
-                self.add_edit_reservation_datepickers_state
-                    .show_departure_date_picker = false;
             }
             // Callback after submiting a new date via datepicker
             Message::UpdateDateField(iced_aw_date, field) => {
@@ -370,7 +310,6 @@ impl Reservations {
                 match new_date {
                     Some(date) => {
                         match field {
-                            // Filters (Home Screen)
                             ReservationDateInputFields::FilterInitialDate => {
                                 if date < self.date_filters.last_date {
                                     self.date_filters.initial_date = date;
@@ -387,34 +326,11 @@ impl Reservations {
                                     return self.update(Message::FetchReservations);
                                 }
                             }
-
-                            // Reservations (Add or Edit Screens)
-                            ReservationDateInputFields::EntryDate => {
-                                if let Some(reservation) = self.add_edit_reservation.as_mut() {
-                                    if date < reservation.departure_date.unwrap_or_default().date()
-                                    {
-                                        reservation.entry_date =
-                                            Some(date.and_hms_opt(0, 0, 0).unwrap());
-                                    }
-                                }
-                            }
-                            ReservationDateInputFields::DepartureDate => {
-                                if let Some(reservation) = self.add_edit_reservation.as_mut() {
-                                    if date > reservation.entry_date.unwrap_or_default().date() {
-                                        reservation.departure_date =
-                                            Some(date.and_hms_opt(0, 0, 0).unwrap());
-                                    }
-                                }
-                            }
                         }
 
                         // close all date pickers
                         self.date_filters.show_initial_date_picker = false;
                         self.date_filters.show_last_date_picker = false;
-                        self.add_edit_reservation_datepickers_state
-                            .show_entry_date_picker = false;
-                        self.add_edit_reservation_datepickers_state
-                            .show_departure_date_picker = false;
                     }
                     None => {
                         // TODO: Toast
@@ -423,90 +339,37 @@ impl Reservations {
                     }
                 }
             }
-            // Change occupied checkbox value for the current add/edit reservation
-            Message::ToggleOccupiedCheckbox(new_value) => {
-                if let Some(reservation) = self.add_edit_reservation.as_mut() {
-                    reservation.occupied = new_value;
-                }
-            }
-            // Asks to add a room to the vec of booked rooms of the current add/edit reservation
-            Message::AddReservationRoom(room_id, room_price) => {
-                if let Some(reservation) = self.add_edit_reservation.as_mut() {
-                    let room_already_exists = reservation
-                        .rooms
-                        .iter()
-                        .any(|sold_room| sold_room.room_id == Some(room_id));
 
-                    if !room_already_exists {
-                        reservation.rooms.push(SoldRoom {
-                            id: None,
-                            room_id: Some(room_id),
-                            guests: Vec::new(),
-                            price: room_price,
-                            invoices: Vec::new(),
-                        });
-                    }
-                }
-            }
-            // Asks to remove a room to the vec of booked rooms of the current add/edit reservation
-            Message::RemoveReservationRoom(room_id) => {
-                if let Some(reservation) = self.add_edit_reservation.as_mut() {
-                    reservation
-                        .rooms
-                        .retain(|room| room.room_id != Some(room_id) || !room.invoices.is_empty());
-                }
-            }
+            // Messages of the add reservations page
+            Message::AddReservationPage(message) => {
+                let add_reservation_action = self.add_reservations.update(message);
 
-            // Messages of the clients (selector) page
-            Message::Clients(message) => {
-                let client_action = self.clients_selector.update(message);
-
-                let clients_tasks: Vec<Task<Message>> = client_action
+                let add_reservation_tasks: Vec<Task<Message>> = add_reservation_action
                     .tasks
                     .into_iter()
-                    .map(|task| task.map(Message::Clients))
+                    .map(|task| task.map(Message::AddReservationPage))
                     .collect();
-                action.tasks.extend(clients_tasks);
+                action.tasks.extend(add_reservation_tasks);
 
-                for instructions in client_action.instructions {
+                for instructions in add_reservation_action.instructions {
                     match instructions {
-                        clients::ClientsInstruction::Back => {
-                            let _ = self.update(Message::Back);
+                        add::AddReservationsInstruction::Back => {
+                            return self.update(Message::Back);
                         }
-                        clients::ClientsInstruction::ClientSelected(client) => {
-                            if let Some(reservation) = self.add_edit_reservation.as_mut() {
-                                reservation.client_id = client.id;
-                                reservation.client_name = format!(
-                                    "{} {} {} | {}",
-                                    client.name,
-                                    client.first_surname,
-                                    client.second_surname,
-                                    client.country
-                                );
-                                let _ = self.update(Message::Back);
+                        add::AddReservationsInstruction::TryAddReservation(reservation) => {
+                            if let Some(pool) = &self.database {
+                                action.add_task(Task::perform(
+                                    Reservation::add(pool.clone(), reservation.clone()),
+                                    |res| match res {
+                                        Ok(_) => Message::Back,
+                                        Err(err) => {
+                                            eprintln!("{err}");
+                                            // TODO: Toast
+                                            Message::None
+                                        }
+                                    },
+                                ));
                             }
-                        }
-                    }
-                }
-            }
-
-            // Tries to add the current reservation to the database
-            Message::AddReservation => {
-                if let Some(reservation) = &self.add_edit_reservation {
-                    let valid = is_new_reservation_valid(reservation);
-                    if valid {
-                        if let Some(pool) = &self.database {
-                            action.add_task(Task::perform(
-                                Reservation::add(pool.clone(), reservation.clone()),
-                                |res| match res {
-                                    Ok(_) => Message::Back,
-                                    Err(err) => {
-                                        eprintln!("{err}");
-                                        // TODO: Toast (and remove CancelDateOperation)
-                                        Message::CancelDateOperation
-                                    }
-                                },
-                            ));
                         }
                     }
                 }
@@ -518,19 +381,28 @@ impl Reservations {
 
     const GLOBAL_SPACING: f32 = 6.;
     const GLOBAL_BUTTON_HEIGHT: f32 = 60.;
+    const TITLE_TEXT_SIZE: f32 = 25.0;
+    const TEXT_SIZE: f32 = 18.0;
 
     /// Returns the view of the subscreen
     pub fn view(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
         // HEADER
-        let header_row = self.view_header_row();
+        let header_row = match self.current_screen {
+            ReservationsScreen::Home => self.view_header_row(),
+            ReservationsScreen::Add => self
+                .add_reservations
+                .view_header_row()
+                .map(Message::AddReservationPage),
+        };
         let content = match self.current_screen {
             ReservationsScreen::Home => self.view_reservations_calendar(),
-            ReservationsScreen::Add => self.view_add_reservation_form(),
-            ReservationsScreen::ClientSelection => {
-                self.clients_selector.view().map(Message::Clients)
-            }
+            ReservationsScreen::Add => self
+                .add_reservations
+                .view()
+                .map(Message::AddReservationPage),
+            //ReservationsScreen::Edit => todo!(),
         };
 
         widget::Column::new()
@@ -546,16 +418,8 @@ impl Reservations {
     //  VIEW COMPOSING
     //
 
-    const TITLE_TEXT_SIZE: f32 = 25.0;
-    const TEXT_SIZE: f32 = 18.0;
-
     /// Returns the view of the header row of the subscreen
     fn view_header_row(&self) -> Element<Message> {
-        if self.current_screen == ReservationsScreen::ClientSelection {
-            return widget::Container::new(widget::Space::new(Length::Shrink, Length::Shrink))
-                .into();
-        }
-
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
@@ -567,7 +431,7 @@ impl Reservations {
         .on_press(Message::Back)
         .height(button_height);
 
-        let mut header_row = widget::Row::new()
+        widget::Row::new()
             .push(back_button)
             .push(
                 widget::Text::new(fl!("reservations"))
@@ -575,15 +439,11 @@ impl Reservations {
                     .align_y(Alignment::Center),
             )
             .push(widget::Space::new(Length::Fill, Length::Shrink))
+            .push(self.view_date_pickers_row())
             .width(Length::Fill)
             .align_y(Alignment::Center)
-            .spacing(spacing);
-
-        if self.current_screen == ReservationsScreen::Home {
-            header_row = header_row.push(self.view_date_pickers_row())
-        }
-
-        header_row.into()
+            .spacing(spacing)
+            .into()
     }
 
     /// Returns the row of date pickers (for the heaeder row)
@@ -711,7 +571,7 @@ impl Reservations {
         // final calendar view
         let mut calendar_view = widget::Column::new().push(header_row).spacing(spacing);
 
-        for room in &self.rooms {
+        for room in &*self.rooms {
             // each room is a row
             let mut row = widget::Row::new().spacing(spacing);
             row = row.push(
@@ -734,7 +594,7 @@ impl Reservations {
                         .height(cell_height),
                 );
 
-                for reservation in &self.reservations {
+                for reservation in &*self.reservations {
                     // check if the current room is part of the reservation and if the date falls within the reservation period
                     if reservation.rooms.iter().any(|r| r.room_id == room.id)
                         && reservation.entry_date.unwrap_or_default().date() <= current_date
@@ -780,255 +640,4 @@ impl Reservations {
 
         widget::Container::new(widget::Scrollable::new(calendar_view)).into()
     }
-
-    /// Returns the view of the header row of the subscreen
-    fn view_add_reservation_form(&self) -> Element<Message> {
-        if let Some(new_reservation) = &self.add_edit_reservation {
-            if new_reservation.id.is_none() {
-                let spacing = Pixels::from(Self::GLOBAL_SPACING);
-
-                // Entry Date
-                let entry_date_label =
-                    widget::Text::new(format!("{} (yyyy-mm-dd)", fl!("entry-date")))
-                        .width(Length::Fill);
-                let entry_date_iced_aw_date = Date {
-                    year: new_reservation.entry_date.unwrap_or_default().year(),
-                    month: new_reservation.entry_date.unwrap_or_default().month(),
-                    day: new_reservation.entry_date.unwrap_or_default().day(),
-                };
-                let entry_date_picker = DatePicker::new(
-                    self.add_edit_reservation_datepickers_state
-                        .show_entry_date_picker,
-                    entry_date_iced_aw_date,
-                    widget::Button::new(widget::Text::new(fl!("edit"))).on_press(
-                        Message::ShowDatePicker(ReservationDateInputFields::EntryDate),
-                    ),
-                    Message::CancelDateOperation,
-                    |date| Message::UpdateDateField(date, ReservationDateInputFields::EntryDate),
-                );
-                let entry_date_input = widget::TextInput::new(
-                    fl!("entry-date").as_str(),
-                    &entry_date_iced_aw_date.to_string(),
-                )
-                .style(|t, _| widget::text_input::default(t, widget::text_input::Status::Active))
-                .size(Pixels::from(Self::TEXT_SIZE))
-                .width(Length::Fill);
-                let entry_date_input_row = widget::Row::new()
-                    .push(entry_date_input)
-                    .push(entry_date_picker)
-                    .align_y(Alignment::Center)
-                    .spacing(1.);
-
-                let entry_date_input_column = widget::Column::new()
-                    .push(entry_date_label)
-                    .push(entry_date_input_row)
-                    .width(Length::Fill)
-                    .spacing(1.);
-
-                // Departure Date
-                let departure_date_label =
-                    widget::Text::new(format!("{} (yyyy-mm-dd)", fl!("departure-date")))
-                        .width(Length::Fill);
-                let departure_date_iced_aw_date = Date {
-                    year: new_reservation.departure_date.unwrap_or_default().year(),
-                    month: new_reservation.departure_date.unwrap_or_default().month(),
-                    day: new_reservation.departure_date.unwrap_or_default().day(),
-                };
-                let departure_date_picker = DatePicker::new(
-                    self.add_edit_reservation_datepickers_state
-                        .show_departure_date_picker,
-                    departure_date_iced_aw_date,
-                    widget::Button::new(widget::Text::new(fl!("edit"))).on_press(
-                        Message::ShowDatePicker(ReservationDateInputFields::DepartureDate),
-                    ),
-                    Message::CancelDateOperation,
-                    |date| {
-                        Message::UpdateDateField(date, ReservationDateInputFields::DepartureDate)
-                    },
-                );
-                let departure_date_input = widget::TextInput::new(
-                    fl!("departure-date").as_str(),
-                    &departure_date_iced_aw_date.to_string(),
-                )
-                .style(|t, _| widget::text_input::default(t, widget::text_input::Status::Active))
-                .size(Pixels::from(Self::TEXT_SIZE))
-                .width(Length::Fill);
-                let departure_date_input_row = widget::Row::new()
-                    .push(departure_date_input)
-                    .push(departure_date_picker)
-                    .align_y(Alignment::Center)
-                    .spacing(1.);
-
-                let departure_date_input_column = widget::Column::new()
-                    .push(departure_date_label)
-                    .push(departure_date_input_row)
-                    .width(Length::Fill)
-                    .spacing(1.);
-
-                // Occupied
-                let occupied = widget::Checkbox::new(fl!("occupied"), new_reservation.occupied)
-                    .text_size(Pixels::from(Self::TEXT_SIZE))
-                    .on_toggle(Message::ToggleOccupiedCheckbox);
-
-                // Rooms Selector
-                let available_rooms = self
-                    .rooms
-                    .clone()
-                    .into_iter()
-                    .filter(|room| {
-                        !self.reservations.iter().any(|reservation| {
-                            reservation.rooms.iter().any(|r| r.room_id == room.id)
-                                && reservation.entry_date.unwrap()
-                                    < new_reservation.departure_date.unwrap()
-                                && reservation.departure_date.unwrap()
-                                    > new_reservation.entry_date.unwrap()
-                        })
-                    })
-                    .collect::<Vec<Room>>();
-                let rooms_label = widget::Text::new(fl!("rooms")).width(Length::Fill);
-                let selected_room = available_rooms.first().cloned();
-                let rooms_selector = widget::PickList::new(available_rooms, selected_room, |r| {
-                    Message::AddReservationRoom(r.id.unwrap(), r.default_room_price)
-                })
-                .width(Length::Fill);
-                let rooms_selector_column = widget::Column::new()
-                    .push(rooms_label)
-                    .push(rooms_selector)
-                    .width(Length::Fill)
-                    .spacing(1.);
-
-                // Already Selected Rooms
-                let mut reservation_rooms_column = widget::Column::new()
-                    .push(widget::Text::new(fl!("rooms")))
-                    .width(Length::Fill)
-                    .spacing(spacing);
-                for sold_room in &new_reservation.rooms {
-                    let room = self.rooms.iter().find(|r| r.id == sold_room.room_id);
-                    if let Some(room) = room {
-                        reservation_rooms_column = reservation_rooms_column.push(
-                            widget::Row::new()
-                                .push(widget::Text::new(&room.name).width(Length::Fill))
-                                .push(widget::Button::new("X").on_press(
-                                    Message::RemoveReservationRoom(room.id.unwrap_or_default()),
-                                ))
-                                .align_y(Alignment::Center)
-                                .width(Length::Fill),
-                        )
-                    }
-                }
-
-                // Client Selection
-                let client_text = if new_reservation.client_name.is_empty() {
-                    fl!("no-client-selected")
-                } else {
-                    new_reservation.client_name.clone()
-                };
-                let client_selection_row = widget::Row::new()
-                    .push(
-                        widget::Text::new(client_text)
-                            .size(Self::TEXT_SIZE)
-                            .width(Length::Fill),
-                    )
-                    .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("select"))
-                                .width(Length::Shrink)
-                                .align_x(Alignment::Center)
-                                .align_y(Alignment::Center),
-                        )
-                        .width(Length::Shrink)
-                        .on_press(Message::OpenClientSelector),
-                    )
-                    .align_y(Alignment::Center)
-                    .width(Length::Fill);
-                let client_selection_col = widget::Column::new()
-                    .push(widget::Text::new(fl!("main-client")).width(Length::Fill))
-                    .push(client_selection_row)
-                    .width(Length::Fill)
-                    .spacing(1.);
-
-                // Submit
-                let submit_button = widget::Button::new(
-                    widget::Text::new(fl!("add"))
-                        .width(Length::Fill)
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center),
-                )
-                .on_press(Message::AddReservation)
-                .width(Length::Fill);
-
-                // Layout
-                let date_inputs = widget::Column::new()
-                    .push(entry_date_input_column)
-                    .push(departure_date_input_column)
-                    .push(occupied)
-                    .spacing(spacing)
-                    .width(Length::Fill);
-                let rooms_col = widget::Column::new()
-                    .push(rooms_selector_column)
-                    .push(reservation_rooms_column)
-                    .spacing(spacing)
-                    .width(Length::Fill);
-                let second_row = widget::Row::new()
-                    .push(date_inputs)
-                    .push(rooms_col)
-                    .spacing(spacing)
-                    .align_y(Alignment::Start)
-                    .width(Length::Fill);
-
-                let result = widget::Column::new()
-                    .push(client_selection_col)
-                    .push(second_row)
-                    .push(submit_button)
-                    .spacing(spacing)
-                    .width(Length::Fixed(850.));
-
-                widget::Container::new(result)
-                    .align_x(Alignment::Center)
-                    .align_y(Alignment::Center)
-                    .width(Length::Fill)
-                    .padding(Padding::new(50.))
-                    .into()
-            } else {
-                widget::Container::new(widget::Text::new(
-                    "Error, NewReservation improperly initialized...",
-                ))
-                .align_x(Alignment::Center)
-                .align_y(Alignment::Center)
-                .width(Length::Fill)
-                .padding(Padding::new(50.))
-                .into()
-            }
-        } else {
-            widget::Container::new(widget::Text::new(
-                "Error, NewReservation not initialized...",
-            ))
-            .align_x(Alignment::Center)
-            .align_y(Alignment::Center)
-            .width(Length::Fill)
-            .padding(Padding::new(50.))
-            .into()
-        }
-    }
-
-    //
-    //  END OF VIEW COMPOSING
-    //
-}
-
-fn is_new_reservation_valid(reservation: &Reservation) -> bool {
-    if reservation.client_id.is_none() {
-        return false;
-    }
-    if reservation.rooms.is_empty() {
-        return false;
-    }
-    if reservation.entry_date.is_none() {
-        return false;
-    }
-    if reservation.departure_date.is_none() {
-        return false;
-    }
-
-    true
 }

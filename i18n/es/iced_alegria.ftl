@@ -65,3 +65,4 @@ departure-date = Fecha de Salida
 occupied = Ocupada
 no-client-selected = Cliente no seleccionado
 main-client = Cliente Principal
+add-reservation = Añadir Reserva
