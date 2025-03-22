@@ -163,7 +163,6 @@ impl IcedAlegria {
             }
             Message::Hotel(message) => {
                 let action = self.hotel.update(message);
-                // TODO: Can I abstract this into action?
                 let hotel_tasks: Vec<Task<Message>> = action
                     .tasks
                     .into_iter()

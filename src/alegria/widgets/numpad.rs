@@ -47,14 +47,14 @@ impl<'a, Message> Numpad<'a, Message> {
         }
     }
 
-    /// Sets the message that should be produced when a [`NumPad`] number
+    /// Sets the message that should be produced when a [`Numpad`] number
     /// is clicked.
     pub fn on_number_clicked(mut self, on_number_clicked: impl Fn(u8) -> Message + 'a) -> Self {
         self.on_number_clicked = Some(Box::new(on_number_clicked));
         self
     }
 
-    /// Sets the message that should be produced when the [`NumPad`] ','
+    /// Sets the message that should be produced when the [`Numpad`] ','
     /// is clicked.
     pub fn on_comma_clicked(mut self, message: Message) -> Self
     where
@@ -64,7 +64,7 @@ impl<'a, Message> Numpad<'a, Message> {
         self
     }
 
-    /// Sets the message that should be produced when the [`NumPad`] '<-'
+    /// Sets the message that should be produced when the [`Numpad`] '<-'
     /// is clicked.
     pub fn on_back_clicked(mut self, message: Message) -> Self
     where
@@ -74,7 +74,7 @@ impl<'a, Message> Numpad<'a, Message> {
         self
     }
 
-    /// Sets the message that should be produced when the [`NumPad`] 'Delete'
+    /// Sets the message that should be produced when the [`Numpad`] 'Delete'
     /// is clicked.
     pub fn on_delete_clicked(mut self, message: Message) -> Self
     where
@@ -84,7 +84,7 @@ impl<'a, Message> Numpad<'a, Message> {
         self
     }
 
-    /// Sets the style of the [`NumPad`].
+    /// Sets the style of the [`Numpad`].
     pub fn style(mut self, style: impl Fn(&Theme) -> Style + 'a) -> Self
     where
         <Theme as Catalog>::Class<'a>: From<StyleFn<'a, Theme>>,
@@ -337,7 +337,7 @@ where
     }
 }
 
-/// The appearance of a numberpad.
+/// The appearance of a [`Numpad`].
 #[derive(Debug, Clone, Copy)]
 pub struct Style {
     /// The text [`Color`] of the numberpad.
@@ -348,7 +348,7 @@ pub struct Style {
     pub border: Border,
 }
 
-/// The theme catalog of a [`NumPad`].
+/// The theme catalog of a [`Numpad`].
 pub trait Catalog: menu::Catalog {
     /// The item class of the [`Catalog`].
     type Class<'a>;
@@ -360,7 +360,7 @@ pub trait Catalog: menu::Catalog {
     fn style(&self, class: &<Self as Catalog>::Class<'_>) -> Style;
 }
 
-/// A styling function for a [`NumPad`].
+/// A styling function for a [`Numpad`].
 ///
 /// This is just a boxed closure: `Fn(&Theme, Status) -> Style`.
 pub type StyleFn<'a, Theme> = Box<dyn Fn(&Theme) -> Style + 'a>;
@@ -377,7 +377,7 @@ impl Catalog for iced::Theme {
     }
 }
 
-/// The default style of the field of a [`NumPad`].
+/// The default style of the field of a [`Numpad`].
 pub fn default(theme: &Theme) -> Style {
     let palette = theme.extended_palette();
 

@@ -617,7 +617,6 @@ impl Bar {
         let header_row = self.view_header_row();
 
         // BOTTOM RIGHT SIDE
-        // TODO: Pagination
         let product_categories_container = self.view_product_categories_container();
         let product_category_products_container = self.view_product_category_products_container();
         let right_side_container = widget::Row::new()
