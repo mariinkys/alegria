@@ -25,6 +25,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum ClientsPageMode {
+    Normal,
+    Selection,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 enum ClientsScreen {
     List,
     AddEdit,
@@ -82,6 +88,8 @@ pub enum PaginationAction {
 pub struct Clients {
     /// Database of the application
     pub database: Option<Arc<PgPool>>,
+    /// Determines which is the current mode of the subscreen
+    pub page_mode: ClientsPageMode,
     /// Determines which is the current view of the subscreen
     current_screen: ClientsScreen,
     /// Holds the state of all the clients
@@ -104,10 +112,10 @@ pub struct Clients {
     current_search: String,
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum Message {
-    Back, // Asks the parent (app.rs) to go back
+    Back,                        // Asks the parent (app.rs) to go back
+    ClientSelected(Box<Client>), // Tells the parent a client has been selected
 
     FetchClients,            // Fetches all the current clients
     SetClients(Vec<Client>), // Sets the clients on the app state
@@ -116,8 +124,9 @@ pub enum Message {
     SetIdentityDocumentTypes(Vec<IdentityDocumentType>), // Sets the identity document types on the app state
     SetGenders(Vec<Gender>), // Sets the identity document types on the app state
 
-    SetAddEditClient(Client), // changes the screen and the add_edit_client state (after asking for an edit Client)
+    SetAddEditClient(Box<Client>), // changes the screen and the add_edit_client state (after asking for an edit Client)
     AskEditClient(i32), // Callback after asking to edit a client, searches the client on the db
+    AskSelectClient(i32), // Callback after asking to select a client, searches the client on the db and emmits the parent callback
     AskAddClient, // Callback after asking to add a room, changes the screen and the add_edit_client state
     CancelClientOperation, // Callback after asking to cancel an add or an edit
 
@@ -142,7 +151,8 @@ pub enum Message {
 // Messages/Tasks that need to modify state on the main screen
 #[derive(Debug, Clone)]
 pub enum ClientsInstruction {
-    Back, // Asks the parent (app.rs) to go back
+    Back,                        // Asks the parent (app.rs) to go back
+    ClientSelected(Box<Client>), // Tells the parent a client has been selected
 }
 
 impl Clients {
@@ -150,6 +160,7 @@ impl Clients {
     pub fn init() -> Self {
         Self {
             database: None,
+            page_mode: ClientsPageMode::Normal,
             current_screen: ClientsScreen::List,
             clients: Vec::new(),
             identity_document_types: Vec::new(),
@@ -168,6 +179,7 @@ impl Clients {
     pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
         Self {
             database,
+            page_mode: ClientsPageMode::Normal,
             current_screen: ClientsScreen::List,
             clients: Vec::new(),
             identity_document_types: Vec::new(),
@@ -186,7 +198,15 @@ impl Clients {
         let mut action = AlegriaAction::new();
 
         match message {
-            Message::Back => action.add_instruction(ClientsInstruction::Back),
+            Message::Back => {
+                action.add_instruction(ClientsInstruction::Back);
+            }
+            // Tells the parent a client has been selected
+            Message::ClientSelected(client) => {
+                if self.page_mode == ClientsPageMode::Selection {
+                    action.add_instruction(ClientsInstruction::ClientSelected(client));
+                }
+            }
 
             // Fetches all the current clients
             Message::FetchClients => {
@@ -255,7 +275,7 @@ impl Clients {
 
             // changes the screen and the add_edit_client state (after asking for an edit Client)
             Message::SetAddEditClient(client) => {
-                self.add_edit_client = Some(client);
+                self.add_edit_client = Some(*client);
                 self.current_screen = ClientsScreen::AddEdit;
             }
             // Callback after asking to edit a client, searches the client on the db
@@ -264,10 +284,25 @@ impl Clients {
                     action.add_task(Task::perform(
                         Client::get_single(pool.clone(), client_id),
                         |res| match res {
-                            Ok(res) => Message::SetAddEditClient(res),
+                            Ok(res) => Message::SetAddEditClient(Box::new(res)),
                             Err(err) => {
                                 eprintln!("{err}");
-                                Message::SetAddEditClient(Client::default())
+                                Message::SetAddEditClient(Box::default())
+                            }
+                        },
+                    ));
+                }
+            }
+            // Callback after asking to select a client, searches the client on the db and emmits the parent callback
+            Message::AskSelectClient(client_id) => {
+                if let Some(pool) = &self.database {
+                    action.add_task(Task::perform(
+                        Client::get_single(pool.clone(), client_id),
+                        |res| match res {
+                            Ok(res) => Message::ClientSelected(Box::new(res)),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                Message::ClientSelected(Box::default())
                             }
                         },
                     ));
@@ -501,7 +536,12 @@ impl Clients {
                     self.clients = self
                         .clients
                         .iter()
-                        .filter(|client| client.search_field.contains(&self.current_search))
+                        .filter(|client| {
+                            client
+                                .search_field
+                                .to_lowercase()
+                                .contains(&self.current_search.to_lowercase())
+                        })
                         .cloned()
                         .collect();
                 }
@@ -697,13 +737,18 @@ impl Clients {
                     .width(Length::Fixed(150.))
                     .align_y(Alignment::Center),
             )
-            .push(
-                widget::Text::new(fl!("edit"))
+            .push(match self.page_mode {
+                ClientsPageMode::Normal => widget::Text::new(fl!("edit"))
                     .size(Pixels::from(Self::TITLE_TEXT_SIZE))
                     .width(Length::Fixed(150.))
                     .align_y(Alignment::Center)
                     .align_x(Alignment::End),
-            )
+                ClientsPageMode::Selection => widget::Text::new(fl!("select"))
+                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                    .width(Length::Fixed(150.))
+                    .align_y(Alignment::Center)
+                    .align_x(Alignment::End),
+            })
             .width(Length::Shrink)
             .align_y(Alignment::Center);
 
@@ -734,7 +779,7 @@ impl Clients {
                     .align_y(Alignment::Center),
                 )
                 .push(
-                    widget::Text::new(&client.identity_document_type_name)
+                    widget::Text::new(&*client.identity_document_type_name)
                         .size(Pixels::from(Self::TEXT_SIZE))
                         .width(Length::Fixed(100.))
                         .align_y(Alignment::Center),
@@ -752,15 +797,22 @@ impl Clients {
                         .align_y(Alignment::Center),
                 )
                 .push(
-                    widget::Container::new(
-                        widget::Button::new(
+                    widget::Container::new(match self.page_mode {
+                        ClientsPageMode::Normal => widget::Button::new(
                             widget::Text::new(fl!("edit"))
                                 .size(Pixels::from(Self::TEXT_SIZE))
                                 .align_y(Alignment::Center),
                         )
                         .on_press(Message::AskEditClient(client.id.unwrap()))
                         .width(Length::Shrink),
-                    )
+                        ClientsPageMode::Selection => widget::Button::new(
+                            widget::Text::new(fl!("select"))
+                                .size(Pixels::from(Self::TEXT_SIZE))
+                                .align_y(Alignment::Center),
+                        )
+                        .on_press(Message::AskSelectClient(client.id.unwrap()))
+                        .width(Length::Shrink),
+                    })
                     .width(Length::Fixed(150.))
                     .align_x(Alignment::End)
                     .align_y(Alignment::Center),

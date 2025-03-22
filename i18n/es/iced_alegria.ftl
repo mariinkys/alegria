@@ -11,6 +11,7 @@ down = Bajar
 search = Buscar
 clear = Limpiar
 delete = Borrar
+select = Seleccionar
 
 <#-- Main Menu -->
 bar = Bar
@@ -55,3 +56,13 @@ nationality = Nacionalidad
 phone-number = Número de Teléfono
 mobile-phone = Número de Móvil
 gender = Género
+
+<#-- Reservations SubScreen -->
+initial-date = Fecha Inicial
+last-date = Fecha Final
+entry-date = Fecha de Entrada
+departure-date = Fecha de Salida
+occupied = Ocupada
+no-client-selected = Cliente no seleccionado
+main-client = Cliente Principal
+add-reservation = Añadir Reserva

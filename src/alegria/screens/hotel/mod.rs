@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+mod clients;
+mod reservations;
+mod room_types;
+mod rooms;
+
+//
+// HOTEL PAGE IMPLEMENTATION
+//
+
 use std::sync::Arc;
 
 use iced::{Alignment, Element, Length, Pixels, Task, widget};
@@ -7,12 +16,7 @@ use sqlx::PgPool;
 
 use crate::{alegria::action::AlegriaAction, fl};
 
-use super::hotel_subscreens::{
-    clients::{self, Clients},
-    reservations::{self, Reservations},
-    room_types::{self, RoomTypes},
-    rooms::{self, Rooms},
-};
+use {clients::Clients, reservations::Reservations, room_types::RoomTypes, rooms::Rooms};
 
 #[derive(Debug, Clone)]
 pub enum SubScreen {
@@ -38,7 +42,6 @@ pub struct Hotel {
     clients: Clients,
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum Message {
     Back, // Asks the parent (app.rs) to go back
@@ -108,6 +111,9 @@ impl Hotel {
                 }
                 SubScreen::Reservations => {
                     self.sub_screen = sub_screen;
+                    let reservations_action =
+                        self.update(Message::Reservations(reservations::Message::InitPage));
+                    action.tasks.extend(reservations_action.tasks);
                 }
                 SubScreen::RoomTypes => {
                     self.sub_screen = sub_screen;
@@ -201,6 +207,9 @@ impl Hotel {
                     match instructions {
                         clients::ClientsInstruction::Back => {
                             let _ = self.update(Message::ChangeSubScreen(SubScreen::Home));
+                        }
+                        clients::ClientsInstruction::ClientSelected(_) => {
+                            eprintln!("Client selection here it's not possible");
                         }
                     }
                 }
