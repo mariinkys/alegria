@@ -121,9 +121,8 @@ pub enum ReservationsInstruction {
     Back, // Asks the parent (app.rs) to go back
 }
 
-impl Reservations {
-    /// Initializes the screen
-    pub fn init() -> Self {
+impl Default for Reservations {
+    fn default() -> Self {
         Self {
             database: None,
             toasts: Vec::new(),
@@ -134,21 +133,9 @@ impl Reservations {
             add_reservations: AddReservationPage::default(),
         }
     }
+}
 
-    /// Cleans the state of the screen preserving the database
-    /// intended to be called when switching to another screen in order to save memory.
-    pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
-        Self {
-            database: database.clone(),
-            toasts: Vec::new(),
-            current_screen: ReservationsScreen::Home,
-            reservations: Arc::default(),
-            rooms: Arc::default(),
-            date_filters: DateFiltersState::default(),
-            add_reservations: AddReservationPage::default(),
-        }
-    }
-
+impl Reservations {
     /// Handles messages emitted by the application and its widgets.
     pub fn update(&mut self, message: Message) -> AlegriaAction<ReservationsInstruction, Message> {
         let mut action = AlegriaAction::new();

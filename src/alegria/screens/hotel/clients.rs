@@ -155,9 +155,8 @@ pub enum ClientsInstruction {
     ClientSelected(Box<Client>), // Tells the parent a client has been selected
 }
 
-impl Clients {
-    /// Initializes the screen
-    pub fn init() -> Self {
+impl Default for Clients {
+    fn default() -> Self {
         Self {
             database: None,
             page_mode: ClientsPageMode::Normal,
@@ -173,26 +172,9 @@ impl Clients {
             current_search: String::new(),
         }
     }
+}
 
-    /// Cleans the state of the screen preserving the database
-    /// intended to be called when switching to another screen in order to save memory.
-    pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
-        Self {
-            database,
-            page_mode: ClientsPageMode::Normal,
-            current_screen: ClientsScreen::List,
-            clients: Vec::new(),
-            identity_document_types: Vec::new(),
-            genders: Vec::new(),
-            add_edit_client: None,
-            show_expedition_date_picker: false,
-            show_expiration_date_picker: false,
-            show_birthdate_date_picker: false,
-            clients_pagination_state: PaginationConfig::default(),
-            current_search: String::new(),
-        }
-    }
-
+impl Clients {
     /// Handles messages emitted by the application and its widgets.
     pub fn update(&mut self, message: Message) -> AlegriaAction<ClientsInstruction, Message> {
         let mut action = AlegriaAction::new();

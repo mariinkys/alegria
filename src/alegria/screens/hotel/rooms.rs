@@ -69,9 +69,8 @@ pub enum RoomsInstruction {
     Back, // Asks the parent (app.rs) to go back
 }
 
-impl Rooms {
-    /// Initializes the screen
-    pub fn init() -> Self {
+impl Default for Rooms {
+    fn default() -> Self {
         Self {
             database: None,
             current_screen: RoomsScreen::List,
@@ -80,19 +79,9 @@ impl Rooms {
             add_edit_room: None,
         }
     }
+}
 
-    /// Cleans the state of the screen preserving the database
-    /// intended to be called when switching to another screen in order to save memory.
-    pub fn clean_state(database: Option<Arc<PgPool>>) -> Self {
-        Self {
-            database,
-            current_screen: RoomsScreen::List,
-            rooms: Vec::new(),
-            room_types: Vec::new(),
-            add_edit_room: None,
-        }
-    }
-
+impl Rooms {
     /// Handles messages emitted by the application and its widgets.
     pub fn update(&mut self, message: Message) -> AlegriaAction<RoomsInstruction, Message> {
         let mut action = AlegriaAction::new();
