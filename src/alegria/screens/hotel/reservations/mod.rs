@@ -75,6 +75,12 @@ pub enum ReservationTextInputFields {
     FilterLastDate,
 }
 
+#[derive(Debug, Clone)]
+pub enum ReservationDirectionAction {
+    Back,
+    Forward,
+}
+
 pub struct Reservations {
     /// Database of the application
     pub database: Option<Arc<PgPool>>,
@@ -111,6 +117,7 @@ pub enum Message {
     ShowDatePicker(ReservationDateInputFields),          // Asks to open the requesed date picker
     CancelDateOperation,                                 // Cancels the datepicker changes
     UpdateDateField(date_picker::Date, ReservationDateInputFields), // Callback after submiting a new date via datepicker
+    DirectionActionInput(ReservationDirectionAction), // Callback after clicking one of the two arrows to go one day back/forward
 
     AddReservationPage(self::add::Message), // Messages of the add reservations page
 }
@@ -344,6 +351,67 @@ impl Reservations {
                     }
                 }
             }
+            // Callback after clicking one of the two arrows to go one day back/forward
+            Message::DirectionActionInput(action) => match action {
+                ReservationDirectionAction::Back => {
+                    if let Some(new_in_date) = self
+                        .date_filters
+                        .initial_date
+                        .checked_sub_days(chrono::Days::new(1))
+                    {
+                        if let Some(new_l_date) = self
+                            .date_filters
+                            .last_date
+                            .checked_sub_days(chrono::Days::new(1))
+                        {
+                            self.date_filters.initial_date = new_in_date;
+                            self.date_filters.initial_date_string = format!(
+                                "{}-{}-{}",
+                                new_in_date.year(),
+                                new_in_date.month(),
+                                new_in_date.day()
+                            );
+                            self.date_filters.last_date = new_l_date;
+                            self.date_filters.last_date_string = format!(
+                                "{}-{}-{}",
+                                new_l_date.year(),
+                                new_l_date.month(),
+                                new_l_date.day()
+                            );
+                            return self.update(Message::FetchReservations);
+                        }
+                    }
+                }
+                ReservationDirectionAction::Forward => {
+                    if let Some(new_in_date) = self
+                        .date_filters
+                        .initial_date
+                        .checked_add_days(chrono::Days::new(1))
+                    {
+                        if let Some(new_l_date) = self
+                            .date_filters
+                            .last_date
+                            .checked_add_days(chrono::Days::new(1))
+                        {
+                            self.date_filters.initial_date = new_in_date;
+                            self.date_filters.initial_date_string = format!(
+                                "{}-{}-{}",
+                                new_in_date.year(),
+                                new_in_date.month(),
+                                new_in_date.day()
+                            );
+                            self.date_filters.last_date = new_l_date;
+                            self.date_filters.last_date_string = format!(
+                                "{}-{}-{}",
+                                new_l_date.year(),
+                                new_l_date.month(),
+                                new_l_date.day()
+                            );
+                            return self.update(Message::FetchReservations);
+                        }
+                    }
+                }
+            },
 
             // Messages of the add reservations page
             Message::AddReservationPage(message) => {
@@ -552,13 +620,42 @@ impl Reservations {
         // header row with days
         let mut header_row = widget::Row::new();
 
-        // top left empty cell
+        // top left action buttons
         header_row = header_row
             .push(
-                widget::Text::new("")
-                    .size(16)
-                    .align_x(Alignment::Center)
+                widget::Row::new()
+                    .push(
+                        widget::Button::new(
+                            widget::Text::new("<")
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center)
+                                .height(Length::Fill)
+                                .width(Length::Fill),
+                        )
+                        .style(widget::button::secondary)
+                        .height(Length::Fill)
+                        .width(Length::Fill)
+                        .on_press(Message::DirectionActionInput(
+                            ReservationDirectionAction::Back,
+                        )),
+                    )
+                    .push(
+                        widget::Button::new(
+                            widget::Text::new(">")
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center)
+                                .height(Length::Fill)
+                                .width(Length::Fill),
+                        )
+                        .style(widget::button::secondary)
+                        .height(Length::Fill)
+                        .width(Length::Fill)
+                        .on_press(Message::DirectionActionInput(
+                            ReservationDirectionAction::Forward,
+                        )),
+                    )
                     .align_y(Alignment::Center)
+                    .spacing(spacing)
                     .width(cell_width)
                     .height(cell_height),
             )
