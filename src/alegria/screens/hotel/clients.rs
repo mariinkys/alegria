@@ -815,6 +815,12 @@ impl Clients {
                 .width(Length::Fixed(850.))
                 .push(widget::Rule::horizontal(Pixels::from(1.))),
         );
+        grid = grid.push(widget::Text::new(format!(
+            "{} {}",
+            fl!("page").as_str(),
+            &self.clients_pagination_state.current_page + 1
+        )));
+        grid = grid.push(widget::Space::with_height(Length::Fill));
         grid = grid.push(
             widget::Row::new()
                 .width(Length::Fixed(850.))

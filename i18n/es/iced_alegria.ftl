@@ -12,6 +12,7 @@ search = Buscar
 clear = Limpiar
 delete = Borrar
 select = Seleccionar
+page = Página
 
 <#-- Main Menu -->
 bar = Bar
