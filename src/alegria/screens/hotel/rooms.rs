@@ -429,7 +429,7 @@ impl Rooms {
             .spacing(spacing)
             .width(Length::Shrink);
 
-        for room in &self.rooms {
+        for room in &self.rooms[start_index..end_index] {
             let row = widget::Row::new()
                 .width(Length::Shrink)
                 .push(
