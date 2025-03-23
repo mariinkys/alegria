@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS temporal_tickets (
     table_id INTEGER NOT NULL,
     ticket_location INTEGER NOT NULL,
     ticket_status INTEGER NOT NULL,
+    simple_invoice_id INTEGER NULL, -- In order to be able to lock/unlock temporal ticket editing & priting before the client has paid
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

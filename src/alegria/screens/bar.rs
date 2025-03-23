@@ -274,6 +274,7 @@ impl Bar {
                                 self.currently_selected_pos_state.location.clone(),
                             ),
                             ticket_status: 0,
+                            simple_invoice_id: None,
                             products: Vec::new(),
                         };
 

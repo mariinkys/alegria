@@ -20,6 +20,8 @@ INSERT INTO rooms (name, room_type_id) VALUES ('213', 2);
 INSERT INTO identity_document_types (name) VALUES ('DNI');
 INSERT INTO identity_document_types (name) VALUES ('NIE');
 INSERT INTO identity_document_types (name) VALUES ('NIF');
+INSERT INTO identity_document_types (name) VALUES ('Pasaporte');
+INSERT INTO identity_document_types (name) VALUES ('Carnet de Conducir');
 
 -- Seed genders
 INSERT INTO genders (name) VALUES ('Hombre');

@@ -13,6 +13,7 @@ pub struct TemporalTicket {
     pub table_id: i32,
     pub ticket_location: i32,
     pub ticket_status: i32,
+    pub simple_invoice_id: Option<i32>,
     pub products: Vec<TemporalProduct>,
 }
 
@@ -24,6 +25,7 @@ impl TemporalTicket {
                 t.table_id,
                 t.ticket_location,
                 t.ticket_status,
+                t.simple_invoice_id,
                 p.id as product_id,
                 p.original_product_id,
                 p.temporal_ticket_id,
@@ -45,6 +47,7 @@ impl TemporalTicket {
             let table_id: i32 = row.try_get("table_id")?;
             let ticket_location: i32 = row.try_get("ticket_location")?;
             let ticket_status: i32 = row.try_get("ticket_status")?;
+            let simple_invoice_id: Option<i32> = row.try_get("simple_invoice_id")?;
 
             // Insert the ticket into the map if it doesn't exist yet
             let ticket = tickets_map.entry(ticket_id).or_insert(TemporalTicket {
@@ -52,6 +55,7 @@ impl TemporalTicket {
                 table_id,
                 ticket_location,
                 ticket_status,
+                simple_invoice_id,
                 products: Vec::new(),
             });
 
