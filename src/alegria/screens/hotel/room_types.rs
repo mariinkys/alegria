@@ -25,6 +25,29 @@ pub enum RoomTypeTextInputFields {
     Price,
 }
 
+/// Holds the pagination state (generic, for various entities)
+#[derive(Debug, Clone)]
+pub struct PaginationConfig {
+    items_per_page: i32,
+    current_page: i32,
+}
+
+impl Default for PaginationConfig {
+    fn default() -> Self {
+        PaginationConfig {
+            items_per_page: 10,
+            current_page: 0,
+        }
+    }
+}
+
+/// Identifies a pagination action
+#[derive(Debug, Clone)]
+pub enum PaginationAction {
+    Back,
+    Forward,
+}
+
 pub struct RoomTypes {
     /// Database of the application
     pub database: Option<Arc<PgPool>>,
@@ -34,6 +57,8 @@ pub struct RoomTypes {
     room_types: Vec<RoomType>,
     /// Holds the state of the current editing/adding RoomType
     add_edit_room_type: Option<RoomType>,
+    /// Holds the pagination state and config for this page
+    pagination_state: PaginationConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -53,6 +78,8 @@ pub enum Message {
     EditCurrentRoomType,     // Tries to Edit the current room type to the database
     DeleteCurrentRoomType,   // Tries to delete the current RoomType
     ModifiedCurrentRoomType, // Callback after delete/update/add of a current RoomType
+
+    PaginationAction(PaginationAction), // Try to go left or right a page on the grid
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -68,6 +95,7 @@ impl Default for RoomTypes {
             current_screen: RoomTypesScreen::List,
             room_types: Vec::new(),
             add_edit_room_type: None,
+            pagination_state: PaginationConfig::default(),
         }
     }
 }
@@ -217,6 +245,22 @@ impl RoomTypes {
                 self.current_screen = RoomTypesScreen::List;
                 return self.update(Message::FetchRoomTypes);
             }
+
+            // Try to go left or right a page on the grid
+            Message::PaginationAction(action) => match action {
+                PaginationAction::Back => {
+                    if self.pagination_state.current_page > 0 {
+                        self.pagination_state.current_page -= 1;
+                    }
+                }
+                PaginationAction::Forward => {
+                    let next_page_start = (self.pagination_state.current_page + 1)
+                        * self.pagination_state.items_per_page;
+                    if next_page_start < self.room_types.len().try_into().unwrap_or_default() {
+                        self.pagination_state.current_page += 1;
+                    }
+                }
+            },
         };
 
         action
@@ -328,6 +372,7 @@ impl RoomTypes {
     /// Returns the view of the room types grid
     fn view_room_types_grid(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
+        let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
         if self.room_types.is_empty() {
             return widget::Container::new(
@@ -362,13 +407,21 @@ impl RoomTypes {
             .width(Length::Shrink)
             .align_y(Alignment::Center);
 
+        // Calculate the indices for the current page
+        let start_index: usize = self.pagination_state.current_page as usize
+            * self.pagination_state.items_per_page as usize;
+        let end_index = usize::min(
+            start_index + self.pagination_state.items_per_page as usize,
+            self.room_types.len(),
+        );
+
         let mut grid = widget::Column::new()
             .push(title_row)
             .align_x(Alignment::Center)
             .spacing(spacing)
             .width(Length::Shrink);
 
-        for room_type in &self.room_types {
+        for room_type in &self.room_types[start_index..end_index] {
             let row = widget::Row::new()
                 .width(Length::Shrink)
                 .push(
@@ -413,6 +466,38 @@ impl RoomTypes {
                 .width(Length::Fixed(700.))
                 .push(widget::Rule::horizontal(Pixels::from(1.))),
         );
+        grid = grid.push(widget::Text::new(format!(
+            "{} {}",
+            fl!("page").as_str(),
+            &self.pagination_state.current_page + 1
+        )));
+        grid = grid.push(widget::Space::with_height(Length::Fill));
+        grid = grid.push(
+            widget::Row::new()
+                .width(Length::Fixed(850.))
+                .push(
+                    widget::Button::new(
+                        widget::Text::new(fl!("back"))
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(button_height),
+                    )
+                    .on_press(Message::PaginationAction(PaginationAction::Back)),
+                )
+                .push(
+                    widget::Button::new(
+                        widget::Text::new(fl!("next"))
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(button_height),
+                    )
+                    .on_press(Message::PaginationAction(PaginationAction::Forward)),
+                )
+                .spacing(spacing),
+        );
+
         widget::Container::new(grid)
             .width(Length::Fill)
             .align_x(Alignment::Center)
