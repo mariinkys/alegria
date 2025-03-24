@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use iced::{
     Alignment, Element, Length, Pixels, Task,
-    widget::{self, text::LineHeight},
+    widget::{self, container, text::LineHeight},
 };
 use sqlx::PgPool;
 use sweeten::widget::text_input;
@@ -23,6 +23,7 @@ use crate::{
             TemporalTicketStatus, match_number_with_temporal_ticket_status,
             match_table_location_with_number,
         },
+        widgets::modal::modal,
     },
     fl,
 };
@@ -67,11 +68,36 @@ pub struct PaginationConfig {
     current_page: i32,
 }
 
+impl Default for PaginationConfig {
+    fn default() -> Self {
+        PaginationConfig {
+            items_per_page: 13,
+            current_page: 0,
+        }
+    }
+}
+
 /// Identifies a pagination action
 #[derive(Debug, Clone, PartialEq)]
 pub enum PaginationAction {
     Up,
     Down,
+}
+
+/// Identifies a modal action (the only modal is the print ticket one)
+#[derive(Debug, Clone, PartialEq)]
+pub enum PrintTicketModalActions {
+    ShowModal,
+    HideModal,
+    PrintTicket,
+}
+
+/// Holds the state of the print ticker modal
+#[derive(Default, Debug, Clone)]
+pub struct PrintTicketModalState {
+    show_modal: bool,
+    //ticket_type: TicketType,
+    //selected_printer: AlegriaPrinter,
 }
 
 pub struct Bar {
@@ -95,6 +121,8 @@ pub struct Bar {
     product_categories_pagination_state: PaginationConfig,
     /// Holds the pagination state and config for the product category products list
     product_category_products_pagination_state: PaginationConfig,
+    /// Holds the printing modal state
+    print_modal: PrintTicketModalState,
 }
 
 #[derive(Debug, Clone)]
@@ -123,6 +151,8 @@ pub enum Message {
 
     ProductCategoriesPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategories
     ProductCategoryProductsPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategoryProducts
+
+    PrintModalAction(PrintTicketModalActions), // Callback after some action has been requested on the print ticket modal
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -131,6 +161,7 @@ pub enum BarInstruction {
     Back,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for Bar {
     fn default() -> Self {
         Self {
@@ -143,14 +174,9 @@ impl Default for Bar {
             active_temporal_product: None,
             active_temporal_product_field: None,
             // TODO: This should ideally come from a configfile (modifiable from another screen)
-            product_categories_pagination_state: PaginationConfig {
-                items_per_page: 13,
-                current_page: 0,
-            },
-            product_category_products_pagination_state: PaginationConfig {
-                items_per_page: 13,
-                current_page: 0,
-            },
+            product_categories_pagination_state: PaginationConfig::default(),
+            product_category_products_pagination_state: PaginationConfig::default(),
+            print_modal: PrintTicketModalState::default(),
         }
     }
 }
@@ -580,6 +606,19 @@ impl Bar {
                     }
                 }
             },
+
+            // Callback after some action has been requested on the print ticket modal
+            Message::PrintModalAction(modal_action) => match modal_action {
+                PrintTicketModalActions::ShowModal => {
+                    self.print_modal.show_modal = true;
+                    action.add_task(widget::focus_next());
+                }
+                PrintTicketModalActions::HideModal => {
+                    self.print_modal.show_modal = false;
+                    self.print_modal = PrintTicketModalState::default();
+                }
+                PrintTicketModalActions::PrintTicket => todo!(),
+            },
         }
 
         action
@@ -628,13 +667,27 @@ impl Bar {
             .push(right_side_container)
             .spacing(spacing);
 
-        widget::Column::new()
+        let content = widget::Column::new()
             .push(header_row)
             .push(bottom_row)
             .spacing(spacing)
             .height(Length::Fill)
-            .width(Length::Fill)
-            .into()
+            .width(Length::Fill);
+
+        if self.print_modal.show_modal {
+            let print_modal_content = widget::Container::new(widget::Text::new("Hello"))
+                .width(300)
+                .padding(10)
+                .style(container::rounded_box);
+
+            modal(
+                content,
+                print_modal_content,
+                Message::PrintModalAction(PrintTicketModalActions::HideModal),
+            )
+        } else {
+            content.into()
+        }
     }
 
     //
@@ -656,17 +709,44 @@ impl Bar {
         .on_press(Message::Back)
         .height(button_height);
 
-        widget::Row::new()
+        let mut header_row = widget::Row::new()
             .push(back_button)
             .push(
                 widget::Text::new(fl!("bar"))
                     .size(Pixels::from(Self::TITLE_TEXT_SIZE))
                     .align_y(Alignment::Center),
             )
+            .push(widget::Space::new(Length::Fill, Length::Shrink))
             .width(Length::Fill)
             .align_y(Alignment::Center)
-            .spacing(spacing)
-            .into()
+            .spacing(spacing);
+
+        // TODO: We could do this OnTableClick and save the Option<TemporalTicket> on state and do not search for it here and on the colors functions
+        let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
+            x.ticket_location
+                == match_table_location_with_number(
+                    self.currently_selected_pos_state.location.clone(),
+                )
+                && x.table_id == self.currently_selected_pos_state.table_index as i32
+        });
+
+        if let Some(c_ticket) = current_ticket {
+            if !c_ticket.products.is_empty() {
+                header_row = header_row.push(
+                    widget::Button::new(
+                        widget::Text::new(fl!("print"))
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center),
+                    )
+                    .on_press(Message::PrintModalAction(
+                        PrintTicketModalActions::ShowModal,
+                    ))
+                    .height(button_height),
+                )
+            }
+        }
+
+        header_row.into()
     }
 
     // Controls how many tables there are on a row

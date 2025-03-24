@@ -24,6 +24,7 @@ restaurant = Restaurante
 garden = Jardín
 unknown = Desconocido
 no-products = Nada todavía...
+print = Imprimir
 
 <#-- Hotel Screen -->
 reservations = Reservas
