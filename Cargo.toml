@@ -34,6 +34,8 @@ iced_aw = { version = "0.12.2", default-features = false, features = [
     "date_picker",
 ] }
 dotenvy = "0.15.7"
+printers = "2.1.2"
+tokio = "1.44.1"
 
 [dependencies.i18n-embed]
 version = "0.15.3"

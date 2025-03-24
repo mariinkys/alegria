@@ -13,6 +13,7 @@ clear = Limpiar
 delete = Borrar
 select = Seleccionar
 page = Página
+printer = Impresora
 
 <#-- Main Menu -->
 bar = Bar

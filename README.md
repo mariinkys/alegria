@@ -25,6 +25,10 @@ cargo build --release
 sudo just install
 ```
 
+## Development Notes
+
+`cups-devel` (on Fedora) / `libcups2-dev` (on Ubuntu) is needed as a dependency for printing (required by the `printers` crate). 
+
 ## About me
 
 <a href="https://github.com/iced-rs/iced">

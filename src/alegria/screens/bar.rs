@@ -7,7 +7,9 @@ use std::sync::Arc;
 
 use iced::{
     Alignment, Element, Length, Pixels, Task,
-    widget::{self, Column, Row, Scrollable, Space, button, column, container, row, text},
+    widget::{
+        self, Column, Row, Scrollable, Space, button, column, container, pick_list, row, text,
+    },
 };
 use sqlx::PgPool;
 use sweeten::widget::text_input;
@@ -15,9 +17,12 @@ use sweeten::widget::text_input;
 use crate::{
     alegria::{
         action::AlegriaAction,
-        core::models::{
-            product::Product, product_category::ProductCategory, temporal_product::TemporalProduct,
-            temporal_ticket::TemporalTicket,
+        core::{
+            models::{
+                product::Product, product_category::ProductCategory,
+                temporal_product::TemporalProduct, temporal_ticket::TemporalTicket,
+            },
+            print::AlegriaPrinter,
         },
         utils::{
             TemporalTicketStatus, match_number_with_temporal_ticket_status,
@@ -97,7 +102,9 @@ pub enum PrintTicketModalActions {
 pub struct PrintTicketModalState {
     show_modal: bool,
     //ticket_type: TicketType,
-    //selected_printer: AlegriaPrinter,
+    selected_printer: Option<AlegriaPrinter>, // Printer selected on the selector
+    all_printers: Arc<Vec<AlegriaPrinter>>,
+    default_printer: Arc<Option<AlegriaPrinter>>,
 }
 
 pub struct Bar {
@@ -129,11 +136,11 @@ pub struct Bar {
 pub enum Message {
     Back, // Asks the parent (app.rs) to go back
 
+    InitPage, // Intended to be called when first opening the page, asks for the necessary data and executes the appropiate callbacks
     FetchTemporalTickets, // Fetches all the current temporal tickets
     SetTemporalTickets(Vec<TemporalTicket>), // Sets the temporal tickets on the app state
-
-    FetchProductCategories, // Fetches all the product categories
     SetProductCategories(Vec<ProductCategory>), // Sets the product categories on the state
+    SetPrinters(Option<AlegriaPrinter>, Vec<AlegriaPrinter>), // Sets the printers on the app state
 
     FetchProductCategoryProducts(Option<i32>), // Fetches the products for a given product category
     SetProductCategoryProducts(Option<Vec<Product>>), // Sets the products on the state
@@ -153,6 +160,8 @@ pub enum Message {
     ProductCategoryProductsPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategoryProducts
 
     PrintModalAction(PrintTicketModalActions), // Callback after some action has been requested on the print ticket modal
+    UpdateSelectedPrinter(AlegriaPrinter),     // Updates the selected printer
+    PrintJobCompleted(Result<(), &'static str>), // Callback after print job is completed
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -190,6 +199,38 @@ impl Bar {
             // Asks the parent (app.rs) to go back
             Message::Back => action.add_instruction(BarInstruction::Back),
 
+            // Intended to be called when first opening the page, asks for the necessary data and executes the appropiate callbacks
+            Message::InitPage => {
+                if let Some(pool) = &self.database {
+                    // Get the temporal tickets
+                    action.add_task(Task::perform(
+                        TemporalTicket::get_all(pool.clone()),
+                        |res| match res {
+                            Ok(res) => Message::SetTemporalTickets(res),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                Message::SetTemporalTickets(Vec::new())
+                            }
+                        },
+                    ));
+
+                    // Get the product categories
+                    action.add_task(Task::perform(
+                        ProductCategory::get_all(pool.clone()),
+                        |res| match res {
+                            Ok(items) => Message::SetProductCategories(items),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                Message::SetProductCategories(Vec::new())
+                            }
+                        },
+                    ));
+                }
+
+                action.add_task(Task::perform(AlegriaPrinter::load_printers(), |res| {
+                    Message::SetPrinters(res.0, res.1)
+                }));
+            }
             // Fetches all the current temporal tickets
             Message::FetchTemporalTickets => {
                 if let Some(pool) = &self.database {
@@ -227,27 +268,18 @@ impl Bar {
                     }
                 }
             }
-
-            // Fetches all the product categories
-            Message::FetchProductCategories => {
-                if let Some(pool) = &self.database {
-                    action.add_task(Task::perform(
-                        ProductCategory::get_all(pool.clone()),
-                        |res| match res {
-                            Ok(items) => Message::SetProductCategories(items),
-                            Err(err) => {
-                                eprintln!("{err}");
-                                Message::SetProductCategories(Vec::new())
-                            }
-                        },
-                    ));
-                }
-            }
             // Sets the product categories on the state
             Message::SetProductCategories(items) => {
                 self.currently_selected_product_category = None;
                 self.product_category_products = None;
                 self.product_categories = items;
+            }
+            // Sets the printers on the app state
+            Message::SetPrinters(default_printer, all_printers) => {
+                self.print_modal.selected_printer = default_printer;
+                self.print_modal.default_printer =
+                    Arc::new(self.print_modal.selected_printer.clone());
+                self.print_modal.all_printers = Arc::new(all_printers);
             }
 
             // Fetches the products for a given product category
@@ -615,10 +647,25 @@ impl Bar {
                 }
                 PrintTicketModalActions::HideModal => {
                     self.print_modal.show_modal = false;
-                    self.print_modal = PrintTicketModalState::default();
                 }
-                PrintTicketModalActions::PrintTicket => todo!(),
+                PrintTicketModalActions::PrintTicket => {
+                    if let Some(p) = &self.print_modal.selected_printer {
+                        let printer = Arc::new(p.clone());
+                        action.add_task(Task::perform(printer.print(), Message::PrintJobCompleted));
+                    }
+                }
             },
+            // Updates the selected printer
+            Message::UpdateSelectedPrinter(printer) => {
+                self.print_modal.selected_printer = Some(printer);
+            }
+            // Callback after print job is completed
+            Message::PrintJobCompleted(result) => {
+                // TODO: Toast
+                if let Err(e) = result {
+                    eprintln!("Error: {}", e);
+                }
+            }
         }
 
         action
@@ -666,9 +713,11 @@ impl Bar {
             .width(Length::Fill);
 
         if self.print_modal.show_modal {
-            let print_modal_content = container(text("Hello"))
-                .width(300)
-                .padding(10)
+            let print_modal_content = container(self.view_print_modal())
+                .width(600)
+                .padding(30)
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
                 .style(container::rounded_box);
 
             modal(
@@ -1055,6 +1104,53 @@ impl Bar {
             .align_y(Alignment::Center)
             .width(Length::Fill)
             .into()
+    }
+
+    /// Returns the view of the numpad
+    fn view_print_modal(&self) -> Element<Message> {
+        if !self.print_modal.all_printers.is_empty() {
+            let spacing = Pixels::from(Self::GLOBAL_SPACING);
+
+            let printers_label = text(fl!("printer")).width(Length::Fill);
+            let printer_selector = pick_list(
+                self.print_modal.all_printers.as_slice(),
+                self.print_modal.selected_printer.clone(),
+                Message::UpdateSelectedPrinter,
+            )
+            .width(Length::Fill);
+
+            let submit_button = if self.print_modal.selected_printer.is_some() {
+                button(
+                    text(fl!("print"))
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center),
+                )
+                .on_press(Message::PrintModalAction(
+                    PrintTicketModalActions::PrintTicket,
+                ))
+                .width(Length::Fill)
+            } else {
+                button(
+                    text(fl!("print"))
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center),
+                )
+                .width(Length::Fill)
+            };
+
+            column![
+                column![printers_label, printer_selector].spacing(1.),
+                submit_button
+            ]
+            .spacing(spacing)
+            .width(Length::Fill)
+            .into()
+        } else {
+            text("No printers detected...")
+                .size(25.)
+                .line_height(2.)
+                .into()
+        }
     }
 
     //

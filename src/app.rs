@@ -136,8 +136,7 @@ impl IcedAlegria {
                 }
                 Screen::Bar => {
                     self.bar.database = self.database.clone();
-                    tasks.push(self.update(Message::Bar(bar::Message::FetchProductCategories)));
-                    tasks.push(self.update(Message::Bar(bar::Message::FetchTemporalTickets)));
+                    tasks.push(self.update(Message::Bar(bar::Message::InitPage)));
                     self.screen = screen;
                 }
                 Screen::Hotel => {
