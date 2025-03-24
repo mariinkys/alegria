@@ -617,9 +617,6 @@ impl Bar {
                     {
                         self.product_categories_pagination_state.current_page += 1;
                     }
-                    {
-                        self.product_categories_pagination_state.current_page += 1;
-                    }
                 }
             },
             // Try to go up or down a page on the ProductCategoryProducts
