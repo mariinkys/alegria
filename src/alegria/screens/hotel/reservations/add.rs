@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use chrono::{Datelike, NaiveDate};
 use iced::{
-    Alignment, Element, Length, Padding, Pixels, Task,
-    widget::{self},
+    Alignment, Element, Length, Pixels, Task,
+    widget::{Checkbox, Column, PickList, Row, Space, button, container, text, text_input},
 };
 use iced_aw::{
     DatePicker,
@@ -325,28 +325,28 @@ impl AddReservationPage {
             let spacing = Pixels::from(Self::GLOBAL_SPACING);
             let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
-            let back_button = widget::Button::new(
-                widget::Text::new(fl!("back"))
+            let back_button = button(
+                text(fl!("back"))
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
             .on_press(Message::Back)
             .height(button_height);
 
-            widget::Row::new()
+            Row::new()
                 .push(back_button)
                 .push(
-                    widget::Text::new(fl!("add-reservation"))
-                        .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                    text(fl!("add-reservation"))
+                        .size(Self::TITLE_TEXT_SIZE)
                         .align_y(Alignment::Center),
                 )
-                .push(widget::Space::new(Length::Fill, Length::Shrink))
+                .push(Space::new(Length::Fill, Length::Shrink))
                 .width(Length::Fill)
                 .align_y(Alignment::Center)
                 .spacing(spacing)
                 .into()
         } else {
-            widget::Space::new(Length::Shrink, Length::Shrink).into() // TODO: This moves the client selector page a little bit down, improve this
+            Space::new(Length::Shrink, Length::Shrink).into() // TODO: This moves the client selector page a little bit down, improve this
         }
     }
 
@@ -358,8 +358,7 @@ impl AddReservationPage {
 
                 // Entry Date
                 let entry_date_label =
-                    widget::Text::new(format!("{} (yyyy-mm-dd)", fl!("entry-date")))
-                        .width(Length::Fill);
+                    text(format!("{} (yyyy-mm-dd)", fl!("entry-date"))).width(Length::Fill);
                 let entry_date_iced_aw_date = Date {
                     year: new_reservation.entry_date.unwrap_or_default().year(),
                     month: new_reservation.entry_date.unwrap_or_default().month(),
@@ -369,26 +368,26 @@ impl AddReservationPage {
                     self.new_reservation_datepickers_state
                         .show_entry_date_picker,
                     entry_date_iced_aw_date,
-                    widget::Button::new(widget::Text::new(fl!("edit"))).on_press(
-                        Message::ShowDatePicker(ReservationDateInputFields::EntryDate),
-                    ),
+                    button(text(fl!("edit"))).on_press(Message::ShowDatePicker(
+                        ReservationDateInputFields::EntryDate,
+                    )),
                     Message::CancelDateOperation,
                     |date| Message::UpdateDateField(date, ReservationDateInputFields::EntryDate),
                 );
-                let entry_date_input = widget::TextInput::new(
+                let entry_date_input = text_input(
                     fl!("entry-date").as_str(),
                     &entry_date_iced_aw_date.to_string(),
                 )
-                .style(|t, _| widget::text_input::default(t, widget::text_input::Status::Active))
-                .size(Pixels::from(Self::TEXT_SIZE))
+                .style(|t, _| text_input::default(t, text_input::Status::Active))
+                .size(Self::TEXT_SIZE)
                 .width(Length::Fill);
-                let entry_date_input_row = widget::Row::new()
+                let entry_date_input_row = Row::new()
                     .push(entry_date_input)
                     .push(entry_date_picker)
                     .align_y(Alignment::Center)
                     .spacing(1.);
 
-                let entry_date_input_column = widget::Column::new()
+                let entry_date_input_column = Column::new()
                     .push(entry_date_label)
                     .push(entry_date_input_row)
                     .width(Length::Fill)
@@ -396,8 +395,7 @@ impl AddReservationPage {
 
                 // Departure Date
                 let departure_date_label =
-                    widget::Text::new(format!("{} (yyyy-mm-dd)", fl!("departure-date")))
-                        .width(Length::Fill);
+                    text(format!("{} (yyyy-mm-dd)", fl!("departure-date"))).width(Length::Fill);
                 let departure_date_iced_aw_date = Date {
                     year: new_reservation.departure_date.unwrap_or_default().year(),
                     month: new_reservation.departure_date.unwrap_or_default().month(),
@@ -407,36 +405,36 @@ impl AddReservationPage {
                     self.new_reservation_datepickers_state
                         .show_departure_date_picker,
                     departure_date_iced_aw_date,
-                    widget::Button::new(widget::Text::new(fl!("edit"))).on_press(
-                        Message::ShowDatePicker(ReservationDateInputFields::DepartureDate),
-                    ),
+                    button(text(fl!("edit"))).on_press(Message::ShowDatePicker(
+                        ReservationDateInputFields::DepartureDate,
+                    )),
                     Message::CancelDateOperation,
                     |date| {
                         Message::UpdateDateField(date, ReservationDateInputFields::DepartureDate)
                     },
                 );
-                let departure_date_input = widget::TextInput::new(
+                let departure_date_input = text_input(
                     fl!("departure-date").as_str(),
                     &departure_date_iced_aw_date.to_string(),
                 )
-                .style(|t, _| widget::text_input::default(t, widget::text_input::Status::Active))
-                .size(Pixels::from(Self::TEXT_SIZE))
+                .style(|t, _| text_input::default(t, text_input::Status::Active))
+                .size(Self::TEXT_SIZE)
                 .width(Length::Fill);
-                let departure_date_input_row = widget::Row::new()
+                let departure_date_input_row = Row::new()
                     .push(departure_date_input)
                     .push(departure_date_picker)
                     .align_y(Alignment::Center)
                     .spacing(1.);
 
-                let departure_date_input_column = widget::Column::new()
+                let departure_date_input_column = Column::new()
                     .push(departure_date_label)
                     .push(departure_date_input_row)
                     .width(Length::Fill)
                     .spacing(1.);
 
                 // Occupied
-                let occupied = widget::Checkbox::new(fl!("occupied"), new_reservation.occupied)
-                    .text_size(Pixels::from(Self::TEXT_SIZE))
+                let occupied = Checkbox::new(fl!("occupied"), new_reservation.occupied)
+                    .text_size(Self::TEXT_SIZE)
                     .on_toggle(Message::ToggleOccupiedCheckbox);
 
                 // Rooms Selector
@@ -454,32 +452,32 @@ impl AddReservationPage {
                     })
                     .cloned()
                     .collect::<Vec<Room>>();
-                let rooms_label = widget::Text::new(fl!("rooms")).width(Length::Fill);
+                let rooms_label = text(fl!("rooms")).width(Length::Fill);
                 let selected_room = available_rooms.first().cloned();
-                let rooms_selector = widget::PickList::new(available_rooms, selected_room, |r| {
+                let rooms_selector = PickList::new(available_rooms, selected_room, |r| {
                     Message::AddReservationRoom(r.id.unwrap(), r.default_room_price)
                 })
                 .width(Length::Fill);
-                let rooms_selector_column = widget::Column::new()
+                let rooms_selector_column = Column::new()
                     .push(rooms_label)
                     .push(rooms_selector)
                     .width(Length::Fill)
                     .spacing(1.);
 
                 // Already Selected Rooms
-                let mut reservation_rooms_column = widget::Column::new()
-                    .push(widget::Text::new(fl!("rooms")))
+                let mut reservation_rooms_column = Column::new()
+                    .push(text(fl!("rooms")))
                     .width(Length::Fill)
                     .spacing(spacing);
                 for sold_room in &new_reservation.rooms {
                     let room = self.rooms.iter().find(|r| r.id == sold_room.room_id);
                     if let Some(room) = room {
                         reservation_rooms_column = reservation_rooms_column.push(
-                            widget::Row::new()
-                                .push(widget::Text::new(&room.name).width(Length::Fill))
-                                .push(widget::Button::new("X").on_press(
-                                    Message::RemoveReservationRoom(room.id.unwrap_or_default()),
-                                ))
+                            Row::new()
+                                .push(text(&room.name).width(Length::Fill))
+                                .push(button("X").on_press(Message::RemoveReservationRoom(
+                                    room.id.unwrap_or_default(),
+                                )))
                                 .align_y(Alignment::Center)
                                 .width(Length::Fill),
                         )
@@ -492,15 +490,11 @@ impl AddReservationPage {
                 } else {
                     new_reservation.client_name.clone()
                 };
-                let client_selection_row = widget::Row::new()
+                let client_selection_row = Row::new()
+                    .push(text(client_text).size(Self::TEXT_SIZE).width(Length::Fill))
                     .push(
-                        widget::Text::new(client_text)
-                            .size(Self::TEXT_SIZE)
-                            .width(Length::Fill),
-                    )
-                    .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("select"))
+                        button(
+                            text(fl!("select"))
                                 .width(Length::Shrink)
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
@@ -510,15 +504,15 @@ impl AddReservationPage {
                     )
                     .align_y(Alignment::Center)
                     .width(Length::Fill);
-                let client_selection_col = widget::Column::new()
-                    .push(widget::Text::new(fl!("main-client")).width(Length::Fill))
+                let client_selection_col = Column::new()
+                    .push(text(fl!("main-client")).width(Length::Fill))
                     .push(client_selection_row)
                     .width(Length::Fill)
                     .spacing(1.);
 
                 // Submit
-                let submit_button = widget::Button::new(
-                    widget::Text::new(fl!("add"))
+                let submit_button = button(
+                    text(fl!("add"))
                         .width(Length::Fill)
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
@@ -527,56 +521,52 @@ impl AddReservationPage {
                 .width(Length::Fill);
 
                 // Layout
-                let date_inputs = widget::Column::new()
+                let date_inputs = Column::new()
                     .push(entry_date_input_column)
                     .push(departure_date_input_column)
                     .push(occupied)
                     .spacing(spacing)
                     .width(Length::Fill);
-                let rooms_col = widget::Column::new()
+                let rooms_col = Column::new()
                     .push(rooms_selector_column)
                     .push(reservation_rooms_column)
                     .spacing(spacing)
                     .width(Length::Fill);
-                let second_row = widget::Row::new()
+                let second_row = Row::new()
                     .push(date_inputs)
                     .push(rooms_col)
                     .spacing(spacing)
                     .align_y(Alignment::Start)
                     .width(Length::Fill);
 
-                let result = widget::Column::new()
+                let result = Column::new()
                     .push(client_selection_col)
                     .push(second_row)
                     .push(submit_button)
                     .spacing(spacing)
-                    .width(Length::Fixed(850.));
+                    .width(850.);
 
-                widget::Container::new(result)
+                container(result)
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center)
                     .width(Length::Fill)
-                    .padding(Padding::new(50.))
+                    .padding(50.)
                     .into()
             } else {
-                widget::Container::new(widget::Text::new(
-                    "Error, NewReservation improperly initialized...",
-                ))
+                container(text("Error, NewReservation improperly initialized..."))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .width(Length::Fill)
+                    .padding(50.)
+                    .into()
+            }
+        } else {
+            container(text("Error, NewReservation not initialized..."))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center)
                 .width(Length::Fill)
-                .padding(Padding::new(50.))
+                .padding(50.)
                 .into()
-            }
-        } else {
-            widget::Container::new(widget::Text::new(
-                "Error, NewReservation not initialized...",
-            ))
-            .align_x(Alignment::Center)
-            .align_y(Alignment::Center)
-            .width(Length::Fill)
-            .padding(Padding::new(50.))
-            .into()
         }
     }
 

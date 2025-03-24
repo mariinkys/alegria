@@ -8,8 +8,10 @@ use std::sync::Arc;
 use add::AddReservationPage;
 use chrono::{Datelike, Local, NaiveDate};
 use iced::{
-    Alignment, Element, Length, Padding, Pixels, Task,
-    widget::{self},
+    Alignment, Element, Length, Pixels, Task,
+    widget::{
+        Column, Row, Scrollable, Space, Tooltip, button, container, text, text_input, tooltip,
+    },
 };
 use iced_aw::{
     DatePicker,
@@ -481,7 +483,7 @@ impl Reservations {
         };
 
         toast::Manager::new(
-            widget::Column::new()
+            Column::new()
                 .push(header_row)
                 .push(content)
                 .spacing(spacing)
@@ -502,22 +504,22 @@ impl Reservations {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
-        let back_button = widget::Button::new(
-            widget::Text::new(fl!("back"))
+        let back_button = button(
+            text(fl!("back"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center),
         )
         .on_press(Message::Back)
         .height(button_height);
 
-        widget::Row::new()
+        Row::new()
             .push(back_button)
             .push(
-                widget::Text::new(fl!("reservations"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                text(fl!("reservations"))
+                    .size(Self::TITLE_TEXT_SIZE)
                     .align_y(Alignment::Center),
             )
-            .push(widget::Space::new(Length::Fill, Length::Shrink))
+            .push(Space::new(Length::Fill, Length::Shrink))
             .push(self.view_date_pickers_row())
             .width(Length::Fill)
             .align_y(Alignment::Center)
@@ -531,7 +533,7 @@ impl Reservations {
 
         // Initial Date
         let initial_date_label =
-            widget::Text::new(format!("{} (yyyy-mm-dd)", fl!("initial-date"))).width(Length::Fill);
+            text(format!("{} (yyyy-mm-dd)", fl!("initial-date"))).width(Length::Fill);
         let initial_date_iced_aw_date = Date {
             year: self.date_filters.initial_date.year(),
             month: self.date_filters.initial_date.month(),
@@ -540,27 +542,27 @@ impl Reservations {
         let initial_date_picker = DatePicker::new(
             self.date_filters.show_initial_date_picker,
             initial_date_iced_aw_date,
-            widget::Button::new(widget::Text::new(fl!("edit"))).on_press(Message::ShowDatePicker(
+            button(text(fl!("edit"))).on_press(Message::ShowDatePicker(
                 ReservationDateInputFields::FilterInitialDate,
             )),
             Message::CancelDateOperation,
             |date| Message::UpdateDateField(date, ReservationDateInputFields::FilterInitialDate),
         );
-        let initial_date_input = widget::TextInput::new(
+        let initial_date_input = text_input(
             fl!("initial-date").as_str(),
             &self.date_filters.initial_date_string,
         )
         .on_input(|c| Message::TextInputUpdate(c, ReservationTextInputFields::FilterInitialDate))
         .on_submit(Message::FetchReservations)
-        .size(Pixels::from(Self::TEXT_SIZE))
+        .size(Self::TEXT_SIZE)
         .width(Length::Fill);
 
-        let initial_date_input_row = widget::Row::new()
+        let initial_date_input_row = Row::new()
             .push(initial_date_input)
             .push(initial_date_picker)
             .align_y(Alignment::Center)
             .spacing(1.);
-        let initial_date_input_column = widget::Column::new()
+        let initial_date_input_column = Column::new()
             .push(initial_date_label)
             .push(initial_date_input_row)
             .width(Length::Fill)
@@ -568,7 +570,7 @@ impl Reservations {
 
         // Last Date
         let last_date_label =
-            widget::Text::new(format!("{} (yyyy-mm-dd)", fl!("last-date"))).width(Length::Fill);
+            text(format!("{} (yyyy-mm-dd)", fl!("last-date"))).width(Length::Fill);
         let last_date_iced_aw_date = Date {
             year: self.date_filters.last_date.year(),
             month: self.date_filters.last_date.month(),
@@ -577,33 +579,33 @@ impl Reservations {
         let last_date_picker = DatePicker::new(
             self.date_filters.show_last_date_picker,
             last_date_iced_aw_date,
-            widget::Button::new(widget::Text::new(fl!("edit"))).on_press(Message::ShowDatePicker(
+            button(text(fl!("edit"))).on_press(Message::ShowDatePicker(
                 ReservationDateInputFields::FilterLastDate,
             )),
             Message::CancelDateOperation,
             |date| Message::UpdateDateField(date, ReservationDateInputFields::FilterLastDate),
         );
-        let last_date_input = widget::TextInput::new(
+        let last_date_input = text_input(
             fl!("last-date").as_str(),
             &self.date_filters.last_date_string,
         )
         .on_input(|c| Message::TextInputUpdate(c, ReservationTextInputFields::FilterLastDate))
         .on_submit(Message::FetchReservations)
-        .size(Pixels::from(Self::TEXT_SIZE))
+        .size(Self::TEXT_SIZE)
         .width(Length::Fill);
 
-        let last_date_input_row = widget::Row::new()
+        let last_date_input_row = Row::new()
             .push(last_date_input)
             .push(last_date_picker)
             .align_y(Alignment::Center)
             .spacing(1.);
-        let last_date_input_column = widget::Column::new()
+        let last_date_input_column = Column::new()
             .push(last_date_label)
             .push(last_date_input_row)
             .width(Length::Fill)
             .spacing(1.);
 
-        widget::Row::new()
+        Row::new()
             .push(initial_date_input_column)
             .push(last_date_input_column)
             .align_y(Alignment::Center)
@@ -618,21 +620,21 @@ impl Reservations {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
         // header row with days
-        let mut header_row = widget::Row::new();
+        let mut header_row = Row::new();
 
         // top left action buttons
         header_row = header_row
             .push(
-                widget::Row::new()
+                Row::new()
                     .push(
-                        widget::Button::new(
-                            widget::Text::new("<")
+                        button(
+                            text("<")
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center)
                                 .height(Length::Fill)
                                 .width(Length::Fill),
                         )
-                        .style(widget::button::secondary)
+                        .style(button::secondary)
                         .height(Length::Fill)
                         .width(Length::Fill)
                         .on_press(Message::DirectionActionInput(
@@ -640,14 +642,14 @@ impl Reservations {
                         )),
                     )
                     .push(
-                        widget::Button::new(
-                            widget::Text::new(">")
+                        button(
+                            text(">")
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center)
                                 .height(Length::Fill)
                                 .width(Length::Fill),
                         )
-                        .style(widget::button::secondary)
+                        .style(button::secondary)
                         .height(Length::Fill)
                         .width(Length::Fill)
                         .on_press(Message::DirectionActionInput(
@@ -666,7 +668,7 @@ impl Reservations {
         let mut current_date = self.date_filters.initial_date;
         while current_date <= self.date_filters.last_date {
             header_row = header_row.push(
-                widget::Text::new(format!("{}/{}", current_date.day(), current_date.month()))
+                text(format!("{}/{}", current_date.day(), current_date.month()))
                     .size(16)
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center)
@@ -677,13 +679,13 @@ impl Reservations {
         }
 
         // final calendar view
-        let mut calendar_view = widget::Column::new().push(header_row).spacing(spacing);
+        let mut calendar_view = Column::new().push(header_row).spacing(spacing);
 
         for room in &*self.rooms {
             // each room is a row
-            let mut row = widget::Row::new().spacing(spacing);
+            let mut row = Row::new().spacing(spacing);
             row = row.push(
-                widget::Text::new(&room.name)
+                text(&room.name)
                     .size(16)
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center)
@@ -694,10 +696,10 @@ impl Reservations {
             // loop through each day in the range and check for reservations
             let mut current_date = self.date_filters.initial_date;
             while current_date <= self.date_filters.last_date {
-                let mut cell_content = widget::Container::new(
-                    widget::Button::new("")
+                let mut cell_content = container(
+                    button("")
                         .on_press(Message::OpenAddReservationForm(current_date, room.clone()))
-                        .style(widget::button::secondary)
+                        .style(button::secondary)
                         .width(cell_width)
                         .height(cell_height),
                 );
@@ -711,27 +713,27 @@ impl Reservations {
                     {
                         match reservation.occupied {
                             true => {
-                                cell_content = widget::Container::new(widget::Tooltip::new(
-                                    widget::Button::new("")
-                                        .style(widget::button::success)
+                                cell_content = container(Tooltip::new(
+                                    button("")
+                                        .style(button::success)
                                         .width(cell_width)
                                         .height(cell_height),
-                                    widget::container(reservation.client_name.as_str())
-                                        .style(widget::container::rounded_box)
-                                        .padding(Padding::new(3.)),
-                                    widget::tooltip::Position::FollowCursor,
+                                    container(reservation.client_name.as_str())
+                                        .style(container::rounded_box)
+                                        .padding(3.),
+                                    tooltip::Position::FollowCursor,
                                 ));
                             }
                             false => {
-                                cell_content = widget::Container::new(widget::Tooltip::new(
-                                    widget::Button::new("")
-                                        .style(widget::button::danger)
+                                cell_content = container(Tooltip::new(
+                                    button("")
+                                        .style(button::danger)
                                         .width(cell_width)
                                         .height(cell_height),
-                                    widget::container(reservation.client_name.as_str())
-                                        .style(widget::container::rounded_box)
-                                        .padding(Padding::new(3.)),
-                                    widget::tooltip::Position::FollowCursor,
+                                    container(reservation.client_name.as_str())
+                                        .style(container::rounded_box)
+                                        .padding(3.),
+                                    tooltip::Position::FollowCursor,
                                 ));
                             }
                         }
@@ -746,6 +748,6 @@ impl Reservations {
             calendar_view = calendar_view.push(row);
         }
 
-        widget::Container::new(widget::Scrollable::new(calendar_view)).into()
+        container(Scrollable::new(calendar_view)).into()
     }
 }

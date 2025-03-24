@@ -2,7 +2,10 @@
 
 use std::sync::Arc;
 
-use iced::{Alignment, Length, Padding, Pixels, Task, widget};
+use iced::{
+    Alignment, Length, Task,
+    widget::{Column, Row, button, container, text},
+};
 use sqlx::PgPool;
 
 use crate::{
@@ -53,56 +56,56 @@ impl IcedAlegria {
     pub fn view(&self) -> iced::Element<'_, Message> {
         let content = match self.screen {
             Screen::Home => {
-                let buttons_row = widget::Row::new()
+                let buttons_row = Row::new()
                     .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("bar"))
+                        button(
+                            text(fl!("bar"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
                         .on_press(Message::ChangeScreen(Screen::Bar))
-                        .width(Length::Fixed(100.))
-                        .height(Length::Fixed(100.)),
+                        .width(100.)
+                        .height(100.),
                     )
                     .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("hotel"))
+                        button(
+                            text(fl!("hotel"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
                         .on_press(Message::ChangeScreen(Screen::Hotel))
-                        .width(Length::Fixed(100.))
-                        .height(Length::Fixed(100.)),
+                        .width(100.)
+                        .height(100.),
                     )
                     .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("managment"))
+                        button(
+                            text(fl!("managment"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
-                        .width(Length::Fixed(100.))
-                        .height(Length::Fixed(100.)),
+                        .width(100.)
+                        .height(100.),
                     )
-                    .spacing(Pixels::from(5.))
+                    .spacing(5.)
                     .height(Length::Shrink);
 
-                let centered_buttons = widget::Container::new(buttons_row)
+                let centered_buttons = container(buttons_row)
                     .width(Length::Fill)
                     .align_x(Alignment::Center)
                     .height(Length::Fill)
                     .align_y(Alignment::Center);
 
-                let app_text = widget::Text::new("dev.mariinkys.Alegría dev-0.1.0")
+                let app_text = text("dev.mariinkys.Alegría dev-0.1.0")
                     .align_x(Alignment::End)
                     .width(Length::Fill);
 
-                let content = widget::Column::new()
+                let content = Column::new()
                     .push(centered_buttons)
                     .push(app_text)
                     .width(Length::Fill)
                     .height(Length::Fill);
 
-                widget::Container::new(content)
+                container(content)
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .into()
@@ -111,10 +114,10 @@ impl IcedAlegria {
             Screen::Hotel => self.hotel.view().map(Message::Hotel),
         };
 
-        widget::Container::new(content)
+        container(content)
             .width(Length::Fill)
             .height(Length::Fill)
-            .padding(Padding::new(8.))
+            .padding(8.)
             .into()
     }
 

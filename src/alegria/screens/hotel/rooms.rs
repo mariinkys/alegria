@@ -3,8 +3,10 @@
 use std::sync::Arc;
 
 use iced::{
-    Alignment, Element, Length, Padding, Pixels, Task,
-    widget::{self, Space},
+    Alignment, Element, Length, Pixels, Task,
+    widget::{
+        Column, PickList, Row, Rule, Space, button, column, container, row, text, text_input,
+    },
 };
 use sqlx::PgPool;
 
@@ -293,9 +295,7 @@ impl Rooms {
             RoomsScreen::AddEdit => self.view_add_edit_screen(),
         };
 
-        widget::Column::new()
-            .push(header_row)
-            .push(content)
+        column![header_row, content]
             .spacing(spacing)
             .height(Length::Fill)
             .width(Length::Fill)
@@ -314,8 +314,8 @@ impl Rooms {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
-        let back_button = widget::Button::new(
-            widget::Text::new(fl!("back"))
+        let back_button = button(
+            text(fl!("back"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center),
         )
@@ -323,41 +323,41 @@ impl Rooms {
         .height(button_height);
 
         let add_cancel_button = match &self.current_screen {
-            RoomsScreen::List => widget::Button::new(
-                widget::Text::new(fl!("add"))
+            RoomsScreen::List => button(
+                text(fl!("add"))
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
             .on_press(Message::AskAddRoom)
             .height(button_height),
-            RoomsScreen::AddEdit => widget::Button::new(
-                widget::Text::new(fl!("cancel"))
+            RoomsScreen::AddEdit => button(
+                text(fl!("cancel"))
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
-            .style(widget::button::danger)
+            .style(button::danger)
             .on_press(Message::CancelRoomOperation)
             .height(button_height),
         };
 
-        let delete_button = widget::Button::new(
-            widget::Text::new(fl!("delete"))
+        let delete_button = button(
+            text(fl!("delete"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center),
         )
-        .style(widget::button::secondary)
+        .style(button::secondary)
         .on_press(Message::DeleteCurrentRoom)
         .height(button_height);
 
-        let mut result_row = widget::Row::new();
+        let mut result_row = Row::new();
         if self.current_screen == RoomsScreen::List {
             result_row = result_row.push(back_button);
         }
 
         result_row = result_row
             .push(
-                widget::Text::new(fl!("rooms"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                text(fl!("rooms"))
+                    .size(Self::TITLE_TEXT_SIZE)
                     .align_y(Alignment::Center),
             )
             .push(Space::new(Length::Fill, Length::Shrink));
@@ -383,32 +383,30 @@ impl Rooms {
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
         if self.rooms.is_empty() {
-            return widget::Container::new(
-                widget::Text::new(fl!("no-rooms")).size(Pixels::from(Self::TITLE_TEXT_SIZE)),
-            )
-            .width(Length::Fill)
-            .align_x(Alignment::Center)
-            .padding(Padding::new(50.))
-            .into();
+            return container(text(fl!("no-rooms")).size(Self::TITLE_TEXT_SIZE))
+                .width(Length::Fill)
+                .align_x(Alignment::Center)
+                .padding(50.)
+                .into();
         }
 
-        let title_row = widget::Row::new()
+        let title_row = Row::new()
             .push(
-                widget::Text::new(fl!("name"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
-                    .width(Length::Fixed(300.))
+                text(fl!("name"))
+                    .size(Self::TITLE_TEXT_SIZE)
+                    .width(300.)
                     .align_y(Alignment::Center),
             )
             .push(
-                widget::Text::new(fl!("room-type"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
-                    .width(Length::Fixed(200.))
+                text(fl!("room-type"))
+                    .size(Self::TITLE_TEXT_SIZE)
+                    .width(200.)
                     .align_y(Alignment::Center),
             )
             .push(
-                widget::Text::new(fl!("edit"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
-                    .width(Length::Fixed(200.))
+                text(fl!("edit"))
+                    .size(Self::TITLE_TEXT_SIZE)
+                    .width(200.)
                     .align_y(Alignment::Center)
                     .align_x(Alignment::End),
             )
@@ -423,70 +421,62 @@ impl Rooms {
             self.rooms.len(),
         );
 
-        let mut grid = widget::Column::new()
+        let mut grid = Column::new()
             .push(title_row)
             .align_x(Alignment::Center)
             .spacing(spacing)
             .width(Length::Shrink);
 
         for room in &self.rooms[start_index..end_index] {
-            let row = widget::Row::new()
+            let row = Row::new()
                 .width(Length::Shrink)
                 .push(
-                    widget::Text::new(&room.name)
-                        .size(Pixels::from(Self::TEXT_SIZE))
-                        .width(Length::Fixed(300.))
+                    text(&room.name)
+                        .size(Self::TEXT_SIZE)
+                        .width(300.)
                         .align_y(Alignment::Center),
                 )
                 .push(
-                    widget::Text::new(&room.room_type_name)
-                        .size(Pixels::from(Self::TEXT_SIZE))
-                        .width(Length::Fixed(200.))
+                    text(&room.room_type_name)
+                        .size(Self::TEXT_SIZE)
+                        .width(200.)
                         .align_y(Alignment::Center),
                 )
                 .push(
-                    widget::Container::new(
-                        widget::Button::new(
-                            widget::Text::new(fl!("edit"))
-                                .size(Pixels::from(Self::TEXT_SIZE))
+                    container(
+                        button(
+                            text(fl!("edit"))
+                                .size(Self::TEXT_SIZE)
                                 .align_y(Alignment::Center),
                         )
                         .on_press(Message::AskEditRoom(room.clone()))
                         .width(Length::Shrink),
                     )
-                    .width(Length::Fixed(200.))
+                    .width(200.)
                     .align_x(Alignment::End)
                     .align_y(Alignment::Center),
                 )
                 .align_y(Alignment::Center);
 
             // Limit Rule size to sum of all column widths
-            grid = grid.push(
-                widget::Row::new()
-                    .width(Length::Fixed(700.))
-                    .push(widget::Rule::horizontal(Pixels::from(1.))),
-            );
+            grid = grid.push(row![Rule::horizontal(1.)].width(Length::Fixed(700.)));
             grid = grid.push(row);
         }
 
-        grid = grid.push(
-            widget::Row::new()
-                .width(Length::Fixed(700.))
-                .push(widget::Rule::horizontal(Pixels::from(1.))),
-        );
+        grid = grid.push(row![Rule::horizontal(1.)].width(700.));
 
-        grid = grid.push(widget::Text::new(format!(
+        grid = grid.push(text(format!(
             "{} {}",
             fl!("page").as_str(),
             &self.pagination_state.current_page + 1
         )));
-        grid = grid.push(widget::Space::with_height(Length::Fill));
+        grid = grid.push(Space::with_height(Length::Fill));
         grid = grid.push(
-            widget::Row::new()
+            Row::new()
                 .width(Length::Fixed(850.))
                 .push(
-                    widget::Button::new(
-                        widget::Text::new(fl!("back"))
+                    button(
+                        text(fl!("back"))
                             .align_x(Alignment::Center)
                             .align_y(Alignment::Center)
                             .width(Length::Fill)
@@ -495,8 +485,8 @@ impl Rooms {
                     .on_press(Message::PaginationAction(PaginationAction::Back)),
                 )
                 .push(
-                    widget::Button::new(
-                        widget::Text::new(fl!("next"))
+                    button(
+                        text(fl!("next"))
                             .align_x(Alignment::Center)
                             .align_y(Alignment::Center)
                             .width(Length::Fill)
@@ -507,10 +497,10 @@ impl Rooms {
                 .spacing(spacing),
         );
 
-        widget::Container::new(grid)
+        container(grid)
             .width(Length::Fill)
             .align_x(Alignment::Center)
-            .padding(Padding::new(50.))
+            .padding(50.)
             .into()
     }
 
@@ -519,73 +509,62 @@ impl Rooms {
         if let Some(room) = &self.add_edit_room {
             let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
-            let name_label = widget::Text::new(fl!("name")).width(Length::Fill);
-
-            let name_input = widget::TextInput::new(fl!("name").as_str(), &room.name)
+            let name_label = text(fl!("name")).width(Length::Fill);
+            let name_input = text_input(fl!("name").as_str(), &room.name)
                 .on_input(|c| Message::TextInputUpdate(c, RoomTextInputFields::Name))
                 .size(Pixels::from(Self::TEXT_SIZE))
                 .width(Length::Fill);
 
-            let room_type_label = widget::Text::new(fl!("room-type")).width(Length::Fill);
-
+            let room_type_label = text(fl!("room-type")).width(Length::Fill);
             let selected = self.room_types.iter().find(|rt| rt.id == room.room_type_id);
             let room_type_selector =
-                widget::PickList::new(self.room_types.clone(), selected, |room_type| {
+                PickList::new(self.room_types.clone(), selected, |room_type| {
                     Message::UpdatedSelectedRoomTypeId(room_type.id.unwrap_or_default())
                 })
                 .width(Length::Fill);
 
             let submit_button = if room.id.is_some() {
-                widget::Button::new(
-                    widget::Text::new(fl!("edit"))
+                button(
+                    text(fl!("edit"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center)
-                        .size(Pixels::from(Self::TEXT_SIZE)),
+                        .size(Self::TEXT_SIZE),
                 )
                 .on_press(Message::EditCurrentRoom)
                 .width(Length::Fill)
             } else {
-                widget::Button::new(
-                    widget::Text::new(fl!("add"))
+                button(
+                    text(fl!("add"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center)
-                        .size(Pixels::from(Self::TEXT_SIZE)),
+                        .size(Self::TEXT_SIZE),
                 )
                 .on_press(Message::AddCurrentRoom)
                 .width(Length::Fill)
             };
 
-            let name_input_column = widget::Column::new()
-                .push(name_label)
-                .push(name_input)
-                .width(Length::Fixed(700.))
+            let name_input_column = column![name_label, name_input].width(700.).spacing(1.);
+
+            let room_type_input_column = column![room_type_label, room_type_selector]
+                .width(700.)
                 .spacing(1.);
 
-            let room_type_input_column = widget::Column::new()
-                .push(room_type_label)
-                .push(room_type_selector)
-                .width(Length::Fixed(700.))
-                .spacing(1.);
-
-            let form_column = widget::Column::new()
-                .push(name_input_column)
-                .push(room_type_input_column)
-                .push(submit_button)
-                .width(Length::Fixed(700.))
+            let form_column = column![name_input_column, room_type_input_column, submit_button]
+                .width(700.)
                 .spacing(spacing);
 
-            widget::Container::new(form_column)
+            container(form_column)
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center)
                 .width(Length::Fill)
-                .padding(Padding::new(50.))
+                .padding(50.)
                 .into()
         } else {
-            widget::Container::new(widget::Text::new("Error"))
+            container(text("Error"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center)
                 .width(Length::Fill)
-                .padding(Padding::new(50.))
+                .padding(50.)
                 .into()
         }
     }

@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use iced::{
     Alignment, Element, Length, Pixels, Task,
-    widget::{self, container, text::LineHeight},
+    widget::{self, Column, Row, Scrollable, Space, button, column, container, row, text},
 };
 use sqlx::PgPool;
 use sweeten::widget::text_input;
@@ -631,51 +631,42 @@ impl Bar {
     pub fn view(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
-        // HEADER
         let header_row = self.view_header_row();
 
-        // BOTTOM RIGHT SIDE
-        let product_categories_container = self.view_product_categories_container();
-        let product_category_products_container = self.view_product_category_products_container();
-        let right_side_container = widget::Row::new()
-            .push(product_categories_container)
-            .push(product_category_products_container)
+        let bottom_row = row![
+            // LEFT SIDE COLUMN
+            column![
+                // UPPER LEFT SIDE
+                row![
+                    self.view_tables_grid(),
+                    column![self.view_current_ticket_total_price(), self.view_numpad()]
+                        .width(235.) //TODO: Maybe this should not be like this but the custom widget also gives some trouble
+                        .spacing(spacing)
+                ]
+                .align_y(Alignment::Center)
+                .spacing(spacing),
+                // BOTTOM LEFT SIDE
+                self.view_current_ticket_products()
+            ]
             .spacing(spacing)
-            .width(Length::Fill);
-
-        // BOTTOM LEFT SIDE
-        let left_side_upper_row_left_col = self.view_tables_grid();
-        let left_side_upper_row_right_col = widget::Column::new()
-            .push(self.view_current_ticket_total_price())
-            .push(self.view_numpad())
-            .width(Length::Fixed(235.)) //TODO: Maybe this should not be like this but the custom widget also gives some trouble
-            .spacing(spacing);
-        let left_side_upper_row = widget::Row::new()
-            .push(left_side_upper_row_left_col)
-            .push(left_side_upper_row_right_col)
-            .align_y(Alignment::Center)
-            .spacing(spacing);
-        let left_side_down_row = self.view_current_ticket_products();
-        let left_side_container = widget::Column::new()
-            .push(left_side_upper_row)
-            .push(left_side_down_row)
+            .width(Length::Fill),
+            // RIGHT SIDE ROW
+            row![
+                self.view_product_categories_container(),
+                self.view_product_category_products_container(),
+            ]
             .spacing(spacing)
-            .width(Length::Fill);
+            .width(Length::Fill)
+        ]
+        .spacing(spacing);
 
-        let bottom_row = widget::Row::new()
-            .push(left_side_container)
-            .push(right_side_container)
-            .spacing(spacing);
-
-        let content = widget::Column::new()
-            .push(header_row)
-            .push(bottom_row)
+        let content = column![header_row, bottom_row]
             .spacing(spacing)
             .height(Length::Fill)
             .width(Length::Fill);
 
         if self.print_modal.show_modal {
-            let print_modal_content = widget::Container::new(widget::Text::new("Hello"))
+            let print_modal_content = container(text("Hello"))
                 .width(300)
                 .padding(10)
                 .style(container::rounded_box);
@@ -701,25 +692,24 @@ impl Bar {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
-        let back_button = widget::Button::new(
-            widget::Text::new(fl!("back"))
+        let back_button = button(
+            text(fl!("back"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center),
         )
         .on_press(Message::Back)
         .height(button_height);
 
-        let mut header_row = widget::Row::new()
-            .push(back_button)
-            .push(
-                widget::Text::new(fl!("bar"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
-                    .align_y(Alignment::Center),
-            )
-            .push(widget::Space::new(Length::Fill, Length::Shrink))
-            .width(Length::Fill)
-            .align_y(Alignment::Center)
-            .spacing(spacing);
+        let mut header_row = row![
+            back_button,
+            text(fl!("bar"))
+                .size(Self::TITLE_TEXT_SIZE)
+                .align_y(Alignment::Center),
+            Space::new(Length::Fill, Length::Shrink)
+        ]
+        .width(Length::Fill)
+        .align_y(Alignment::Center)
+        .spacing(spacing);
 
         // TODO: We could do this OnTableClick and save the Option<TemporalTicket> on state and do not search for it here and on the colors functions
         let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
@@ -733,8 +723,8 @@ impl Bar {
         if let Some(c_ticket) = current_ticket {
             if !c_ticket.products.is_empty() {
                 header_row = header_row.push(
-                    widget::Button::new(
-                        widget::Text::new(fl!("print"))
+                    button(
+                        text(fl!("print"))
                             .align_x(Alignment::Center)
                             .align_y(Alignment::Center),
                     )
@@ -758,10 +748,10 @@ impl Bar {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
-        let header = widget::Row::new()
+        let header = Row::new()
             .push(
-                widget::Button::new(
-                    widget::Text::new(fl!("bar"))
+                button(
+                    text(fl!("bar"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -771,8 +761,8 @@ impl Bar {
                 .width(Length::Fill),
             )
             .push(
-                widget::Button::new(
-                    widget::Text::new(fl!("restaurant"))
+                button(
+                    text(fl!("restaurant"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -784,8 +774,8 @@ impl Bar {
                 .width(Length::Fill),
             )
             .push(
-                widget::Button::new(
-                    widget::Text::new(fl!("garden"))
+                button(
+                    text(fl!("garden"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -797,11 +787,11 @@ impl Bar {
             .width(Length::Fill)
             .spacing(spacing);
 
-        let mut tables_grid = widget::Column::new().spacing(spacing).width(Length::Fill);
-        let mut current_row = widget::Row::new().spacing(spacing).width(Length::Fill);
+        let mut tables_grid = Column::new().spacing(spacing).width(Length::Fill);
+        let mut current_row = Row::new().spacing(spacing).width(Length::Fill);
         for index in 0..Self::NUMBER_OF_TABLES {
-            let table_button = widget::Button::new(
-                widget::Text::new(format!("{}", index + 1))
+            let table_button = button(
+                text(format!("{}", index + 1))
                     .width(Length::Fill)
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
@@ -814,13 +804,11 @@ impl Bar {
 
             if (index + 1) % Self::TABLES_PER_ROW == 0 {
                 tables_grid = tables_grid.push(current_row);
-                current_row = widget::Row::new().spacing(spacing).width(Length::Fill);
+                current_row = Row::new().spacing(spacing).width(Length::Fill);
             }
         }
 
-        widget::Column::new()
-            .push(header)
-            .push(tables_grid)
+        column![header, tables_grid]
             .width(Length::Fill)
             .spacing(spacing)
             .into()
@@ -842,8 +830,8 @@ impl Bar {
         let categories_buttons: Vec<_> = self.product_categories[start_index..end_index]
             .iter()
             .map(|category| {
-                widget::Button::new(
-                    widget::Text::new(category.name.as_str())
+                button(
+                    text(category.name.as_str())
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
@@ -854,44 +842,38 @@ impl Bar {
                 .into()
             })
             .collect();
-        let categories_col = widget::Column::with_children(categories_buttons)
+        let categories_col = Column::with_children(categories_buttons)
             .spacing(spacing)
             .height(Length::Fill);
 
-        let pagination_buttons = widget::Row::new()
-            .push(
-                widget::Button::new(
-                    widget::Text::new(fl!("up"))
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center),
-                )
-                .on_press(Message::ProductCategoriesPaginationAction(
-                    PaginationAction::Up,
-                ))
-                .height(button_height)
-                .width(Length::Fill),
+        let pagination_buttons = row![
+            button(
+                text(fl!("up"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
             )
-            .push(
-                widget::Button::new(
-                    widget::Text::new(fl!("down"))
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center),
-                )
-                .on_press(Message::ProductCategoriesPaginationAction(
-                    PaginationAction::Down,
-                ))
-                .height(button_height)
-                .width(Length::Fill),
+            .on_press(Message::ProductCategoriesPaginationAction(
+                PaginationAction::Up,
+            ))
+            .height(button_height)
+            .width(Length::Fill),
+            button(
+                text(fl!("down"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
             )
-            .spacing(spacing)
-            .height(Length::Shrink);
+            .on_press(Message::ProductCategoriesPaginationAction(
+                PaginationAction::Down,
+            ))
+            .height(button_height)
+            .width(Length::Fill)
+        ]
+        .spacing(spacing)
+        .height(Length::Shrink);
 
-        let result_column = widget::Column::new()
-            .push(categories_col)
-            .push(pagination_buttons)
-            .height(Length::Fill);
+        let result_column = column![categories_col, pagination_buttons].height(Length::Fill);
 
-        widget::Container::new(result_column)
+        container(result_column)
             .height(Length::Fill)
             .width(Length::Fill)
             .into()
@@ -926,8 +908,8 @@ impl Bar {
                 products[start_index..end_index]
                     .iter()
                     .map(|product| {
-                        widget::Button::new(
-                            widget::Text::new(product.name.as_str())
+                        button(
+                            text(product.name.as_str())
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
@@ -939,44 +921,38 @@ impl Bar {
                     .collect()
             })
             .unwrap_or_default();
-        let products_col = widget::Column::with_children(products_buttons)
+        let products_col = Column::with_children(products_buttons)
             .spacing(spacing)
             .height(Length::Fill);
 
-        let pagination_buttons = widget::Row::new()
-            .push(
-                widget::Button::new(
-                    widget::Text::new(fl!("up"))
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center),
-                )
-                .on_press(Message::ProductCategoryProductsPaginationAction(
-                    PaginationAction::Up,
-                ))
-                .height(button_height)
-                .width(Length::Fill),
+        let pagination_buttons = row![
+            button(
+                text(fl!("up"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
             )
-            .push(
-                widget::Button::new(
-                    widget::Text::new(fl!("down"))
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center),
-                )
-                .on_press(Message::ProductCategoryProductsPaginationAction(
-                    PaginationAction::Down,
-                ))
-                .height(button_height)
-                .width(Length::Fill),
+            .on_press(Message::ProductCategoryProductsPaginationAction(
+                PaginationAction::Up,
+            ))
+            .height(button_height)
+            .width(Length::Fill),
+            button(
+                text(fl!("down"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
             )
-            .spacing(spacing)
-            .height(Length::Shrink);
+            .on_press(Message::ProductCategoryProductsPaginationAction(
+                PaginationAction::Down,
+            ))
+            .height(button_height)
+            .width(Length::Fill)
+        ]
+        .spacing(spacing)
+        .height(Length::Shrink);
 
-        let result_column = widget::Column::new()
-            .push(products_col)
-            .push(pagination_buttons)
-            .height(Length::Fill);
+        let result_column = column![products_col, pagination_buttons].height(Length::Fill);
 
-        widget::Container::new(result_column)
+        container(result_column)
             .height(Length::Fill)
             .width(Length::Fill)
             .into()
@@ -996,29 +972,29 @@ impl Bar {
         });
 
         if current_ticket.is_some() {
-            let mut products_column = widget::Column::new().spacing(spacing);
+            let mut products_column = Column::new().spacing(spacing);
 
             for product in &current_ticket.unwrap().products {
                 let product_quantity_str = product.quantity.to_string();
 
-                let product_row = widget::Row::new()
+                let product_row = Row::new()
                     .push(
-                        widget::Text::new(&product.name)
-                            .size(Pixels::from(25.))
+                        text(&product.name)
+                            .size(25.)
                             .width(Length::Fill)
-                            .wrapping(widget::text::Wrapping::None),
+                            .wrapping(text::Wrapping::None),
                     )
                     .push(
                         text_input(&product_quantity_str, &product_quantity_str)
                             .on_focus(move |_| Message::FocusProductQuantity(product.clone()))
                             .on_input(|value| Message::TemporalProductInput(product.clone(), value))
-                            .size(Pixels::from(25.)),
+                            .size(25.),
                     )
                     .push(
                         text_input(&product.price_input, &product.price_input)
                             .on_focus(move |_| Message::FocusProductPrice(product.clone()))
                             .on_input(|value| Message::TemporalProductInput(product.clone(), value))
-                            .size(Pixels::from(25.)),
+                            .size(25.),
                     )
                     .spacing(spacing)
                     .align_y(Alignment::Center);
@@ -1026,17 +1002,16 @@ impl Bar {
                 products_column = products_column.push(product_row);
             }
 
-            widget::Scrollable::new(products_column).into()
+            Scrollable::new(products_column).into()
         } else {
-            widget::Row::new()
-                .push(
-                    widget::Text::new(fl!("no-products"))
-                        .size(Pixels::from(25.))
-                        .width(Length::Fill)
-                        .align_x(Alignment::Center),
-                )
-                .width(Length::Fill)
-                .into()
+            row![
+                text(fl!("no-products"))
+                    .size(25.)
+                    .width(Length::Fill)
+                    .align_x(Alignment::Center)
+            ]
+            .width(Length::Fill)
+            .into()
         }
     }
 
@@ -1069,17 +1044,13 @@ impl Bar {
                 }
             }
 
-            widget::Text::new(format!("{:.2}", price))
-                .size(Pixels::from(25.))
-                .line_height(LineHeight::Relative(2.))
+            text(format!("{:.2}", price)).size(25.).line_height(2.)
         } else {
-            widget::Text::new(fl!("unknown"))
-                .size(Pixels::from(25.))
-                .line_height(LineHeight::Relative(2.))
+            text(fl!("unknown")).size(25.).line_height(2.)
         };
 
-        widget::Container::new(text)
-            .style(widget::container::bordered_box)
+        container(text)
+            .style(container::bordered_box)
             .align_x(Alignment::Center)
             .align_y(Alignment::Center)
             .width(Length::Fill)
@@ -1098,19 +1069,19 @@ impl Bar {
     fn determine_table_button_color(
         &self,
         t: &iced::Theme,
-        s: widget::button::Status,
+        s: button::Status,
         t_id: usize,
-    ) -> widget::button::Style {
+    ) -> button::Style {
         let table_id = t_id as i32;
 
         // We have it currently selected
         if self.currently_selected_pos_state.table_index as i32 == table_id {
             match s {
-                widget::button::Status::Hovered => {
-                    return widget::button::primary(t, widget::button::Status::Hovered);
+                button::Status::Hovered => {
+                    return button::primary(t, button::Status::Hovered);
                 }
                 _ => {
-                    return widget::button::primary(t, widget::button::Status::Active);
+                    return button::primary(t, button::Status::Active);
                 }
             }
         }
@@ -1126,10 +1097,10 @@ impl Bar {
         // there is not ticket on this table
         if current_ticket.is_none() {
             match s {
-                widget::button::Status::Hovered => {
-                    return widget::button::secondary(t, widget::button::Status::Hovered);
+                button::Status::Hovered => {
+                    return button::secondary(t, button::Status::Hovered);
                 }
-                _ => return widget::button::secondary(t, widget::button::Status::Active),
+                _ => return button::secondary(t, button::Status::Active),
             }
 
         // there is a pending ticket on this table (we are not currently selecting this ticket)
@@ -1138,10 +1109,10 @@ impl Bar {
                 == TemporalTicketStatus::Pending
         }) {
             match s {
-                widget::button::Status::Hovered => {
-                    return widget::button::danger(t, widget::button::Status::Hovered);
+                button::Status::Hovered => {
+                    return button::danger(t, button::Status::Hovered);
                 }
-                _ => return widget::button::danger(t, widget::button::Status::Active),
+                _ => return button::danger(t, button::Status::Active),
             }
 
         // there is a printed ticket on this table (we are not currently selecting this ticket)
@@ -1150,37 +1121,33 @@ impl Bar {
                 == TemporalTicketStatus::Printed
         }) {
             match s {
-                widget::button::Status::Hovered => {
-                    return widget::button::success(t, widget::button::Status::Hovered);
+                button::Status::Hovered => {
+                    return button::success(t, button::Status::Hovered);
                 }
-                _ => return widget::button::success(t, widget::button::Status::Active),
+                _ => return button::success(t, button::Status::Active),
             }
         }
 
-        widget::button::secondary(t, widget::button::Status::Disabled)
+        button::secondary(t, button::Status::Disabled)
     }
 
     /// Determines the color of the locations buttons using the current location of the state and given which location is which one
     fn determine_location_button_color(
         &self,
         t: &iced::Theme,
-        s: widget::button::Status,
+        s: button::Status,
         loc: TableLocation,
-    ) -> widget::button::Style {
+    ) -> button::Style {
         // we are currently in this location
         if loc == self.currently_selected_pos_state.location {
             match s {
-                widget::button::Status::Hovered => {
-                    widget::button::primary(t, widget::button::Status::Hovered)
-                }
-                _ => widget::button::primary(t, widget::button::Status::Active),
+                button::Status::Hovered => button::primary(t, button::Status::Hovered),
+                _ => button::primary(t, button::Status::Active),
             }
         } else {
             match s {
-                widget::button::Status::Hovered => {
-                    widget::button::secondary(t, widget::button::Status::Hovered)
-                }
-                _ => widget::button::secondary(t, widget::button::Status::Active),
+                button::Status::Hovered => button::secondary(t, button::Status::Hovered),
+                _ => button::secondary(t, button::Status::Active),
             }
         }
     }
@@ -1189,23 +1156,19 @@ impl Bar {
     fn determine_product_category_button_color(
         &self,
         t: &iced::Theme,
-        s: widget::button::Status,
+        s: button::Status,
         cat_id: Option<i32>,
-    ) -> widget::button::Style {
+    ) -> button::Style {
         // we are currently selecting this category
         if self.currently_selected_product_category == cat_id {
             match s {
-                widget::button::Status::Hovered => {
-                    widget::button::primary(t, widget::button::Status::Hovered)
-                }
-                _ => widget::button::primary(t, widget::button::Status::Active),
+                button::Status::Hovered => button::primary(t, button::Status::Hovered),
+                _ => button::primary(t, button::Status::Active),
             }
         } else {
             match s {
-                widget::button::Status::Hovered => {
-                    widget::button::secondary(t, widget::button::Status::Hovered)
-                }
-                _ => widget::button::secondary(t, widget::button::Status::Active),
+                button::Status::Hovered => button::secondary(t, button::Status::Hovered),
+                _ => button::secondary(t, button::Status::Active),
             }
         }
     }

@@ -4,8 +4,10 @@ use std::sync::Arc;
 
 use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime};
 use iced::{
-    Alignment, Element, Length, Padding, Pixels, Task,
-    widget::{self, Row, Space},
+    Alignment, Element, Length, Pixels, Task,
+    widget::{
+        Column, Row, Rule, Space, button, column, container, pick_list, row, text, text_input,
+    },
 };
 use iced_aw::{
     DatePicker,
@@ -556,45 +558,39 @@ impl Clients {
             ClientsScreen::List => {
                 let grid = self.view_clients_grid();
 
-                let search_bar = widget::Row::new()
+                let search_bar = Row::new()
                     .push(
-                        widget::TextInput::new(fl!("search").as_str(), &self.current_search)
+                        text_input(fl!("search").as_str(), &self.current_search)
                             .on_input(Message::SearchUpdate)
                             .on_submit(Message::SubmitSearch)
-                            .size(Pixels::from(Self::TEXT_SIZE))
+                            .size(Self::TEXT_SIZE)
                             .width(Length::Fill),
                     )
                     .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("clear"))
+                        button(
+                            text(fl!("clear"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center)
-                                .size(Pixels::from(Self::TEXT_SIZE)),
+                                .size(Self::TEXT_SIZE),
                         )
                         .on_press(Message::ClearSearch)
                         .width(Length::Shrink),
                     )
                     .spacing(spacing)
-                    .width(Length::Fixed(850.));
+                    .width(850.);
 
-                let content = widget::Column::new()
-                    .push(search_bar)
-                    .push(grid)
-                    .spacing(spacing)
-                    .width(Length::Fixed(850.));
+                let content = column![search_bar, grid].spacing(spacing).width(850.);
 
-                widget::Container::new(content)
+                container(content)
                     .width(Length::Fill)
                     .align_x(Alignment::Center)
-                    .padding(Padding::new(50.))
+                    .padding(50.)
                     .into()
             }
             ClientsScreen::AddEdit => self.view_add_edit_screen(),
         };
 
-        widget::Column::new()
-            .push(header_row)
-            .push(content)
+        column![header_row, content]
             .spacing(spacing)
             .height(Length::Fill)
             .width(Length::Fill)
@@ -613,8 +609,8 @@ impl Clients {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
-        let back_button = widget::Button::new(
-            widget::Text::new(fl!("back"))
+        let back_button = button(
+            text(fl!("back"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center),
         )
@@ -622,41 +618,41 @@ impl Clients {
         .height(button_height);
 
         let add_cancel_button = match &self.current_screen {
-            ClientsScreen::List => widget::Button::new(
-                widget::Text::new(fl!("add"))
+            ClientsScreen::List => button(
+                text(fl!("add"))
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
             .on_press(Message::AskAddClient)
             .height(button_height),
-            ClientsScreen::AddEdit => widget::Button::new(
-                widget::Text::new(fl!("cancel"))
+            ClientsScreen::AddEdit => button(
+                text(fl!("cancel"))
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
-            .style(widget::button::danger)
+            .style(button::danger)
             .on_press(Message::CancelClientOperation)
             .height(button_height),
         };
 
-        let delete_button = widget::Button::new(
-            widget::Text::new(fl!("delete"))
+        let delete_button = button(
+            text(fl!("delete"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center),
         )
-        .style(widget::button::secondary)
+        .style(button::secondary)
         .on_press(Message::DeleteCurrentClient)
         .height(button_height);
 
-        let mut result_row = widget::Row::new();
+        let mut result_row = Row::new();
         if self.current_screen == ClientsScreen::List {
             result_row = result_row.push(back_button);
         }
 
         result_row = result_row
             .push(
-                widget::Text::new(fl!("clients"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                text(fl!("clients"))
+                    .size(Self::TITLE_TEXT_SIZE)
                     .align_y(Alignment::Center),
             )
             .push(Space::new(Length::Fill, Length::Shrink));
@@ -685,48 +681,46 @@ impl Clients {
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
         if self.clients.is_empty() {
-            return widget::Container::new(
-                widget::Text::new(fl!("no-clients")).size(Pixels::from(Self::TITLE_TEXT_SIZE)),
-            )
-            .width(Length::Fill)
-            .align_x(Alignment::Center)
-            .padding(Padding::new(50.))
-            .into();
+            return container(text(fl!("no-clients")).size(Self::TITLE_TEXT_SIZE))
+                .width(Length::Fill)
+                .align_x(Alignment::Center)
+                .padding(50.)
+                .into();
         }
 
-        let title_row = widget::Row::new()
+        let title_row = Row::new()
             .push(
-                widget::Text::new(fl!("name"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
-                    .width(Length::Fixed(250.))
+                text(fl!("name"))
+                    .size(Self::TITLE_TEXT_SIZE)
+                    .width(250.)
                     .align_y(Alignment::Center),
             )
             .push(
-                widget::Text::new("TD")
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
-                    .width(Length::Fixed(100.))
+                text("TD")
+                    .size(Self::TITLE_TEXT_SIZE)
+                    .width(100.)
                     .align_y(Alignment::Center),
             )
             .push(
-                widget::Text::new(fl!("identity-document"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
-                    .width(Length::Fixed(200.))
+                text(fl!("identity-document"))
+                    .size(Self::TITLE_TEXT_SIZE)
+                    .width(200.)
                     .align_y(Alignment::Center),
             )
             .push(
-                widget::Text::new(fl!("country"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
-                    .width(Length::Fixed(150.))
+                text(fl!("country"))
+                    .size(Self::TITLE_TEXT_SIZE)
+                    .width(150.)
                     .align_y(Alignment::Center),
             )
             .push(match self.page_mode {
-                ClientsPageMode::Normal => widget::Text::new(fl!("edit"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
-                    .width(Length::Fixed(150.))
+                ClientsPageMode::Normal => text(fl!("edit"))
+                    .size(Self::TITLE_TEXT_SIZE)
+                    .width(150.)
                     .align_y(Alignment::Center)
                     .align_x(Alignment::End),
-                ClientsPageMode::Selection => widget::Text::new(fl!("select"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                ClientsPageMode::Selection => text(fl!("select"))
+                    .size(Self::TITLE_TEXT_SIZE)
                     .width(Length::Fixed(150.))
                     .align_y(Alignment::Center)
                     .align_x(Alignment::End),
@@ -742,91 +736,83 @@ impl Clients {
             self.clients.len(),
         );
 
-        let mut grid = widget::Column::new()
+        let mut grid = Column::new()
             .push(title_row)
             .align_x(Alignment::Center)
             .spacing(spacing)
             .width(Length::Shrink);
 
         for client in &self.clients[start_index..end_index] {
-            let row = widget::Row::new()
+            let row = Row::new()
                 .width(Length::Shrink)
                 .push(
-                    widget::Text::new(format!(
+                    text(format!(
                         "{} {} {}",
                         &client.name, &client.first_surname, &client.second_surname
                     ))
-                    .size(Pixels::from(Self::TEXT_SIZE))
-                    .width(Length::Fixed(250.))
+                    .size(Self::TEXT_SIZE)
+                    .width(250.)
                     .align_y(Alignment::Center),
                 )
                 .push(
-                    widget::Text::new(&*client.identity_document_type_name)
-                        .size(Pixels::from(Self::TEXT_SIZE))
-                        .width(Length::Fixed(100.))
+                    text(&*client.identity_document_type_name)
+                        .size(Self::TEXT_SIZE)
+                        .width(100.)
                         .align_y(Alignment::Center),
                 )
                 .push(
-                    widget::Text::new(&client.identity_document)
-                        .size(Pixels::from(Self::TEXT_SIZE))
-                        .width(Length::Fixed(200.))
+                    text(&client.identity_document)
+                        .size(Self::TEXT_SIZE)
+                        .width(200.)
                         .align_y(Alignment::Center),
                 )
                 .push(
-                    widget::Text::new(&client.country)
-                        .size(Pixels::from(Self::TEXT_SIZE))
-                        .width(Length::Fixed(150.))
+                    text(&client.country)
+                        .size(Self::TEXT_SIZE)
+                        .width(150.)
                         .align_y(Alignment::Center),
                 )
                 .push(
-                    widget::Container::new(match self.page_mode {
-                        ClientsPageMode::Normal => widget::Button::new(
-                            widget::Text::new(fl!("edit"))
-                                .size(Pixels::from(Self::TEXT_SIZE))
+                    container(match self.page_mode {
+                        ClientsPageMode::Normal => button(
+                            text(fl!("edit"))
+                                .size(Self::TEXT_SIZE)
                                 .align_y(Alignment::Center),
                         )
                         .on_press(Message::AskEditClient(client.id.unwrap()))
                         .width(Length::Shrink),
-                        ClientsPageMode::Selection => widget::Button::new(
-                            widget::Text::new(fl!("select"))
-                                .size(Pixels::from(Self::TEXT_SIZE))
+                        ClientsPageMode::Selection => button(
+                            text(fl!("select"))
+                                .size(Self::TEXT_SIZE)
                                 .align_y(Alignment::Center),
                         )
                         .on_press(Message::AskSelectClient(client.id.unwrap()))
                         .width(Length::Shrink),
                     })
-                    .width(Length::Fixed(150.))
+                    .width(150.)
                     .align_x(Alignment::End)
                     .align_y(Alignment::Center),
                 )
                 .align_y(Alignment::Center);
 
             // Limit Rule size to sum of all column widths
-            grid = grid.push(
-                widget::Row::new()
-                    .width(Length::Fixed(850.))
-                    .push(widget::Rule::horizontal(Pixels::from(1.))),
-            );
+            grid = grid.push(row![Rule::horizontal(1.)].width(850.));
             grid = grid.push(row);
         }
 
-        grid = grid.push(
-            widget::Row::new()
-                .width(Length::Fixed(850.))
-                .push(widget::Rule::horizontal(Pixels::from(1.))),
-        );
-        grid = grid.push(widget::Text::new(format!(
+        grid = grid.push(row![Rule::horizontal(1.)].width(850.));
+        grid = grid.push(text(format!(
             "{} {}",
             fl!("page").as_str(),
             &self.clients_pagination_state.current_page + 1
         )));
-        grid = grid.push(widget::Space::with_height(Length::Fill));
+        grid = grid.push(Space::with_height(Length::Fill));
         grid = grid.push(
-            widget::Row::new()
-                .width(Length::Fixed(850.))
+            Row::new()
+                .width(850.)
                 .push(
-                    widget::Button::new(
-                        widget::Text::new(fl!("back"))
+                    button(
+                        text(fl!("back"))
                             .align_x(Alignment::Center)
                             .align_y(Alignment::Center)
                             .width(Length::Fill)
@@ -835,8 +821,8 @@ impl Clients {
                     .on_press(Message::ClientsPaginationAction(PaginationAction::Back)),
                 )
                 .push(
-                    widget::Button::new(
-                        widget::Text::new(fl!("next"))
+                    button(
+                        text(fl!("next"))
                             .align_x(Alignment::Center)
                             .align_y(Alignment::Center)
                             .width(Length::Fill)
@@ -847,11 +833,6 @@ impl Clients {
                 .spacing(spacing),
         );
 
-        // widget::Container::new(grid)
-        //     .width(Length::Fill)
-        //     .align_x(Alignment::Center)
-        //     .padding(Padding::new(50.))
-        //     .into()
         grid.into()
     }
 
@@ -861,40 +842,39 @@ impl Clients {
             let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
             // First Name
-            let name_label = widget::Text::new(format!("{}*", fl!("name"))).width(Length::Fill);
-            let name_input = widget::TextInput::new(fl!("name").as_str(), &client.name)
+            let name_label = text(format!("{}*", fl!("name"))).width(Length::Fill);
+            let name_input = text_input(fl!("name").as_str(), &client.name)
                 .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Name))
-                .size(Pixels::from(Self::TEXT_SIZE))
+                .size(Self::TEXT_SIZE)
                 .width(Length::Fill);
 
             // First Surname
-            let first_surname_label = widget::Text::new(fl!("first-surname")).width(Length::Fill);
+            let first_surname_label = text(fl!("first-surname")).width(Length::Fill);
             let first_surname_input =
-                widget::TextInput::new(fl!("first-surname").as_str(), &client.first_surname)
+                text_input(fl!("first-surname").as_str(), &client.first_surname)
                     .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::FirstSurname))
-                    .size(Pixels::from(Self::TEXT_SIZE))
+                    .size(Self::TEXT_SIZE)
                     .width(Length::Fill);
 
             // Second Surname
-            let second_surname_label = widget::Text::new(fl!("second-surname")).width(Length::Fill);
+            let second_surname_label = text(fl!("second-surname")).width(Length::Fill);
             let second_surname_input =
-                widget::TextInput::new(fl!("second-surname").as_str(), &client.second_surname)
+                text_input(fl!("second-surname").as_str(), &client.second_surname)
                     .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::SecondSurname))
-                    .size(Pixels::from(Self::TEXT_SIZE))
+                    .size(Self::TEXT_SIZE)
                     .width(Length::Fill);
 
             // Gender
-            let gender_label = widget::Text::new(fl!("gender")).width(Length::Fill);
+            let gender_label = text(fl!("gender")).width(Length::Fill);
             let selected_gender = self.genders.iter().find(|g| g.id == client.gender_id);
-            let gender_selector =
-                widget::PickList::new(self.genders.clone(), selected_gender, |g| {
-                    Message::UpdatedSelectedGenderId(g.id.unwrap_or_default())
-                })
-                .width(Length::Fill);
+            let gender_selector = pick_list(self.genders.clone(), selected_gender, |g| {
+                Message::UpdatedSelectedGenderId(g.id.unwrap_or_default())
+            })
+            .width(Length::Fill);
 
             //  BirthDate
             let birthdate_date_label =
-                widget::Text::new(format!("{} (yyyy-mm-dd)", fl!("birthdate"))).width(Length::Fill);
+                text(format!("{} (yyyy-mm-dd)", fl!("birthdate"))).width(Length::Fill);
             let birthdate_iced_aw_date = if let Some(db_date) = &client.birthdate {
                 Date {
                     year: db_date.year(),
@@ -907,43 +887,39 @@ impl Clients {
             let birthdate_date_picker = DatePicker::new(
                 self.show_birthdate_date_picker,
                 birthdate_iced_aw_date,
-                widget::Button::new(widget::Text::new(fl!("edit")))
+                button(text(fl!("edit")))
                     .on_press(Message::ShowDatePicker(ClientDateInputFields::Birthdate)),
                 Message::CancelDateOperation,
                 |date| Message::UpdateDateField(date, ClientDateInputFields::Birthdate),
             );
-            let birthdate_input =
-                widget::TextInput::new(fl!("birthdate").as_str(), &client.birthdate_string)
-                    .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Birthdate))
-                    .size(Pixels::from(Self::TEXT_SIZE))
-                    .width(Length::Fill);
+            let birthdate_input = text_input(fl!("birthdate").as_str(), &client.birthdate_string)
+                .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Birthdate))
+                .size(Self::TEXT_SIZE)
+                .width(Length::Fill);
 
-            let birthdate_input_row = widget::Row::new()
-                .push(birthdate_input)
-                .push(birthdate_date_picker)
+            let birthdate_input_row = row![birthdate_input, birthdate_date_picker]
                 .align_y(Alignment::Center)
                 .spacing(spacing);
 
             // Identity Document
             let identity_document_label =
-                widget::Text::new(format!("{}*", fl!("identity-document"))).width(Length::Fill);
-            let identity_document_input = widget::TextInput::new(
-                fl!("identity-document").as_str(),
-                &client.identity_document,
-            )
-            .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::IdentityDocument))
-            .size(Pixels::from(Self::TEXT_SIZE))
-            .width(Length::Fill);
+                text(format!("{}*", fl!("identity-document"))).width(Length::Fill);
+            let identity_document_input =
+                text_input(fl!("identity-document").as_str(), &client.identity_document)
+                    .on_input(|c| {
+                        Message::TextInputUpdate(c, ClientTextInputFields::IdentityDocument)
+                    })
+                    .size(Self::TEXT_SIZE)
+                    .width(Length::Fill);
 
             // Identity Document Type
             let identity_document_type_label =
-                widget::Text::new(format!("{}*", fl!("identity-document-type")))
-                    .width(Length::Fill);
+                text(format!("{}*", fl!("identity-document-type"))).width(Length::Fill);
             let selected_identity_document_type = self
                 .identity_document_types
                 .iter()
                 .find(|it| it.id == client.identity_document_type_id);
-            let identity_document_type_selector = widget::PickList::new(
+            let identity_document_type_selector = pick_list(
                 self.identity_document_types.clone(),
                 selected_identity_document_type,
                 |idt| Message::UpdatedSelectedDocumentTypeId(idt.id.unwrap_or_default()),
@@ -951,7 +927,7 @@ impl Clients {
             .width(Length::Fill);
 
             // Identity Document Expedition Date
-            let identity_document_expedition_date_label = widget::Text::new(format!(
+            let identity_document_expedition_date_label = text(format!(
                 "{} (yyyy-mm-dd)",
                 fl!("identity-document-expedition-date")
             ))
@@ -969,9 +945,9 @@ impl Clients {
             let identity_document_expedition_date_picker = DatePicker::new(
                 self.show_expedition_date_picker,
                 expedition_iced_aw_date,
-                widget::Button::new(widget::Text::new(fl!("edit"))).on_press(
-                    Message::ShowDatePicker(ClientDateInputFields::IdentityDocumentExpeditionDate),
-                ),
+                button(text(fl!("edit"))).on_press(Message::ShowDatePicker(
+                    ClientDateInputFields::IdentityDocumentExpeditionDate,
+                )),
                 Message::CancelDateOperation,
                 |date| {
                     Message::UpdateDateField(
@@ -980,23 +956,24 @@ impl Clients {
                     )
                 },
             );
-            let identity_document_expedition_date_input = widget::TextInput::new(
+            let identity_document_expedition_date_input = text_input(
                 fl!("identity-document-expedition-date").as_str(),
                 &client.identity_document_expedition_date_string,
             )
             .on_input(|c| {
                 Message::TextInputUpdate(c, ClientTextInputFields::IdentityDocumentExpeditionDate)
             })
-            .size(Pixels::from(Self::TEXT_SIZE))
+            .size(Self::TEXT_SIZE)
             .width(Length::Fill);
-            let identity_document_expedition_date_input_row = widget::Row::new()
-                .push(identity_document_expedition_date_input)
-                .push(identity_document_expedition_date_picker)
-                .align_y(Alignment::Center)
-                .spacing(spacing);
+            let identity_document_expedition_date_input_row = row![
+                identity_document_expedition_date_input,
+                identity_document_expedition_date_picker
+            ]
+            .align_y(Alignment::Center)
+            .spacing(spacing);
 
             // Identity Document Expiration Date
-            let identity_document_expiration_date_label = widget::Text::new(format!(
+            let identity_document_expiration_date_label = text(format!(
                 "{} (yyyy-mm-dd)",
                 fl!("identity-document-expiration-date")
             ))
@@ -1014,9 +991,9 @@ impl Clients {
             let identity_document_expiration_date_picker = DatePicker::new(
                 self.show_expiration_date_picker,
                 expiration_iced_aw_date,
-                widget::Button::new(widget::Text::new(fl!("edit"))).on_press(
-                    Message::ShowDatePicker(ClientDateInputFields::IdentityDocumentExpirationDate),
-                ),
+                button(text(fl!("edit"))).on_press(Message::ShowDatePicker(
+                    ClientDateInputFields::IdentityDocumentExpirationDate,
+                )),
                 Message::CancelDateOperation,
                 |date| {
                     Message::UpdateDateField(
@@ -1025,234 +1002,230 @@ impl Clients {
                     )
                 },
             );
-            let identity_document_expiration_date_input = widget::TextInput::new(
+            let identity_document_expiration_date_input = text_input(
                 fl!("identity-document-expiration-date").as_str(),
                 &client.identity_document_expiration_date_string,
             )
             .on_input(|c| {
                 Message::TextInputUpdate(c, ClientTextInputFields::IdentityDocumentExpirationDate)
             })
-            .size(Pixels::from(Self::TEXT_SIZE))
+            .size(Self::TEXT_SIZE)
             .width(Length::Fill);
-            let identity_document_expiration_date_input_row = widget::Row::new()
-                .push(identity_document_expiration_date_input)
-                .push(identity_document_expiration_date_picker)
-                .align_y(Alignment::Center)
-                .spacing(spacing);
+            let identity_document_expiration_date_input_row = row![
+                identity_document_expiration_date_input,
+                identity_document_expiration_date_picker
+            ]
+            .align_y(Alignment::Center)
+            .spacing(spacing);
 
             // Address
-            let address_label = widget::Text::new(fl!("address")).width(Length::Fill);
-            let address_input = widget::TextInput::new(fl!("address").as_str(), &client.address)
+            let address_label = text(fl!("address")).width(Length::Fill);
+            let address_input = text_input(fl!("address").as_str(), &client.address)
                 .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Address))
-                .size(Pixels::from(Self::TEXT_SIZE))
+                .size(Self::TEXT_SIZE)
                 .width(Length::Fill);
 
             // Postal Code
-            let postal_code_label = widget::Text::new(fl!("postal-code")).width(Length::Fill);
-            let postal_code_input =
-                widget::TextInput::new(fl!("postal-code").as_str(), &client.postal_code)
-                    .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::PostalCode))
-                    .size(Pixels::from(Self::TEXT_SIZE))
-                    .width(Length::Fill);
+            let postal_code_label = text(fl!("postal-code")).width(Length::Fill);
+            let postal_code_input = text_input(fl!("postal-code").as_str(), &client.postal_code)
+                .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::PostalCode))
+                .size(Self::TEXT_SIZE)
+                .width(Length::Fill);
 
             // City
-            let city_label = widget::Text::new(fl!("city")).width(Length::Fill);
-            let city_input = widget::TextInput::new(fl!("city").as_str(), &client.city)
+            let city_label = text(fl!("city")).width(Length::Fill);
+            let city_input = text_input(fl!("city").as_str(), &client.city)
                 .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::City))
-                .size(Pixels::from(Self::TEXT_SIZE))
+                .size(Self::TEXT_SIZE)
                 .width(Length::Fill);
 
             // Province
-            let province_label = widget::Text::new(fl!("province")).width(Length::Fill);
-            let province_input = widget::TextInput::new(fl!("province").as_str(), &client.province)
+            let province_label = text(fl!("province")).width(Length::Fill);
+            let province_input = text_input(fl!("province").as_str(), &client.province)
                 .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Province))
-                .size(Pixels::from(Self::TEXT_SIZE))
+                .size(Self::TEXT_SIZE)
                 .width(Length::Fill);
 
             // Country
-            let country_label =
-                widget::Text::new(format!("{}*", fl!("country"))).width(Length::Fill);
-            let country_input = widget::TextInput::new(fl!("country").as_str(), &client.country)
+            let country_label = text(format!("{}*", fl!("country"))).width(Length::Fill);
+            let country_input = text_input(fl!("country").as_str(), &client.country)
                 .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Country))
-                .size(Pixels::from(Self::TEXT_SIZE))
+                .size(Self::TEXT_SIZE)
                 .width(Length::Fill);
 
             // Nationality
-            let nationality_label = widget::Text::new(fl!("nationality")).width(Length::Fill);
-            let nationality_input =
-                widget::TextInput::new(fl!("nationality").as_str(), &client.nationality)
-                    .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Nationality))
-                    .size(Pixels::from(Self::TEXT_SIZE))
-                    .width(Length::Fill);
+            let nationality_label = text(fl!("nationality")).width(Length::Fill);
+            let nationality_input = text_input(fl!("nationality").as_str(), &client.nationality)
+                .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::Nationality))
+                .size(Self::TEXT_SIZE)
+                .width(Length::Fill);
 
             // Phone Number
-            let phone_number_label = widget::Text::new(fl!("phone-number")).width(Length::Fill);
-            let phone_number_input =
-                widget::TextInput::new(fl!("phone-number").as_str(), &client.phone_number)
-                    .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::PhoneNumber))
-                    .size(Pixels::from(Self::TEXT_SIZE))
-                    .width(Length::Fill);
+            let phone_number_label = text(fl!("phone-number")).width(Length::Fill);
+            let phone_number_input = text_input(fl!("phone-number").as_str(), &client.phone_number)
+                .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::PhoneNumber))
+                .size(Self::TEXT_SIZE)
+                .width(Length::Fill);
 
             // Mobile Phone
-            let mobile_phone_label = widget::Text::new(fl!("mobile-phone")).width(Length::Fill);
-            let mobile_phone_input =
-                widget::TextInput::new(fl!("mobile-phone").as_str(), &client.mobile_phone)
-                    .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::MobilePhone))
-                    .size(Pixels::from(Self::TEXT_SIZE))
-                    .width(Length::Fill);
+            let mobile_phone_label = text(fl!("mobile-phone")).width(Length::Fill);
+            let mobile_phone_input = text_input(fl!("mobile-phone").as_str(), &client.mobile_phone)
+                .on_input(|c| Message::TextInputUpdate(c, ClientTextInputFields::MobilePhone))
+                .size(Self::TEXT_SIZE)
+                .width(Length::Fill);
 
             // Submit
             let submit_button = if client.id.is_some() {
-                widget::Button::new(
-                    widget::Text::new(fl!("edit"))
+                button(
+                    text(fl!("edit"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center)
-                        .size(Pixels::from(Self::TEXT_SIZE)),
+                        .size(Self::TEXT_SIZE),
                 )
                 .on_press(Message::EditCurrentClient)
                 .width(Length::Fill)
             } else {
-                widget::Button::new(
-                    widget::Text::new(fl!("add"))
+                button(
+                    text(fl!("add"))
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center)
-                        .size(Pixels::from(Self::TEXT_SIZE)),
+                        .size(Self::TEXT_SIZE),
                 )
                 .on_press(Message::AddCurrentClient)
                 .width(Length::Fill)
             };
 
-            let name_input_column = widget::Column::new()
+            let name_input_column = Column::new()
                 .push(name_label)
                 .push(name_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let first_surname_input_column = widget::Column::new()
+            let first_surname_input_column = Column::new()
                 .push(first_surname_label)
                 .push(first_surname_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let second_surname_input_column = widget::Column::new()
+            let second_surname_input_column = Column::new()
                 .push(second_surname_label)
                 .push(second_surname_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let gender_input_column = widget::Column::new()
+            let gender_input_column = Column::new()
                 .push(gender_label)
                 .push(gender_selector)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let birthdate_input_column = widget::Column::new()
+            let birthdate_input_column = Column::new()
                 .push(birthdate_date_label)
                 .push(birthdate_input_row)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let identity_document_column = widget::Column::new()
+            let identity_document_column = Column::new()
                 .push(identity_document_label)
                 .push(identity_document_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let identity_document_type_input_column = widget::Column::new()
+            let identity_document_type_input_column = Column::new()
                 .push(identity_document_type_label)
                 .push(identity_document_type_selector)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let identity_document_expedition_date_column = widget::Column::new()
+            let identity_document_expedition_date_column = Column::new()
                 .push(identity_document_expedition_date_label)
                 .push(identity_document_expedition_date_input_row)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let identity_document_expiration_date_column = widget::Column::new()
+            let identity_document_expiration_date_column = Column::new()
                 .push(identity_document_expiration_date_label)
                 .push(identity_document_expiration_date_input_row)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let address_input_column = widget::Column::new()
+            let address_input_column = Column::new()
                 .push(address_label)
                 .push(address_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let postal_code_input_column = widget::Column::new()
+            let postal_code_input_column = Column::new()
                 .push(postal_code_label)
                 .push(postal_code_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let city_input_column = widget::Column::new()
+            let city_input_column = Column::new()
                 .push(city_label)
                 .push(city_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let province_input_column = widget::Column::new()
+            let province_input_column = Column::new()
                 .push(province_label)
                 .push(province_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let country_input_column = widget::Column::new()
+            let country_input_column = Column::new()
                 .push(country_label)
                 .push(country_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let nationality_input_column = widget::Column::new()
+            let nationality_input_column = Column::new()
                 .push(nationality_label)
                 .push(nationality_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let phone_number_input_column = widget::Column::new()
+            let phone_number_input_column = Column::new()
                 .push(phone_number_label)
                 .push(phone_number_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let mobile_phone_input_column = widget::Column::new()
+            let mobile_phone_input_column = Column::new()
                 .push(mobile_phone_label)
                 .push(mobile_phone_input)
                 .width(Length::Fill)
                 .spacing(1.);
 
-            let form_column = widget::Column::new()
+            let form_column = Column::new()
                 .push(name_input_column)
                 .push(
                     Row::new()
                         .push(first_surname_input_column)
                         .push(second_surname_input_column)
                         .spacing(spacing)
-                        .width(Length::Fixed(850.)),
+                        .width(850.),
                 )
                 .push(
                     Row::new()
                         .push(gender_input_column)
                         .push(birthdate_input_column)
                         .spacing(spacing)
-                        .width(Length::Fixed(850.)),
+                        .width(850.),
                 )
                 .push(
                     Row::new()
                         .push(identity_document_column)
                         .push(identity_document_type_input_column)
                         .spacing(spacing)
-                        .width(Length::Fixed(850.)),
+                        .width(850.),
                 )
                 .push(
                     Row::new()
                         .push(identity_document_expedition_date_column)
                         .push(identity_document_expiration_date_column)
                         .spacing(spacing)
-                        .width(Length::Fixed(850.)),
+                        .width(850.),
                 )
                 .push(address_input_column)
                 .push(
@@ -1261,38 +1234,38 @@ impl Clients {
                         .push(city_input_column)
                         .push(province_input_column)
                         .spacing(spacing)
-                        .width(Length::Fixed(850.)),
+                        .width(850.),
                 )
                 .push(
                     Row::new()
                         .push(country_input_column)
                         .push(nationality_input_column)
                         .spacing(spacing)
-                        .width(Length::Fixed(850.)),
+                        .width(850.),
                 )
                 .push(
                     Row::new()
                         .push(phone_number_input_column)
                         .push(mobile_phone_input_column)
                         .spacing(spacing)
-                        .width(Length::Fixed(850.)),
+                        .width(850.),
                 )
                 .push(submit_button)
-                .width(Length::Fixed(850.))
+                .width(850.)
                 .spacing(spacing);
 
-            widget::Container::new(form_column)
+            container(form_column)
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center)
                 .width(Length::Fill)
-                .padding(Padding::new(50.))
+                .padding(50.)
                 .into()
         } else {
-            widget::Container::new(widget::Text::new("Error"))
+            container(text("Error"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center)
                 .width(Length::Fill)
-                .padding(Padding::new(50.))
+                .padding(50.)
                 .into()
         }
     }

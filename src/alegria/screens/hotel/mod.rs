@@ -11,7 +11,10 @@ mod rooms;
 
 use std::sync::Arc;
 
-use iced::{Alignment, Element, Length, Pixels, Task, widget};
+use iced::{
+    Alignment, Element, Length, Pixels, Task,
+    widget::{Column, Row, button, container, text},
+};
 use sqlx::PgPool;
 
 use crate::{alegria::action::AlegriaAction, fl};
@@ -215,10 +218,10 @@ impl Hotel {
                 // HEADER
                 let header_row = self.view_header_row();
 
-                let buttons_row = widget::Row::new()
+                let buttons_row = Row::new()
                     .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("reservations"))
+                        button(
+                            text(fl!("reservations"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
@@ -227,8 +230,8 @@ impl Hotel {
                         .height(Length::Fixed(Self::SQUAREBUTTONXY)),
                     )
                     .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("room-types"))
+                        button(
+                            text(fl!("room-types"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
@@ -237,8 +240,8 @@ impl Hotel {
                         .height(Length::Fixed(Self::SQUAREBUTTONXY)),
                     )
                     .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("rooms"))
+                        button(
+                            text(fl!("rooms"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
@@ -247,8 +250,8 @@ impl Hotel {
                         .height(Length::Fixed(Self::SQUAREBUTTONXY)),
                     )
                     .push(
-                        widget::Button::new(
-                            widget::Text::new(fl!("clients"))
+                        button(
+                            text(fl!("clients"))
                                 .align_x(Alignment::Center)
                                 .align_y(Alignment::Center),
                         )
@@ -256,15 +259,15 @@ impl Hotel {
                         .width(Length::Fixed(Self::SQUAREBUTTONXY))
                         .height(Length::Fixed(Self::SQUAREBUTTONXY)),
                     )
-                    .spacing(Pixels::from(5.));
+                    .spacing(5.);
 
-                let content = widget::Container::new(buttons_row)
+                let content = container(buttons_row)
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center)
                     .width(Length::Fill)
                     .height(Length::Fill);
 
-                widget::Column::new()
+                Column::new()
                     .push(header_row)
                     .push(content)
                     .spacing(spacing)
@@ -278,7 +281,7 @@ impl Hotel {
             SubScreen::Clients => self.clients.view().map(Message::Clients),
         };
 
-        widget::Container::new(content)
+        container(content)
             .height(Length::Fill)
             .width(Length::Fill)
             .into()
@@ -295,19 +298,19 @@ impl Hotel {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
         let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
 
-        let back_button = widget::Button::new(
-            widget::Text::new(fl!("back"))
+        let back_button = button(
+            text(fl!("back"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center),
         )
         .on_press(Message::Back)
         .height(button_height);
 
-        widget::Row::new()
+        Row::new()
             .push(back_button)
             .push(
-                widget::Text::new(fl!("hotel"))
-                    .size(Pixels::from(Self::TITLE_TEXT_SIZE))
+                text(fl!("hotel"))
+                    .size(Self::TITLE_TEXT_SIZE)
                     .align_y(Alignment::Center),
             )
             .width(Length::Fill)
