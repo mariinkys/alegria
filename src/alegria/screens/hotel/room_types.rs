@@ -256,7 +256,11 @@ impl RoomTypes {
                 PaginationAction::Forward => {
                     let next_page_start = (self.pagination_state.current_page + 1)
                         * self.pagination_state.items_per_page;
-                    if next_page_start < self.room_types.len().try_into().unwrap_or_default() {
+                    // This aberration happens since adding the printpdf crate which added the deranged crate that causes this
+                    if next_page_start
+                        < <usize as std::convert::TryInto<i32>>::try_into(self.room_types.len())
+                            .unwrap_or_default()
+                    {
                         self.pagination_state.current_page += 1;
                     }
                 }

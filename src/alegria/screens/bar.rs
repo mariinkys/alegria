@@ -605,8 +605,18 @@ impl Bar {
                     let next_page_start = (self.product_categories_pagination_state.current_page
                         + 1)
                         * self.product_categories_pagination_state.items_per_page;
+                    // let p_cat_len: i32 =
+                    //     self.product_categories.len().try_into().unwrap_or_default();
+                    // This aberration happens since adding the printpdf crate which added the deranged crate that causes this,
+                    // I think I can either to this or use the line above
                     if next_page_start
-                        < self.product_categories.len().try_into().unwrap_or_default()
+                        < <usize as std::convert::TryInto<i32>>::try_into(
+                            self.product_categories.len(),
+                        )
+                        .unwrap_or_default()
+                    {
+                        self.product_categories_pagination_state.current_page += 1;
+                    }
                     {
                         self.product_categories_pagination_state.current_page += 1;
                     }
@@ -625,14 +635,15 @@ impl Bar {
                             * self
                                 .product_category_products_pagination_state
                                 .items_per_page;
+                    // This aberration happens since adding the printpdf crate which added the deranged crate that causes this
                     if next_page_start
-                        < self
-                            .product_category_products
-                            .as_ref()
-                            .map(|v| v.len())
-                            .unwrap_or(0)
-                            .try_into()
-                            .unwrap_or_default()
+                        < <usize as std::convert::TryInto<i32>>::try_into(
+                            self.product_category_products
+                                .as_ref()
+                                .map(|v| v.len())
+                                .unwrap_or(0),
+                        )
+                        .unwrap_or_default()
                     {
                         self.product_category_products_pagination_state.current_page += 1;
                     }
