@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS products (
     name TEXT NOT NULL,
     inside_price REAL,
     outside_price REAL,
+    tax_percentage REAL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

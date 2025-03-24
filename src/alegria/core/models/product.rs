@@ -5,13 +5,14 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Product {
     pub id: Option<i32>,
     pub category_id: Option<i32>,
     pub name: String,
     pub inside_price: Option<f32>,
     pub outside_price: Option<f32>,
+    pub tax_percentage: Option<f32>,
     pub is_deleted: bool,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
@@ -23,7 +24,7 @@ impl Product {
         category_id: i32,
     ) -> Result<Vec<Product>, sqlx::Error> {
         let rows = sqlx::query(
-            "SELECT id, category_id, name, inside_price, outside_price, is_deleted, created_at, updated_at FROM products WHERE category_id = $1 ORDER BY id ASC",
+            "SELECT id, category_id, name, inside_price, outside_price, tax_percentage, is_deleted, created_at, updated_at FROM products WHERE category_id = $1 ORDER BY id ASC",
         )
         .bind(category_id)
         .fetch_all(pool.as_ref()).await?;
@@ -36,6 +37,7 @@ impl Product {
             let name: String = row.try_get("name")?;
             let inside_price: Option<f32> = row.try_get("inside_price")?;
             let outside_price: Option<f32> = row.try_get("outside_price")?;
+            let tax_percentage: Option<f32> = row.try_get("tax_percentage")?;
             let is_deleted: bool = row.try_get("is_deleted")?;
             let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
             let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
@@ -46,6 +48,7 @@ impl Product {
                 name,
                 inside_price,
                 outside_price,
+                tax_percentage,
                 is_deleted,
                 created_at,
                 updated_at,
@@ -59,12 +62,13 @@ impl Product {
 
     pub async fn add(pool: Arc<PgPool>, product: Product) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "INSERT INTO products (category_id, name, inside_price, outside_price, is_deleted) VALUES ($1, $2, $3, $4, $5)",
+            "INSERT INTO products (category_id, name, inside_price, outside_price, tax_percentage, is_deleted) VALUES ($1, $2, $3, $4, $5, $6)",
         )
         .bind(product.category_id)
         .bind(product.name)
         .bind(product.inside_price)
         .bind(product.outside_price)
+        .bind(product.tax_percentage)
         .bind(false)
         .execute(pool.as_ref())
         .await?;
@@ -73,11 +77,12 @@ impl Product {
     }
 
     pub async fn edit(pool: Arc<PgPool>, product: Product) -> Result<(), sqlx::Error> {
-        sqlx::query("UPDATE products SET category_id = $1, name = $2, inside_price = $3, outside_price = $4 WHERE id = $5")
+        sqlx::query("UPDATE products SET category_id = $1, name = $2, inside_price = $3, outside_price = $4, tax_percentage = $5 WHERE id = $6")
             .bind(product.category_id)
             .bind(product.name)
             .bind(product.inside_price)
             .bind(product.outside_price)
+            .bind(product.tax_percentage)
             .bind(product.id)
             .execute(pool.as_ref())
             .await?;

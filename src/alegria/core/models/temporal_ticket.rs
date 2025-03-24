@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::{collections::HashMap, sync::Arc};
@@ -99,7 +98,7 @@ impl TemporalTicket {
         new_product_id: i32,
     ) -> Result<(), sqlx::Error> {
         let product_row =
-            sqlx::query("SELECT id, category_id, name, inside_price, outside_price, is_deleted, created_at, updated_at FROM products WHERE id = $1")
+            sqlx::query("SELECT id, name, inside_price, outside_price FROM products WHERE id = $1")
                 .bind(new_product_id)
                 .fetch_optional(pool.as_ref())
                 .await?;
@@ -107,23 +106,16 @@ impl TemporalTicket {
         let product: Product = match product_row {
             Some(row) => {
                 let id: Option<i32> = row.try_get("id")?;
-                let category_id: Option<i32> = row.try_get("category_id")?;
                 let name: String = row.try_get("name")?;
                 let inside_price: Option<f32> = row.try_get("inside_price")?;
                 let outside_price: Option<f32> = row.try_get("outside_price")?;
-                let is_deleted: bool = row.try_get("is_deleted")?;
-                let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
-                let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
 
                 Product {
                     id,
-                    category_id,
                     name,
                     inside_price,
                     outside_price,
-                    is_deleted,
-                    created_at,
-                    updated_at,
+                    ..Default::default()
                 }
             }
             None => return Err(sqlx::Error::RowNotFound),
