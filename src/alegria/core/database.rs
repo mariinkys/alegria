@@ -3,25 +3,25 @@
 use dotenvy::dotenv;
 use sqlx::PgPool;
 use std::{env, sync::Arc};
+use tokio::time::{Duration, timeout};
 
-pub async fn init_database() -> Arc<PgPool> {
+pub async fn init_database() -> Result<Arc<PgPool>, String> {
     // Load .env file
     dotenv().ok();
 
-    let pool = PgPool::connect(&env::var("DATABASE_URL").expect("No database URL set"))
+    let db_url = &env::var("DATABASE_URL").map_err(|_| "DATABASE_URL not found.")?;
+
+    let pool = timeout(Duration::from_secs(3), PgPool::connect(db_url))
         .await
-        .unwrap_or_else(|_| {
-            eprintln!("Could not connect to database");
-            std::process::exit(1)
-        });
+        .map_err(|_| "Timed out connecting to the database".to_string())?
+        .map_err(|e| format!("Could not connect to database: {}", e))?;
 
     match sqlx::migrate!("./migrations").run(&pool).await {
         Ok(_) => println!("Migrations run successfully"),
         Err(err) => {
-            eprintln!("Error occurred running migrations: {}", err);
-            std::process::exit(1);
+            return Err(format!("Error occurred running migrations: {}", err));
         }
     };
 
-    Arc::new(pool)
+    Ok(Arc::new(pool))
 }

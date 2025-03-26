@@ -36,7 +36,7 @@ pub struct IcedAlegria {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    DatabaseLoaded(Arc<PgPool>),
+    DatabaseLoaded(Result<Arc<PgPool>, String>),
     ChangeScreen(Screen),
 
     Bar(bar::Message),
@@ -125,9 +125,13 @@ impl IcedAlegria {
         let mut tasks = vec![];
 
         match message {
-            Message::DatabaseLoaded(pool) => {
-                self.database = Some(pool);
-            }
+            Message::DatabaseLoaded(db_res) => match db_res {
+                Ok(pool) => self.database = Some(pool),
+                Err(err) => {
+                    eprintln!("Database init failed: {}", err);
+                    std::process::exit(1);
+                }
+            },
             Message::ChangeScreen(screen) => match screen {
                 Screen::Home => {
                     self.screen = screen;
