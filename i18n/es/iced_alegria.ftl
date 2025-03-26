@@ -14,6 +14,7 @@ delete = Borrar
 select = Seleccionar
 page = Página
 printer = Impresora
+loading = Cargando...
 
 <#-- Main Menu -->
 bar = Bar

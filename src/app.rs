@@ -23,9 +23,17 @@ pub enum Screen {
     Hotel,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum LoadState {
+    Loading,
+    Loaded,
+}
+
 pub struct IcedAlegria {
     /// Database of the application
     database: Option<Arc<PgPool>>,
+    /// Load Status (don't show the main menu if db has not connected)
+    load_state: LoadState,
     /// Represents a Screen of the App
     screen: Screen,
     /// Holds the state of the bar screen
@@ -50,10 +58,20 @@ impl IcedAlegria {
             screen: Screen::Home,
             bar: Bar::default(),
             hotel: Hotel::default(),
+            load_state: LoadState::Loading,
         }
     }
 
     pub fn view(&self) -> iced::Element<'_, Message> {
+        if self.load_state == LoadState::Loading {
+            return container(text(fl!("loading")))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
+                .into();
+        }
+
         let content = match self.screen {
             Screen::Home => {
                 let buttons_row = Row::new()
@@ -126,7 +144,10 @@ impl IcedAlegria {
 
         match message {
             Message::DatabaseLoaded(db_res) => match db_res {
-                Ok(pool) => self.database = Some(pool),
+                Ok(pool) => {
+                    self.database = Some(pool);
+                    self.load_state = LoadState::Loaded;
+                }
                 Err(err) => {
                     eprintln!("Database init failed: {}", err);
                     std::process::exit(1);
