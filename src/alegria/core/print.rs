@@ -5,6 +5,8 @@ use std::sync::Arc;
 use printers::{common::base::printer::Printer, get_default_printer, get_printers};
 use printpdf::*;
 
+use super::models::simple_invoice::SimpleInvoice;
+
 static TICKET_FONT_TTF: &[u8] = include_bytes!("../../../resources/fonts/RobotoFlex.ttf");
 
 #[derive(Debug, Clone)]
@@ -43,9 +45,9 @@ impl AlegriaPrinter {
         .unwrap_or_else(|_| (None, Vec::new()))
     }
 
-    pub async fn print(self: Arc<Self>) -> Result<(), &'static str> {
+    pub async fn print(self: Arc<Self>, invoice: SimpleInvoice) -> Result<(), &'static str> {
         tokio::task::spawn_blocking(move || {
-            if let Ok(doc) = generate_ticket() {
+            if let Ok(doc) = generate_ticket(&invoice) {
                 self.0.print(&doc, Some("Alegria Print Job"))
             } else {
                 Err("Failed to generate ticket")
@@ -57,7 +59,7 @@ impl AlegriaPrinter {
 }
 
 /// TODO: Proper Doc Generation (Given a Simple Invoice)
-fn generate_ticket() -> Result<Vec<u8>, &'static str> {
+fn generate_ticket(invoice: &SimpleInvoice) -> Result<Vec<u8>, &'static str> {
     // Create a new PDF document
     let mut doc = PdfDocument::new("Hotel Name Ticket");
 
@@ -130,7 +132,10 @@ fn generate_ticket() -> Result<Vec<u8>, &'static str> {
         },
         // Write text with the built-in font
         Op::WriteText {
-            items: vec![TextItem::Text("Factura Simplificada".to_string())],
+            items: vec![TextItem::Text(format!(
+                "Factura Simplificada: {}",
+                invoice.id.unwrap_or_default()
+            ))],
             font: custom_font_id.clone(),
         },
         // Add a line break to move down
