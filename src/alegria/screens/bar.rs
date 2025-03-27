@@ -116,7 +116,7 @@ pub struct Bar {
     product_category_products: Option<Vec<Product>>,
     /// Currently selected product_category id (needed for correct button styling)
     currently_selected_product_category: Option<i32>,
-    /// Currently selected table state (helps us identify the currently selected table) TODO: Could we chnage this to an Option<TemporalTicket> and avoid this allotgether?
+    /// Currently selected table state (helps us identify the currently selected table)
     currently_selected_pos_state: CurrentPositionState,
     /// Temporal Tickets hold the state of the maybe tickets of each table
     temporal_tickets_model: Vec<TemporalTicket>,
@@ -768,7 +768,6 @@ impl Bar {
         .align_y(Alignment::Center)
         .spacing(spacing);
 
-        // TODO: We could do this OnTableClick and save the Option<TemporalTicket> on state and do not search for it here and on the colors functions
         let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
             x.ticket_location
                 == match_table_location_with_number(
@@ -1019,7 +1018,6 @@ impl Bar {
     fn view_current_ticket_products(&self) -> Element<Message> {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
-        // TODO: We could do this OnTableClick and save the Option<TemporalTicket> on state and do not search for it here and on the colors functions
         let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
             x.ticket_location
                 == match_table_location_with_number(
@@ -1084,7 +1082,6 @@ impl Bar {
 
     /// Returns the view of the product (list) of the currently selected ticket
     fn view_current_ticket_total_price(&self) -> Element<Message> {
-        // TODO: We could do this OnTableClick and save the Option<TemporalTicket> on state and do not search for it here and on the colors functions
         let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
             x.ticket_location
                 == match_table_location_with_number(
