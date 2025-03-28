@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IdentityDocumentType {
@@ -10,10 +10,9 @@ pub struct IdentityDocumentType {
     pub name: String,
 }
 
-#[allow(clippy::to_string_trait_impl)]
-impl ToString for IdentityDocumentType {
-    fn to_string(&self) -> String {
-        self.name.to_string()
+impl fmt::Display for IdentityDocumentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
     }
 }
 
