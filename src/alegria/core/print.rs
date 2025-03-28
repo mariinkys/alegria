@@ -5,6 +5,8 @@ use std::sync::Arc;
 use printers::{common::base::printer::Printer, get_default_printer, get_printers};
 use printpdf::*;
 
+use crate::alegria::screens::bar::TicketType;
+
 use super::models::simple_invoice::SimpleInvoice;
 
 static TICKET_FONT_TTF: &[u8] = include_bytes!("../../../resources/fonts/RobotoFlex.ttf");
@@ -34,23 +36,41 @@ impl AlegriaPrinter {
     // Loads the system printers on another tokio thread
     pub async fn load_printers() -> (Option<AlegriaPrinter>, Vec<AlegriaPrinter>) {
         tokio::task::spawn_blocking(|| {
-            let default = get_default_printer().map(AlegriaPrinter::from);
-            let all = get_printers()
+            let mut default: Option<AlegriaPrinter> =
+                get_default_printer().map(AlegriaPrinter::from);
+            let all: Vec<AlegriaPrinter> = get_printers()
                 .into_iter()
                 .map(AlegriaPrinter::from)
                 .collect();
+            // If there is no default printer grab the first one (if any)
+            if default.is_none() && !all.is_empty() {
+                default = all.first().cloned()
+            }
             (default, all)
         })
         .await
         .unwrap_or_else(|_| (None, Vec::new()))
     }
 
-    pub async fn print(self: Arc<Self>, invoice: SimpleInvoice) -> Result<(), &'static str> {
-        tokio::task::spawn_blocking(move || {
-            if let Ok(doc) = generate_ticket(&invoice) {
-                self.0.print(&doc, Some("Alegria Print Job"))
-            } else {
-                Err("Failed to generate ticket")
+    pub async fn print(
+        self: Arc<Self>,
+        invoice: SimpleInvoice,
+        ticket_type: TicketType,
+    ) -> Result<(), &'static str> {
+        tokio::task::spawn_blocking(move || match ticket_type {
+            TicketType::Invoice => {
+                if let Ok(doc) = generate_invoice(&invoice) {
+                    self.0.print(&doc, Some("Alegria Print Job"))
+                } else {
+                    Err("Failed to generate invoice document")
+                }
+            }
+            TicketType::Receipt => {
+                if let Ok(doc) = generate_receipt(&invoice) {
+                    self.0.print(&doc, Some("Alegria Print Job"))
+                } else {
+                    Err("Failed to generate receipt document")
+                }
             }
         })
         .await
@@ -59,9 +79,14 @@ impl AlegriaPrinter {
 }
 
 /// TODO: Proper Doc Generation (Given a Simple Invoice)
-fn generate_ticket(invoice: &SimpleInvoice) -> Result<Vec<u8>, &'static str> {
+fn generate_invoice(invoice: &SimpleInvoice) -> Result<Vec<u8>, &'static str> {
+    todo!()
+}
+
+/// TODO: Proper Doc Generation (Given a Simple Invoice)
+fn generate_receipt(invoice: &SimpleInvoice) -> Result<Vec<u8>, &'static str> {
     // Create a new PDF document
-    let mut doc = PdfDocument::new("Hotel Name Ticket");
+    let mut doc = PdfDocument::new("Hotel Name Receipt");
 
     // Load and register an external font
     let custom_font =

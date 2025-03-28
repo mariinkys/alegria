@@ -97,11 +97,27 @@ pub enum PrintTicketModalActions {
     PrintTicket,
 }
 
+#[derive(Default, Debug, Clone, PartialEq)]
+pub enum TicketType {
+    Invoice,
+    #[default]
+    Receipt,
+}
+
+impl std::fmt::Display for TicketType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TicketType::Invoice => write!(f, "{}", fl!("invoice")),
+            TicketType::Receipt => write!(f, "{}", fl!("receipt")),
+        }
+    }
+}
+
 /// Holds the state of the print ticker modal
 #[derive(Default, Debug, Clone)]
 pub struct PrintTicketModalState {
     show_modal: bool,
-    //ticket_type: TicketType,
+    ticket_type: TicketType, // The kind of ticket we want to print
     selected_printer: Option<AlegriaPrinter>, // Printer selected on the selector
     all_printers: Arc<Vec<AlegriaPrinter>>,
     default_printer: Arc<Option<AlegriaPrinter>>,
@@ -161,6 +177,7 @@ pub enum Message {
 
     PrintModalAction(PrintTicketModalActions), // Callback after some action has been requested on the print ticket modal
     UpdateSelectedPrinter(AlegriaPrinter),     // Updates the selected printer
+    UpdateSelectedTicketType(TicketType),      // Updates the selected ticket type
     PrintTicket(Box<SimpleInvoice>), // Callback after creating a simple invoice from the selected temporal ticket in order to print it
     PrintJobCompleted(Result<(), &'static str>), // Callback after print job is completed
 }
@@ -729,12 +746,16 @@ impl Bar {
             Message::UpdateSelectedPrinter(printer) => {
                 self.print_modal.selected_printer = Some(printer);
             }
+            // Updates the selected ticket type
+            Message::UpdateSelectedTicketType(t_type) => {
+                self.print_modal.ticket_type = t_type;
+            }
             // Callback after creating a simple invoice from the selected temporal ticket in order to print it
             Message::PrintTicket(invoice) => {
                 if let Some(p) = &self.print_modal.selected_printer {
                     let printer = Arc::new(p.clone());
                     action.add_task(Task::perform(
-                        printer.print(*invoice),
+                        printer.print(*invoice, self.print_modal.ticket_type.clone()),
                         Message::PrintJobCompleted,
                     ));
                 }
@@ -746,6 +767,7 @@ impl Bar {
                 }
                 self.active_temporal_product = None;
                 self.active_temporal_product_field = None;
+                self.print_modal.ticket_type = TicketType::default();
                 return self.update(Message::FetchTemporalTickets);
             }
         }
@@ -796,7 +818,7 @@ impl Bar {
 
         if self.print_modal.show_modal {
             let print_modal_content = container(self.view_print_modal())
-                .width(600)
+                .width(700)
                 .padding(30)
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center)
@@ -1212,6 +1234,14 @@ impl Bar {
             )
             .width(Length::Fill);
 
+            let ticket_type_label = text(fl!("ticket-type")).width(Length::Fill);
+            let ticket_type_selector = pick_list(
+                vec![TicketType::Invoice, TicketType::Receipt],
+                Some(self.print_modal.ticket_type.clone()),
+                Message::UpdateSelectedTicketType,
+            )
+            .width(Length::Fill);
+
             let submit_button = if self.print_modal.selected_printer.is_some() {
                 button(
                     text(fl!("print"))
@@ -1233,6 +1263,7 @@ impl Bar {
 
             column![
                 column![printers_label, printer_selector].spacing(1.),
+                column![ticket_type_label, ticket_type_selector].spacing(1.),
                 submit_button
             ]
             .spacing(spacing)

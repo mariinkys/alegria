@@ -27,6 +27,9 @@ garden = Jardín
 unknown = Desconocido
 no-products = Nada todavía...
 print = Imprimir
+invoice = Factura
+receipt = Ticket
+ticket-type = Tipo de Ticket
 
 <#-- Hotel Screen -->
 reservations = Reservas
