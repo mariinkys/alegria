@@ -16,18 +16,18 @@ INSERT INTO rooms (name, room_type_id) VALUES ('113', 2);
 INSERT INTO rooms (name, room_type_id) VALUES ('112', 1);
 INSERT INTO rooms (name, room_type_id) VALUES ('213', 2);
 
--- Seed identity document types 
-INSERT INTO identity_document_types (name) VALUES ('DNI');
+-- Seed identity document types (this table can not be altered by the user)
+INSERT INTO identity_document_types (name) VALUES ('DNI'); -- At least one document type has to exist on the db for the app to work properly (with id 1)
 INSERT INTO identity_document_types (name) VALUES ('NIE');
 INSERT INTO identity_document_types (name) VALUES ('NIF');
 INSERT INTO identity_document_types (name) VALUES ('Pasaporte');
 INSERT INTO identity_document_types (name) VALUES ('Carnet de Conducir');
 
--- Seed genders
-INSERT INTO genders (name) VALUES ('Hombre');
+-- Seed genders (this table can not be altered by the user)
+INSERT INTO genders (name) VALUES ('Hombre'); -- At least one document type has to exist on the db for the app to work properly (with id 1)
 INSERT INTO genders (name) VALUES ('Mujer');
 
--- Seed payment_methods
-INSERT INTO payment_methods (name) VALUES ('Efectivo');
+-- Seed payment_methods (this table can not be altered by the user)
+INSERT INTO payment_methods (name) VALUES ('Efectivo'); -- At least one document type has to exist on the db for the app to work properly (with id 1)
 INSERT INTO payment_methods (name) VALUES ('Tarjeta');
 INSERT INTO payment_methods (name) VALUES ('Adeudo');
