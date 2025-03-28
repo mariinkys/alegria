@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Postgres, Transaction};
 use std::sync::Arc;
 
+use crate::alegria::core::models::product::Product;
+
 use super::{sold_product::SoldProduct, temporal_ticket::TemporalTicket};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,19 +40,42 @@ impl SimpleInvoice {
         .fetch_one(&mut *transaction)
         .await?;
 
-        // insert the products
+        let mut sold_products = Vec::new();
+
+        // insert the products and fetch og_product details
         for product in &temporal_ticket.products {
-            sqlx::query!(
+            let sold_product = sqlx::query!(
                 r#"
                 INSERT INTO sold_products (simple_invoice_id, original_product_id, price)
                 VALUES ($1, $2, $3)
+                RETURNING id, simple_invoice_id, original_product_id, price
                 "#,
                 invoice.id,
                 product.original_product_id,
                 product.price
             )
-            .execute(&mut *transaction)
+            .fetch_one(&mut *transaction)
             .await?;
+
+            let original_product = sqlx::query_as!(
+                Product,
+                r#"
+                SELECT id, category_id, name, inside_price, outside_price, tax_percentage, is_deleted, created_at, updated_at
+                FROM products
+                WHERE id = $1
+                "#,
+                sold_product.original_product_id
+            )
+            .fetch_one(&mut *transaction)
+            .await?;
+
+            sold_products.push(SoldProduct {
+                id: Some(sold_product.id),
+                simple_invoice_id: sold_product.simple_invoice_id,
+                original_product_id: sold_product.original_product_id,
+                price: sold_product.price,
+                original_product,
+            });
         }
 
         // add invoice id to temporal ticket
@@ -71,16 +96,7 @@ impl SimpleInvoice {
         Ok(SimpleInvoice {
             id: Some(invoice.id),
             payment_method_id: invoice.payment_method_id,
-            products: temporal_ticket
-                .products
-                .into_iter()
-                .map(|tp| SoldProduct {
-                    id: None,
-                    simple_invoice_id: invoice.id,
-                    original_product_id: tp.original_product_id,
-                    price: tp.price,
-                })
-                .collect(),
+            products: sold_products,
             paid: invoice.paid,
             is_deleted: invoice.is_deleted,
             created_at: invoice.created_at,
@@ -106,9 +122,14 @@ impl SimpleInvoice {
 
         let sold_products = sqlx::query!(
             r#"
-            SELECT id, simple_invoice_id, original_product_id, price
-            FROM sold_products
-            WHERE simple_invoice_id = $1
+            SELECT sp.id, sp.simple_invoice_id, sp.original_product_id, sp.price,
+                   p.id as "p_id", p.category_id as "p_category_id", p.name as "p_name",
+                   p.inside_price as "p_inside_price", p.outside_price as "p_outside_price",
+                   p.tax_percentage as "p_tax_percentage", p.is_deleted as "p_is_deleted",
+                   p.created_at as "p_created_at", p.updated_at as "p_updated_at"
+            FROM sold_products sp
+            JOIN products p ON sp.original_product_id = p.id
+            WHERE sp.simple_invoice_id = $1
             "#,
             simple_invoice_id
         )
@@ -120,6 +141,17 @@ impl SimpleInvoice {
             simple_invoice_id: row.simple_invoice_id,
             original_product_id: row.original_product_id,
             price: row.price,
+            original_product: Product {
+                id: Some(row.p_id),
+                category_id: row.p_category_id,
+                name: row.p_name,
+                inside_price: row.p_inside_price,
+                outside_price: row.p_outside_price,
+                tax_percentage: row.p_tax_percentage,
+                is_deleted: row.p_is_deleted,
+                created_at: row.p_created_at,
+                updated_at: row.p_updated_at,
+            },
         })
         .collect();
 

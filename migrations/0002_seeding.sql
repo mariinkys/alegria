@@ -5,7 +5,7 @@ INSERT INTO product_categories (name, is_deleted) VALUES ('Postre', false);
 -- Seed products
 INSERT INTO products (category_id, name, inside_price, outside_price, tax_percentage, is_deleted) VALUES (1, 'Filete', 9.80, 9.90, 21.0, false);
 INSERT INTO products (category_id, name, inside_price, outside_price, tax_percentage, is_deleted) VALUES (1, 'Pechuga de Coco', 1.00, 1.50, 21.0, false);
-INSERT INTO products (category_id, name, inside_price, outside_price, tax_percentage, is_deleted) VALUES (2, 'Crema de Lima', 1.20, 1.30, 21.0, false);
+INSERT INTO products (category_id, name, inside_price, outside_price, tax_percentage, is_deleted) VALUES (2, 'Crema de Lima', 1.20, 1.30, 11.0, false);
 
 -- Seed room types
 INSERT INTO room_types (name, price) VALUES ('Individual', 60.00);
