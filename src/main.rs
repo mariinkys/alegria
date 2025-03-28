@@ -62,7 +62,8 @@ fn main() -> Result<(), iced::Error> {
             position: iced::window::Position::Centered,
             icon: icon.ok(),
             resizable: true,
-            min_size: Some(Size::new(1200., 800.)),
+            size: Size::new(1200., 850.),
+            min_size: Some(Size::new(1200., 850.)),
             ..Default::default()
         })
         .font(iced_fonts::REQUIRED_FONT_BYTES)
