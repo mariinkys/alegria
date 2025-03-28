@@ -30,6 +30,7 @@ print = Imprimir
 invoice = Factura
 receipt = Ticket
 ticket-type = Tipo de Ticket
+unlock = Desbloquear
 
 <#-- Hotel Screen -->
 reservations = Reservas

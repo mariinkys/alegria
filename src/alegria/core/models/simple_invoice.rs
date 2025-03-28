@@ -133,4 +133,47 @@ impl SimpleInvoice {
             updated_at: invoice.updated_at,
         })
     }
+
+    /// Deletes a simple invoice given a TemporalTicket
+    pub async fn unlock_temporal_ticket(
+        pool: Arc<PgPool>,
+        temporal_ticket: TemporalTicket,
+    ) -> Result<(), sqlx::Error> {
+        let mut transaction: Transaction<Postgres> = pool.begin().await?;
+
+        // Retrieve the simple_invoice_id associated with the temporal_ticket
+        let invoice = sqlx::query!(
+            r#"
+            SELECT simple_invoice_id FROM temporal_tickets WHERE id = $1
+            "#,
+            temporal_ticket.id
+        )
+        .fetch_one(&mut *transaction)
+        .await?;
+
+        if let Some(invoice_id) = invoice.simple_invoice_id {
+            // delete the simple_invoice (the db cascade will handle sold_products deletion)
+            sqlx::query!(
+                r#"
+                DELETE FROM simple_invoices WHERE id = $1
+                "#,
+                invoice_id
+            )
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        // update the temporal_ticket to remove the invoice reference
+        sqlx::query!(
+            r#"
+            UPDATE temporal_tickets SET simple_invoice_id = NULL WHERE id = $1
+            "#,
+            temporal_ticket.id
+        )
+        .execute(&mut *transaction)
+        .await?;
+
+        transaction.commit().await?;
+        Ok(())
+    }
 }

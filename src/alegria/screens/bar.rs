@@ -180,6 +180,7 @@ pub enum Message {
     UpdateSelectedTicketType(TicketType),      // Updates the selected ticket type
     PrintTicket(Box<SimpleInvoice>), // Callback after creating a simple invoice from the selected temporal ticket in order to print it
     PrintJobCompleted(Result<(), &'static str>), // Callback after print job is completed
+    UnlockTicket(TemporalTicket), // Asks to unlock (delete the related invoice) of a locked ticket
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -770,6 +771,21 @@ impl Bar {
                 self.print_modal.ticket_type = TicketType::default();
                 return self.update(Message::FetchTemporalTickets);
             }
+            // Asks to unlock (delete the related invoice) of a locked ticket
+            Message::UnlockTicket(ticket) => {
+                if let Some(pool) = &self.database {
+                    action.add_task(Task::perform(
+                        SimpleInvoice::unlock_temporal_ticket(pool.clone(), ticket.clone()),
+                        |res| match res {
+                            Ok(_) => Message::FetchTemporalTickets,
+                            Err(err) => {
+                                eprintln!("{err}");
+                                Message::FetchTemporalTickets
+                            }
+                        },
+                    ));
+                }
+            }
         }
 
         action
@@ -864,7 +880,7 @@ impl Bar {
         .align_y(Alignment::Center)
         .spacing(spacing);
 
-        let current_ticket = &self.temporal_tickets_model.iter().find(|x| {
+        let current_ticket = self.temporal_tickets_model.iter().find(|x| {
             x.ticket_location
                 == match_table_location_with_number(
                     self.currently_selected_pos_state.location.clone(),
@@ -873,6 +889,18 @@ impl Bar {
         });
 
         if let Some(c_ticket) = current_ticket {
+            if !c_ticket.products.is_empty() && c_ticket.simple_invoice_id.is_some() {
+                header_row = header_row.push(
+                    button(
+                        text(fl!("unlock"))
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center),
+                    )
+                    .on_press(Message::UnlockTicket(c_ticket.clone()))
+                    .style(button::danger)
+                    .height(button_height),
+                )
+            }
             if !c_ticket.products.is_empty() {
                 header_row = header_row.push(
                     button(
