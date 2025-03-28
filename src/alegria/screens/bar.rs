@@ -25,10 +25,13 @@ use crate::{
             print::AlegriaPrinter,
         },
         utils::{
-            TemporalTicketStatus, match_number_with_temporal_ticket_status,
+            TemporalTicketStatus, error_toast, match_number_with_temporal_ticket_status,
             match_table_location_with_number,
         },
-        widgets::modal::modal,
+        widgets::{
+            modal::modal,
+            toast::{self, Toast},
+        },
     },
     fl,
 };
@@ -126,6 +129,8 @@ pub struct PrintTicketModalState {
 pub struct Bar {
     /// Database of the application
     pub database: Option<Arc<PgPool>>,
+    /// Page Toasts
+    toasts: Vec<Toast>,
     /// Product Categories (for listing and then selecting products)
     product_categories: Vec<ProductCategory>,
     /// Selected product category products (if we clicked a category we will show it's products)
@@ -151,6 +156,9 @@ pub struct Bar {
 #[derive(Debug, Clone)]
 pub enum Message {
     Back, // Asks the parent (app.rs) to go back
+
+    AddToast(Toast),   // Adds the given toast to the state to be shown on screen
+    CloseToast(usize), // Callback after clicking the close toast button
 
     InitPage, // Intended to be called when first opening the page, asks for the necessary data and executes the appropiate callbacks
     FetchTemporalTickets, // Fetches all the current temporal tickets
@@ -194,6 +202,7 @@ impl Default for Bar {
     fn default() -> Self {
         Self {
             database: None,
+            toasts: Vec::new(),
             product_categories: Vec::new(),
             product_category_products: None,
             currently_selected_product_category: None,
@@ -218,6 +227,15 @@ impl Bar {
             // Asks the parent (app.rs) to go back
             Message::Back => action.add_instruction(BarInstruction::Back),
 
+            // Adds the given toast to the state to be shown on screen
+            Message::AddToast(toast) => {
+                self.toasts.push(toast);
+            }
+            // Callback after clicking the close toast button
+            Message::CloseToast(index) => {
+                self.toasts.remove(index);
+            }
+
             // Intended to be called when first opening the page, asks for the necessary data and executes the appropiate callbacks
             Message::InitPage => {
                 if let Some(pool) = &self.database {
@@ -228,7 +246,7 @@ impl Bar {
                             Ok(res) => Message::SetTemporalTickets(res),
                             Err(err) => {
                                 eprintln!("{err}");
-                                Message::SetTemporalTickets(Vec::new())
+                                Message::AddToast(error_toast(err.to_string()))
                             }
                         },
                     ));
@@ -240,7 +258,7 @@ impl Bar {
                             Ok(items) => Message::SetProductCategories(items),
                             Err(err) => {
                                 eprintln!("{err}");
-                                Message::SetProductCategories(Vec::new())
+                                Message::AddToast(error_toast(err.to_string()))
                             }
                         },
                     ));
@@ -259,7 +277,7 @@ impl Bar {
                             Ok(res) => Message::SetTemporalTickets(res),
                             Err(err) => {
                                 eprintln!("{err}");
-                                Message::SetTemporalTickets(Vec::new())
+                                Message::AddToast(error_toast(err.to_string()))
                             }
                         },
                     ));
@@ -314,7 +332,7 @@ impl Bar {
                             Ok(items) => Message::SetProductCategoryProducts(Some(items)),
                             Err(err) => {
                                 eprintln!("{err}");
-                                Message::SetProductCategoryProducts(None)
+                                Message::AddToast(error_toast(err.to_string()))
                             }
                         },
                     ));
@@ -379,7 +397,7 @@ impl Bar {
                                 Ok(_) => Message::FetchTemporalTickets,
                                 Err(err) => {
                                     eprintln!("{err}");
-                                    Message::SetProductCategoryProducts(None)
+                                    Message::AddToast(error_toast(err.to_string()))
                                 }
                             },
                         ));
@@ -764,6 +782,7 @@ impl Bar {
             // Callback after print job is completed
             Message::PrintJobCompleted(result) => {
                 if let Err(e) = result {
+                    self.toasts.push(error_toast(String::from(e)));
                     eprintln!("Error: {}", e);
                 }
                 self.active_temporal_product = None;
@@ -780,7 +799,7 @@ impl Bar {
                             Ok(_) => Message::FetchTemporalTickets,
                             Err(err) => {
                                 eprintln!("{err}");
-                                Message::FetchTemporalTickets
+                                Message::AddToast(error_toast(err.to_string()))
                             }
                         },
                     ));
@@ -840,13 +859,31 @@ impl Bar {
                 .align_y(Alignment::Center)
                 .style(container::rounded_box);
 
-            modal(
-                content,
-                print_modal_content,
-                Message::PrintModalAction(PrintTicketModalActions::HideModal),
+            toast::Manager::new(
+                Column::new()
+                    .push(modal(
+                        content,
+                        print_modal_content,
+                        Message::PrintModalAction(PrintTicketModalActions::HideModal),
+                    ))
+                    .spacing(spacing)
+                    .height(Length::Fill)
+                    .width(Length::Fill),
+                &self.toasts,
+                Message::CloseToast,
             )
+            .into()
         } else {
-            content.into()
+            toast::Manager::new(
+                Column::new()
+                    .push(content)
+                    .spacing(spacing)
+                    .height(Length::Fill)
+                    .width(Length::Fill),
+                &self.toasts,
+                Message::CloseToast,
+            )
+            .into()
         }
     }
 
