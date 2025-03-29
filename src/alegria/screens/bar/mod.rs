@@ -13,8 +13,9 @@ use crate::{
     alegria::{
         core::{
             models::{
-                product::Product, product_category::ProductCategory, simple_invoice::SimpleInvoice,
-                temporal_product::TemporalProduct, temporal_ticket::TemporalTicket,
+                payment_method::PaymentMethod, product::Product, product_category::ProductCategory,
+                simple_invoice::SimpleInvoice, temporal_product::TemporalProduct,
+                temporal_ticket::TemporalTicket,
             },
             print::AlegriaPrinter,
         },
@@ -113,11 +114,27 @@ pub struct PrintTicketModalState {
     default_printer: Arc<Option<AlegriaPrinter>>,
 }
 
+/// Represents a page of the bar screen
+#[derive(PartialEq)]
+pub enum BarScreen {
+    Home,
+    Pay,
+}
+
+/// Holds the state of the pay screen inputs...
+#[derive(Default, Debug, Clone)]
+pub struct PayScreenState {
+    payment_methods: Vec<PaymentMethod>,
+    selected_payment_method: Option<PaymentMethod>,
+}
+
 pub struct Bar {
     /// Database of the application
     pub database: Option<Arc<PgPool>>,
     /// Page Toasts
     toasts: Vec<Toast>,
+    /// Determines which is the current bar screen
+    bar_screen: BarScreen,
     /// Product Categories (for listing and then selecting products)
     product_categories: Vec<ProductCategory>,
     /// Selected product category products (if we clicked a category we will show it's products)
@@ -138,6 +155,8 @@ pub struct Bar {
     product_category_products_pagination_state: PaginationConfig,
     /// Holds the printing modal state
     print_modal: PrintTicketModalState,
+    /// Holds the satate of the payscreen inputs...
+    pay_screen: PayScreenState,
 }
 
 #[derive(Debug, Clone)]
@@ -152,6 +171,7 @@ pub enum Message {
     SetTemporalTickets(Vec<TemporalTicket>), // Sets the temporal tickets on the app state
     SetProductCategories(Vec<ProductCategory>), // Sets the product categories on the state
     SetPrinters(Option<AlegriaPrinter>, Vec<AlegriaPrinter>), // Sets the printers on the app state
+    SetPaymentMethods(Vec<PaymentMethod>), // Sets the payment methods on the app state
 
     FetchProductCategoryProducts(Option<i32>), // Fetches the products for a given product category
     SetProductCategoryProducts(Option<Vec<Product>>), // Sets the products on the state
@@ -176,6 +196,11 @@ pub enum Message {
     PrintTicket(Box<SimpleInvoice>), // Callback after creating a simple invoice from the selected temporal ticket in order to print it
     PrintJobCompleted(Result<(), &'static str>), // Callback after print job is completed
     UnlockTicket(TemporalTicket), // Asks to unlock (delete the related invoice) of a locked ticket
+
+    OpenPayScreen, // Tries to open the pay screen for the currently selected TemporalTicket
+    ChangeSelectedPaymentMethod(PaymentMethod), // Changes the currently selected payment method for the given one
+    PayTemporalTicket(i32), // Tries to execute the pay transaction for the given TemporalTicketId
+    PaidTemporalTicket(Result<(), String>), // Callback after executing the pay temporal ticket transaction
 }
 
 // Messages/Tasks that need to modify state on the main screen
@@ -190,6 +215,7 @@ impl Default for Bar {
         Self {
             database: None,
             toasts: Vec::new(),
+            bar_screen: BarScreen::Home,
             product_categories: Vec::new(),
             product_category_products: None,
             currently_selected_product_category: None,
@@ -201,6 +227,7 @@ impl Default for Bar {
             product_categories_pagination_state: PaginationConfig::default(),
             product_category_products_pagination_state: PaginationConfig::default(),
             print_modal: PrintTicketModalState::default(),
+            pay_screen: PayScreenState::default(),
         }
     }
 }

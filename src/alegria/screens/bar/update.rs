@@ -6,8 +6,9 @@ use crate::alegria::{
     action::AlegriaAction,
     core::{
         models::{
-            product::Product, product_category::ProductCategory, simple_invoice::SimpleInvoice,
-            temporal_product::TemporalProduct, temporal_ticket::TemporalTicket,
+            payment_method::PaymentMethod, product::Product, product_category::ProductCategory,
+            simple_invoice::SimpleInvoice, temporal_product::TemporalProduct,
+            temporal_ticket::TemporalTicket,
         },
         print::AlegriaPrinter,
     },
@@ -15,8 +16,8 @@ use crate::alegria::{
 };
 
 use super::{
-    Bar, BarInstruction, Message, NumPadAction, PaginationAction, PrintTicketModalActions,
-    TemporalProductField, TicketType,
+    Bar, BarInstruction, BarScreen, Message, NumPadAction, PaginationAction,
+    PrintTicketModalActions, TemporalProductField, TicketType,
 };
 
 impl Bar {
@@ -26,7 +27,12 @@ impl Bar {
 
         match message {
             // Asks the parent (app.rs) to go back
-            Message::Back => action.add_instruction(BarInstruction::Back),
+            Message::Back => match self.bar_screen {
+                BarScreen::Home => action.add_instruction(BarInstruction::Back),
+                BarScreen::Pay => {
+                    self.bar_screen = BarScreen::Home;
+                }
+            },
 
             // Adds the given toast to the state to be shown on screen
             Message::AddToast(toast) => {
@@ -63,6 +69,17 @@ impl Bar {
                             }
                         },
                     ));
+
+                    // Get the payment methods
+                    action.add_task(Task::perform(PaymentMethod::get_all(pool.clone()), |res| {
+                        match res {
+                            Ok(items) => Message::SetPaymentMethods(items),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                Message::AddToast(error_toast(err.to_string()))
+                            }
+                        }
+                    }));
                 }
 
                 action.add_task(Task::perform(AlegriaPrinter::load_printers(), |res| {
@@ -118,6 +135,13 @@ impl Bar {
                 self.print_modal.default_printer =
                     Arc::new(self.print_modal.selected_printer.clone());
                 self.print_modal.all_printers = Arc::new(all_printers);
+            }
+            // Sets the payment methods on the app state
+            Message::SetPaymentMethods(p_methods) => {
+                if !p_methods.is_empty() {
+                    self.pay_screen.selected_payment_method = p_methods.first().cloned();
+                }
+                self.pay_screen.payment_methods = p_methods;
             }
 
             // Fetches the products for a given product category
@@ -606,6 +630,56 @@ impl Bar {
                     ));
                 }
             }
+
+            // Tries to open the pay screen for the currently selected TemporalTicket
+            Message::OpenPayScreen => {
+                let current_ticket = self.temporal_tickets_model.iter().find(|x| {
+                    x.ticket_location
+                        == match_table_location_with_number(
+                            self.currently_selected_pos_state.location.clone(),
+                        )
+                        && x.table_id == self.currently_selected_pos_state.table_index as i32
+                });
+
+                if current_ticket.is_some() {
+                    self.bar_screen = BarScreen::Pay;
+                }
+            }
+            // Changes the currently selected payment method for the given one
+            Message::ChangeSelectedPaymentMethod(p_method) => {
+                self.pay_screen.selected_payment_method = Some(p_method);
+            }
+            // Tries to execute the pay transaction for the given TemporalTicketId
+            Message::PayTemporalTicket(id) => {
+                // we get the id because we don't know if the ticket has been printed or not
+                // so we will retrieve it by id before commiting to the pay transaction
+                // this way we know if it's already a simple invoice or not
+                if let Some(pool) = &self.database {
+                    if let Some(payment_method) = &self.pay_screen.selected_payment_method {
+                        action.add_task(Task::perform(
+                            SimpleInvoice::pay_temporal_ticket(
+                                pool.clone(),
+                                id,
+                                payment_method.id.unwrap_or_default(),
+                            ),
+                            |res| {
+                                let mapped_result = res.map_err(|e| e.to_string());
+                                Message::PaidTemporalTicket(mapped_result)
+                            },
+                        ));
+                    }
+                }
+            }
+            // Callback after executing the pay temporal ticket transaction
+            Message::PaidTemporalTicket(res) => match res {
+                Ok(_) => {
+                    self.bar_screen = BarScreen::Home;
+                    return self.update(Message::FetchTemporalTickets);
+                }
+                Err(e) => {
+                    self.toasts.push(error_toast(e.to_string()));
+                }
+            },
         }
 
         action

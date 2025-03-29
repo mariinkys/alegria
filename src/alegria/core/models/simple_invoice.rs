@@ -208,4 +208,86 @@ impl SimpleInvoice {
         transaction.commit().await?;
         Ok(())
     }
+
+    /// Creates a simple invoice given a temporal ticket, returns the newly created invoice
+    pub async fn pay_temporal_ticket(
+        pool: Arc<PgPool>,
+        temporal_ticket_id: i32,
+        payment_method_id: i32,
+    ) -> Result<(), sqlx::Error> {
+        let mut transaction: Transaction<Postgres> = pool.begin().await?;
+
+        // get the temporal ticket with the given id
+        let temporal_ticket = sqlx::query!(
+            r#"
+            SELECT id, simple_invoice_id FROM temporal_tickets WHERE id = $1
+            "#,
+            temporal_ticket_id
+        )
+        .fetch_one(&mut *transaction)
+        .await?;
+
+        // if the temporal ticket has simple_invoice_id, update it's paid bool and payment_method_id
+        if let Some(simple_invoice_id) = temporal_ticket.simple_invoice_id {
+            sqlx::query!(
+                r#"
+                UPDATE simple_invoices SET paid = TRUE, payment_method_id = $1 WHERE id = $2
+                "#,
+                payment_method_id,
+                simple_invoice_id
+            )
+            .execute(&mut *transaction)
+            .await?;
+        } else {
+            // if the temporal ticket is not yet a simple_invoice_id create it with the data of the retrieved temporal ticket
+            let invoice = sqlx::query!(
+                r#"
+                INSERT INTO simple_invoices (payment_method_id, paid, is_deleted)
+                VALUES ($1, TRUE, FALSE)
+                RETURNING id
+                "#,
+                payment_method_id
+            )
+            .fetch_one(&mut *transaction)
+            .await?;
+
+            // retrieve temporal products associated with the temporal ticket
+            let temporal_products = sqlx::query!(
+                r#"
+            SELECT original_product_id, price FROM temporal_products WHERE temporal_ticket_id = $1
+            "#,
+                temporal_ticket_id
+            )
+            .fetch_all(&mut *transaction)
+            .await?;
+
+            // insert temporal products into sold_products
+            for product in temporal_products {
+                sqlx::query!(
+                    r#"
+                INSERT INTO sold_products (simple_invoice_id, original_product_id, price)
+                VALUES ($1, $2, $3)
+                "#,
+                    invoice.id,
+                    product.original_product_id,
+                    product.price
+                )
+                .execute(&mut *transaction)
+                .await?;
+            }
+        }
+
+        // delete the temporal ticket (temporal products will be deleted by on_cascade of the db)
+        sqlx::query!(
+            r#"
+            DELETE FROM temporal_tickets WHERE id = $1
+            "#,
+            temporal_ticket_id
+        )
+        .execute(&mut *transaction)
+        .await?;
+
+        transaction.commit().await?;
+        Ok(())
+    }
 }

@@ -16,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    Bar, Message, NumPadAction, PaginationAction, PrintTicketModalActions, TableLocation,
-    TicketType,
+    Bar, BarScreen, Message, NumPadAction, PaginationAction, PrintTicketModalActions,
+    TableLocation, TicketType,
 };
 
 impl Bar {
@@ -29,35 +29,12 @@ impl Bar {
         let spacing = Pixels::from(Self::GLOBAL_SPACING);
 
         let header_row = self.view_header_row();
+        let page_content = match self.bar_screen {
+            BarScreen::Home => self.view_bar_homescreen(),
+            BarScreen::Pay => self.view_bar_payscreen(),
+        };
 
-        let bottom_row = row![
-            // LEFT SIDE COLUMN
-            column![
-                // UPPER LEFT SIDE
-                row![
-                    self.view_tables_grid(),
-                    column![self.view_current_ticket_total_price(), self.view_numpad()]
-                        .width(235.) //TODO: Maybe this should not be like this but the custom widget also gives some trouble
-                        .spacing(spacing)
-                ]
-                .align_y(Alignment::Center)
-                .spacing(spacing),
-                // BOTTOM LEFT SIDE
-                self.view_current_ticket_products()
-            ]
-            .spacing(spacing)
-            .width(Length::Fill),
-            // RIGHT SIDE ROW
-            row![
-                self.view_product_categories_container(),
-                self.view_product_category_products_container(),
-            ]
-            .spacing(spacing)
-            .width(Length::Fill)
-        ]
-        .spacing(spacing);
-
-        let content = column![header_row, bottom_row]
+        let content = column![header_row, page_content]
             .spacing(spacing)
             .height(Length::Fill)
             .width(Length::Fill);
@@ -136,35 +113,173 @@ impl Bar {
                 && x.table_id == self.currently_selected_pos_state.table_index as i32
         });
 
-        if let Some(c_ticket) = current_ticket {
-            if !c_ticket.products.is_empty() && c_ticket.simple_invoice_id.is_some() {
-                header_row = header_row.push(
-                    button(
-                        text(fl!("unlock"))
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center),
-                    )
-                    .on_press(Message::UnlockTicket(c_ticket.clone()))
-                    .style(button::danger)
-                    .height(button_height),
-                )
-            }
-            if !c_ticket.products.is_empty() {
-                header_row = header_row.push(
-                    button(
-                        text(fl!("print"))
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center),
-                    )
-                    .on_press(Message::PrintModalAction(
-                        PrintTicketModalActions::ShowModal,
-                    ))
-                    .height(button_height),
-                )
+        if self.bar_screen == BarScreen::Home {
+            if let Some(c_ticket) = current_ticket {
+                if !c_ticket.products.is_empty() && c_ticket.simple_invoice_id.is_some() {
+                    header_row = header_row.push(
+                        button(
+                            text(fl!("unlock"))
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .on_press(Message::UnlockTicket(c_ticket.clone()))
+                        .style(button::danger)
+                        .height(button_height),
+                    );
+                }
+                if !c_ticket.products.is_empty() {
+                    header_row = header_row.push(
+                        button(
+                            text(fl!("print"))
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .on_press(Message::PrintModalAction(
+                            PrintTicketModalActions::ShowModal,
+                        ))
+                        .height(button_height),
+                    );
+
+                    header_row = header_row.push(
+                        button(
+                            text(fl!("pay"))
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .style(button::success)
+                        .on_press(Message::OpenPayScreen)
+                        .height(button_height),
+                    );
+                }
             }
         }
 
         header_row.into()
+    }
+
+    // Returns the view of the bar homescreen
+    fn view_bar_homescreen(&self) -> Element<Message> {
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
+
+        row![
+            // LEFT SIDE COLUMN
+            column![
+                // UPPER LEFT SIDE
+                row![
+                    self.view_tables_grid(),
+                    column![self.view_current_ticket_total_price(), self.view_numpad()]
+                        .width(235.) //TODO: Maybe this should not be like this but the custom widget also gives some trouble
+                        .spacing(spacing)
+                ]
+                .align_y(Alignment::Center)
+                .spacing(spacing),
+                // BOTTOM LEFT SIDE
+                self.view_current_ticket_products()
+            ]
+            .spacing(spacing)
+            .width(Length::Fill),
+            // RIGHT SIDE ROW
+            row![
+                self.view_product_categories_container(),
+                self.view_product_category_products_container(),
+            ]
+            .spacing(spacing)
+            .width(Length::Fill)
+        ]
+        .spacing(spacing)
+        .into()
+    }
+
+    // Returns the view of the bar payscreen
+    fn view_bar_payscreen(&self) -> Element<Message> {
+        let button_height = Length::Fixed(Self::GLOBAL_BUTTON_HEIGHT);
+        let spacing = Pixels::from(Self::GLOBAL_SPACING);
+
+        let current_ticket = self.temporal_tickets_model.iter().find(|x| {
+            x.ticket_location
+                == match_table_location_with_number(
+                    self.currently_selected_pos_state.location.clone(),
+                )
+                && x.table_id == self.currently_selected_pos_state.table_index as i32
+        });
+
+        if let Some(c_ticket) = current_ticket {
+            let total_price = {
+                let mut price = 0.;
+                for product in &c_ticket.products {
+                    for _ in 0..product.quantity {
+                        price += product.price.unwrap_or(0.);
+                    }
+                }
+
+                text(format!("TOTAL: {:.2} €", price))
+                    .size(25.)
+                    .line_height(2.)
+            };
+
+            let print_button = button(
+                text(fl!("print"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
+            )
+            .on_press(Message::PrintModalAction(
+                PrintTicketModalActions::ShowModal,
+            ))
+            .height(button_height);
+
+            let payment_methods_buttons: Vec<Element<Message>> = self
+                .pay_screen
+                .payment_methods
+                .iter()
+                .map(|p_method| {
+                    button(
+                        text(&p_method.name)
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center),
+                    )
+                    .on_press(Message::ChangeSelectedPaymentMethod(p_method.clone()))
+                    .style(
+                        if p_method.id
+                            == self.pay_screen.selected_payment_method.as_ref().unwrap().id
+                        {
+                            button::success
+                        } else {
+                            button::secondary
+                        },
+                    )
+                    .height(button_height)
+                    .into()
+                })
+                .collect();
+            let p_methods_row = row(payment_methods_buttons).spacing(spacing);
+            let p_methods_col = column![text(fl!("payment-method")), p_methods_row];
+
+            // TODO: If selected payment method = adeudo we need to show a currently occupied reservation selector
+
+            let submit_button = button(
+                text(fl!("pay"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
+            )
+            .on_press(Message::PayTemporalTicket(c_ticket.id.unwrap_or_default()))
+            .height(button_height);
+
+            let content =
+                column![total_price, print_button, p_methods_col, submit_button].spacing(spacing);
+
+            container(content)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(50)
+                .into()
+        } else {
+            container(text("Error"))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
+                .into()
+        }
     }
 
     // Controls how many tables there are on a row

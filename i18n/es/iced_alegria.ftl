@@ -31,6 +31,8 @@ invoice = Factura
 receipt = Ticket
 ticket-type = Tipo de Ticket
 unlock = Desbloquear
+pay = Pagar
+payment-method = Método de Pago
 
 <#-- Hotel Screen -->
 reservations = Reservas
