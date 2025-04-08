@@ -33,7 +33,7 @@ iced_aw = { version = "0.12.2", default-features = false, features = [
 ] }
 dotenvy = "0.15.7" # .env support
 printers = "2.1.2" # getting printers, sending docs to print...
-tokio = "1.44.1"
+tokio = "1.44.2"
 printpdf = "0.8.2" # pdf generation
 fontdue = "0.9.3" # needed to measure the text width in order to print
 
