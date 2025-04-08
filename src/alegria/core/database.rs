@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use std::{env, sync::Arc};
 use tokio::time::{Duration, timeout};
 
-pub async fn init_database() -> Result<Arc<PgPool>, String> {
+pub async fn init_database(migrate: bool) -> Result<Arc<PgPool>, String> {
     // Load .env file
     dotenv().ok();
 
@@ -16,12 +16,14 @@ pub async fn init_database() -> Result<Arc<PgPool>, String> {
         .map_err(|_| "Timed out connecting to the database".to_string())?
         .map_err(|e| format!("Could not connect to database: {}", e))?;
 
-    match sqlx::migrate!("./migrations").run(&pool).await {
-        Ok(_) => println!("Migrations run successfully"),
-        Err(err) => {
-            return Err(format!("Error occurred running migrations: {}", err));
-        }
-    };
+    if migrate {
+        match sqlx::migrate!("./migrations").run(&pool).await {
+            Ok(_) => println!("Migrations run successfully"),
+            Err(err) => {
+                return Err(format!("Error occurred running migrations: {}", err));
+            }
+        };
+    }
 
     Ok(Arc::new(pool))
 }
