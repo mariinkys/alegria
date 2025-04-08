@@ -255,6 +255,19 @@ impl Bar {
             let p_methods_col = column![text(fl!("payment-method")), p_methods_row];
 
             // TODO: If selected payment method = adeudo we need to show a currently occupied reservation selector
+            let reservations_selector: Element<Message> =
+                if let Some(selected_p_method) = &self.pay_screen.selected_payment_method {
+                    // TODO: We're hardcoding the value here which should be fine because the user
+                    // can't change the values of the payment method table, but yk
+                    if selected_p_method.id.unwrap_or_default().eq(&3) {
+                        // TODO: Occupied Reservations Selector
+                        container(text("wow")).into()
+                    } else {
+                        container(Space::new(Length::Shrink, Length::Shrink)).into()
+                    }
+                } else {
+                    container(Space::new(Length::Shrink, Length::Shrink)).into()
+                };
 
             let submit_button = button(
                 text(fl!("pay"))
@@ -264,8 +277,11 @@ impl Bar {
             .on_press(Message::PayTemporalTicket(c_ticket.id.unwrap_or_default()))
             .height(button_height);
 
-            let content =
-                column![total_price, print_button, p_methods_col, submit_button].spacing(spacing);
+            let content = row![
+                column![total_price, print_button, p_methods_col, submit_button].spacing(spacing),
+                reservations_selector
+            ]
+            .spacing(spacing);
 
             container(content)
                 .width(Length::Fill)
