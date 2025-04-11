@@ -15,6 +15,7 @@ select = Seleccionar
 page = Página
 printer = Impresora
 loading = Cargando...
+refresh = Actualizar
 
 <#-- Main Menu -->
 bar = Bar

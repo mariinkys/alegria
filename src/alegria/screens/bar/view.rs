@@ -254,14 +254,39 @@ impl Bar {
             let p_methods_row = row(payment_methods_buttons).spacing(spacing);
             let p_methods_col = column![text(fl!("payment-method")), p_methods_row];
 
-            // TODO: If selected payment method = adeudo we need to show a currently occupied reservation selector
+            // If selected payment method = adeudo we need to show a currently occupied reservation selector
             let reservations_selector: Element<Message> =
                 if let Some(selected_p_method) = &self.pay_screen.selected_payment_method {
-                    // TODO: We're hardcoding the value here which should be fine because the user
+                    // We're hardcoding the value here which should be fine because the user
                     // can't change the values of the payment method table, but yk
                     if selected_p_method.id.unwrap_or_default().eq(&3) {
-                        // TODO: Occupied Reservations Selector
-                        container(text("wow")).into()
+                        // TODO: Reservation selector for adeudo
+                        let refresh_button = button(
+                            text(fl!("refresh"))
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center),
+                        )
+                        .on_press(Message::FetchOccupiedReservations)
+                        .height(button_height);
+
+                        let result = column![
+                            refresh_button,
+                            text(format!(
+                                "Number of reservations {}",
+                                &self.pay_screen.occupied_reservations.len()
+                            )),
+                            text(format!(
+                                "Number of sold rooms {}",
+                                &self
+                                    .pay_screen
+                                    .occupied_reservations
+                                    .iter()
+                                    .map(|x| x.rooms.len())
+                                    .sum::<usize>()
+                            ))
+                        ];
+
+                        container(result).into()
                     } else {
                         container(Space::new(Length::Shrink, Length::Shrink)).into()
                     }

@@ -7,8 +7,8 @@ use crate::alegria::{
     core::{
         models::{
             payment_method::PaymentMethod, product::Product, product_category::ProductCategory,
-            simple_invoice::SimpleInvoice, temporal_product::TemporalProduct,
-            temporal_ticket::TemporalTicket,
+            reservation::Reservation, simple_invoice::SimpleInvoice,
+            temporal_product::TemporalProduct, temporal_ticket::TemporalTicket,
         },
         print::AlegriaPrinter,
     },
@@ -80,6 +80,18 @@ impl Bar {
                             }
                         }
                     }));
+
+                    // Get the currently occupied reservations (for the paid screen)
+                    action.add_task(Task::perform(
+                        Reservation::get_occupied(pool.clone()),
+                        |res| match res {
+                            Ok(items) => Message::SetOccupiedReservations(items),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                Message::AddToast(error_toast(err.to_string()))
+                            }
+                        },
+                    ));
                 }
 
                 action.add_task(Task::perform(AlegriaPrinter::load_printers(), |res| {
@@ -166,6 +178,26 @@ impl Bar {
             // Sets the products on the state
             Message::SetProductCategoryProducts(items) => {
                 self.product_category_products = items;
+            }
+
+            // Fetches all the current occupied reservations
+            Message::FetchOccupiedReservations => {
+                if let Some(pool) = &self.database {
+                    action.add_task(Task::perform(
+                        Reservation::get_occupied(pool.clone()),
+                        |res| match res {
+                            Ok(items) => Message::SetOccupiedReservations(items),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                Message::AddToast(error_toast(err.to_string()))
+                            }
+                        },
+                    ));
+                }
+            }
+            // Sets all the current occupied reservations on the app state
+            Message::SetOccupiedReservations(reservations) => {
+                self.pay_screen.occupied_reservations = reservations;
             }
 
             // Callback after a table has been clicked

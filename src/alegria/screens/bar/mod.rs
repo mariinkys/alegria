@@ -14,8 +14,8 @@ use crate::{
         core::{
             models::{
                 payment_method::PaymentMethod, product::Product, product_category::ProductCategory,
-                simple_invoice::SimpleInvoice, temporal_product::TemporalProduct,
-                temporal_ticket::TemporalTicket,
+                reservation::Reservation, simple_invoice::SimpleInvoice,
+                temporal_product::TemporalProduct, temporal_ticket::TemporalTicket,
             },
             print::AlegriaPrinter,
         },
@@ -126,6 +126,7 @@ pub enum BarScreen {
 pub struct PayScreenState {
     payment_methods: Vec<PaymentMethod>,
     selected_payment_method: Option<PaymentMethod>,
+    occupied_reservations: Vec<Reservation>,
 }
 
 pub struct Bar {
@@ -175,6 +176,9 @@ pub enum Message {
 
     FetchProductCategoryProducts(Option<i32>), // Fetches the products for a given product category
     SetProductCategoryProducts(Option<Vec<Product>>), // Sets the products on the state
+
+    FetchOccupiedReservations, // Fetches all the current occupied reservations
+    SetOccupiedReservations(Vec<Reservation>), // Sets all the current occupied reservations on the app state
 
     OnTableChange(usize), // Callback after a table has been clicked
     ChangeCurrentTablesLocation(TableLocation), // Callback after we ask to change our current TableLocation
