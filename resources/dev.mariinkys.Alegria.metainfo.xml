@@ -33,12 +33,12 @@
 
     <screenshots>
         <screenshot type="default" xml:lang="en">
-            <image>https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/screenshot1.png</image>
-            <caption>Screenshot 1</caption>
+            <image>https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/bar.png</image>
+            <caption>Bar Page</caption>
         </screenshot>
         <screenshot xml:lang="en">
-            <image>https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/screenshot2.png</image>
-            <caption>Screenshot 2</caption>
+            <image>https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/reservations.png</image>
+            <caption>Reservations Page</caption>
         </screenshot>
     </screenshots>
 

@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
-use std::sync::Arc;
+
+use super::product::Product;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SoldProduct {
@@ -11,6 +10,7 @@ pub struct SoldProduct {
     pub simple_invoice_id: i32,
     pub original_product_id: i32,
     pub price: Option<f32>,
-}
 
-impl SoldProduct {}
+    // Not in the db
+    pub original_product: Product,
+}

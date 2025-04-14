@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Gender {
@@ -10,13 +10,11 @@ pub struct Gender {
     pub name: String,
 }
 
-#[allow(clippy::to_string_trait_impl)]
-impl ToString for Gender {
-    fn to_string(&self) -> String {
-        self.name.to_string()
+impl fmt::Display for Gender {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
     }
 }
-
 impl Gender {
     pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<Gender>, sqlx::Error> {
         let rows = sqlx::query("SELECT id, name FROM genders ORDER BY id ASC")

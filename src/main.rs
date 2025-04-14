@@ -36,6 +36,8 @@ const APP_ID: &str = "dev.mariinkys.IcedAlegria";
 fn main() -> Result<(), iced::Error> {
     // #[cfg(target_env = "gnu")]
     // malloc::limit_mmap_threshold();
+    let args: Vec<String> = std::env::args().collect();
+    let migrate = args.contains(&"-m".to_string());
 
     // Get the window  icon
     let icon = icon::from_file_data(
@@ -53,7 +55,7 @@ fn main() -> Result<(), iced::Error> {
     let mut tasks = vec![];
 
     tasks.push(iced::Task::perform(
-        async move { alegria::core::database::init_database().await },
+        async move { alegria::core::database::init_database(migrate).await },
         app::Message::DatabaseLoaded,
     ));
 
@@ -62,7 +64,8 @@ fn main() -> Result<(), iced::Error> {
             position: iced::window::Position::Centered,
             icon: icon.ok(),
             resizable: true,
-            min_size: Some(Size::new(1200., 800.)),
+            size: Size::new(1200., 850.),
+            min_size: Some(Size::new(1200., 850.)),
             ..Default::default()
         })
         .font(iced_fonts::REQUIRED_FONT_BYTES)

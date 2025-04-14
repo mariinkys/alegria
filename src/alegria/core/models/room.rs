@@ -3,7 +3,7 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Room {
@@ -35,10 +35,9 @@ impl Default for Room {
     }
 }
 
-#[allow(clippy::to_string_trait_impl)]
-impl ToString for Room {
-    fn to_string(&self) -> String {
-        self.name.to_string()
+impl fmt::Display for Room {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
     }
 }
 

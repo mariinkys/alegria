@@ -7,12 +7,20 @@
   ![GitHub Repo stars](https://img.shields.io/github/stars/mariinkys/iced-alegria)
 
 
-  <h3>Software básico TPV Hostelería.</h3>
+  <h3>Software básico TPV Hostelería</h3>
+  <h3>Basic POS Software for an Hotel/Restaurant</h3>
 
-  <img alt="Screenshot 1" src="./screenshots/screenshot1.png"/>
-  <img alt="Screenshot 2" src="./screenshots/screenshot2.png"/>
+  <img width="320" alt="Bar Page" src="./screenshots/bar.png"/>
+  <img width="320" alt="Reservations Page" src="./screenshots/reservations.png"/>
 
 </div>
+
+## Notes
+
+This software is being developed for a specific Spanish client; it just happens to be Open Source.
+
+> [!WARNING]
+> This project is not ready for usage, very WIP
 
 ## Installation
 

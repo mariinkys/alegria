@@ -15,6 +15,7 @@ select = Seleccionar
 page = Página
 printer = Impresora
 loading = Cargando...
+refresh = Actualizar
 
 <#-- Main Menu -->
 bar = Bar
@@ -27,6 +28,12 @@ garden = Jardín
 unknown = Desconocido
 no-products = Nada todavía...
 print = Imprimir
+invoice = Factura
+receipt = Ticket
+ticket-type = Tipo de Ticket
+unlock = Desbloquear
+pay = Pagar
+payment-method = Método de Pago
 
 <#-- Hotel Screen -->
 reservations = Reservas

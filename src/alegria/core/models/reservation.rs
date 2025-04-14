@@ -240,4 +240,103 @@ impl Reservation {
 
         Ok(())
     }
+
+    /// Retrieves all the currently occupied reservations
+    pub async fn get_occupied(pool: Arc<PgPool>) -> Result<Vec<Reservation>, sqlx::Error> {
+        let rows = sqlx::query(
+            "SELECT 
+                reservations.id, 
+                reservations.client_id, 
+                reservations.entry_date, 
+                reservations.departure_date, 
+                reservations.occupied, 
+                reservations.is_deleted, 
+                reservations.created_at, 
+                reservations.updated_at,
+                clients.name as client_name,
+                clients.first_surname as client_first_surname,
+                clients.second_surname as client_second_surname
+            FROM reservations 
+            LEFT JOIN clients ON reservations.client_id = clients.id 
+            WHERE reservations.is_deleted = $1
+            AND reservations.occupied = $2
+            ORDER BY reservations.id DESC",
+        )
+        .bind(false)
+        .bind(true)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+        let mut result = Vec::<Reservation>::new();
+
+        for row in rows {
+            let id: Option<i32> = row.try_get("id")?;
+            let client_id: Option<i32> = row.try_get("client_id")?;
+            let entry_date: Option<NaiveDateTime> = row.try_get("entry_date")?;
+            let departure_date: Option<NaiveDateTime> = row.try_get("departure_date")?;
+            let occupied: bool = row.try_get("occupied")?;
+            let is_deleted: bool = row.try_get("is_deleted")?;
+            let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
+            let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
+            let client_name: String = row.try_get("client_name").unwrap_or_default();
+            let client_first_surname: String =
+                row.try_get("client_first_surname").unwrap_or_default();
+            let client_second_surname: String =
+                row.try_get("client_second_surname").unwrap_or_default();
+
+            let client_name = format!(
+                "{} {} {}",
+                client_name, client_first_surname, client_second_surname
+            );
+
+            // get rooms for this reservation
+            let rooms = if let Some(reservation_id) = id {
+                let room_rows = sqlx::query(
+                    "SELECT 
+                    sr.id, 
+                    sr.room_id, 
+                    sr.price
+                FROM sold_rooms sr
+                JOIN reservation_sold_rooms rsr ON sr.id = rsr.sold_room_id
+                WHERE rsr.reservation_id = $1",
+                )
+                .bind(reservation_id)
+                .fetch_all(pool.as_ref())
+                .await?;
+
+                let mut rooms = Vec::new();
+
+                for room_row in room_rows {
+                    let sold_room = SoldRoom {
+                        id: room_row.try_get("id")?,
+                        room_id: room_row.try_get("room_id")?,
+                        price: room_row.try_get("price")?,
+                        guests: Vec::new(),
+                        invoices: Vec::new(),
+                    };
+                    rooms.push(sold_room);
+                }
+                rooms
+            } else {
+                Vec::new()
+            };
+
+            let reservation = Reservation {
+                id,
+                client_id,
+                rooms,
+                entry_date,
+                departure_date,
+                occupied,
+                is_deleted,
+                created_at,
+                updated_at,
+                client_name,
+            };
+
+            result.push(reservation);
+        }
+
+        Ok(result)
+    }
 }
