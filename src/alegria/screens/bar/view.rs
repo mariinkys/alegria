@@ -1,6 +1,8 @@
 use iced::{
     Alignment, Element, Length, Pixels,
-    widget::{Column, Row, Scrollable, Space, button, column, container, pick_list, row, text},
+    widget::{
+        Column, Row, Rule, Scrollable, Space, button, column, container, pick_list, row, text,
+    },
 };
 use sweeten::widget::text_input;
 
@@ -269,6 +271,67 @@ impl Bar {
                         .on_press(Message::FetchOccupiedReservations)
                         .height(button_height);
 
+                        let title_row = Row::new()
+                            .push(
+                                //TODO: Room number
+                                text(fl!("name"))
+                                    .size(Self::TITLE_TEXT_SIZE)
+                                    .width(250.)
+                                    .align_y(Alignment::Center),
+                            )
+                            .push(
+                                text(fl!("name"))
+                                    .size(Self::TITLE_TEXT_SIZE)
+                                    .width(250.)
+                                    .align_y(Alignment::Center),
+                            )
+                            .push(
+                                text(fl!("select"))
+                                    .size(Self::TITLE_TEXT_SIZE)
+                                    .width(250.)
+                                    .align_y(Alignment::Center),
+                            )
+                            .width(Length::Shrink)
+                            .align_y(Alignment::Center);
+
+                        let mut grid = Column::new()
+                            .push(title_row)
+                            .align_x(Alignment::Center)
+                            .spacing(spacing)
+                            .width(Length::Shrink);
+
+                        for reservation in &self.pay_screen.occupied_reservations {
+                            for reservation_room in &reservation.rooms {
+                                let row = Row::new()
+                                    .push(
+                                        //TODO: Room Number
+                                        text(reservation_room.room_id.unwrap_or_default())
+                                            .size(Self::TITLE_TEXT_SIZE)
+                                            .width(250.)
+                                            .align_y(Alignment::Center),
+                                    )
+                                    .push(
+                                        text(&reservation.client_name)
+                                            .size(Self::TITLE_TEXT_SIZE)
+                                            .width(250.)
+                                            .align_y(Alignment::Center),
+                                    )
+                                    .push(
+                                        //TODO: Select button
+                                        text(fl!("select"))
+                                            .size(Self::TITLE_TEXT_SIZE)
+                                            .width(250.)
+                                            .align_y(Alignment::Center),
+                                    )
+                                    .width(Length::Shrink)
+                                    .align_y(Alignment::Center);
+
+                                // Limit Rule size to sum of all column widths
+                                grid = grid.push(row![Rule::horizontal(1.)].width(750.));
+                                grid = grid.push(row);
+                            }
+                        }
+
                         let result = column![
                             refresh_button,
                             text(format!(
@@ -283,7 +346,8 @@ impl Bar {
                                     .iter()
                                     .map(|x| x.rooms.len())
                                     .sum::<usize>()
-                            ))
+                            )),
+                            grid
                         ];
 
                         container(result).into()
