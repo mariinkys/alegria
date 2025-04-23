@@ -11,4 +11,7 @@ pub struct SoldRoom {
     pub guests: Vec<Client>,
     pub price: Option<f32>,
     pub invoices: Vec<SimpleInvoice>,
+
+    // not in the db
+    pub room_name: Box<str>,
 }

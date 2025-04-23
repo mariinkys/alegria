@@ -225,6 +225,7 @@ impl AddReservationPage {
                             guests: Vec::new(),
                             price: room_price,
                             invoices: Vec::new(),
+                            room_name: Box::from(""),
                         });
                     }
                 }

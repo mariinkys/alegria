@@ -109,10 +109,12 @@ impl Reservation {
                     "SELECT 
                     sr.id, 
                     sr.room_id, 
-                    sr.price
-                FROM sold_rooms sr
-                JOIN reservation_sold_rooms rsr ON sr.id = rsr.sold_room_id
-                WHERE rsr.reservation_id = $1",
+                    sr.price,
+                    r.name as room_name
+                    FROM sold_rooms sr
+                    JOIN rooms r ON sr.room_id = r.id
+                    JOIN reservation_sold_rooms rsr ON sr.id = rsr.sold_room_id
+                    WHERE rsr.reservation_id = $1",
                 )
                 .bind(reservation_id)
                 .fetch_all(pool.as_ref())
@@ -127,6 +129,7 @@ impl Reservation {
                         price: room_row.try_get("price")?,
                         guests: Vec::new(),
                         invoices: Vec::new(),
+                        room_name: room_row.try_get("room_name")?,
                     };
                     rooms.push(sold_room);
                 }
@@ -295,10 +298,12 @@ impl Reservation {
                     "SELECT 
                     sr.id, 
                     sr.room_id, 
-                    sr.price
-                FROM sold_rooms sr
-                JOIN reservation_sold_rooms rsr ON sr.id = rsr.sold_room_id
-                WHERE rsr.reservation_id = $1",
+                    sr.price,
+                    r.name as room_name
+                    FROM sold_rooms sr
+                    JOIN reservation_sold_rooms rsr ON sr.id = rsr.sold_room_id
+                    JOIN rooms r ON sr.room_id = r.id
+                    WHERE rsr.reservation_id = $1",
                 )
                 .bind(reservation_id)
                 .fetch_all(pool.as_ref())
@@ -313,6 +318,7 @@ impl Reservation {
                         price: room_row.try_get("price")?,
                         guests: Vec::new(),
                         invoices: Vec::new(),
+                        room_name: room_row.try_get("room_name")?,
                     };
                     rooms.push(sold_room);
                 }

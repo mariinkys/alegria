@@ -273,8 +273,7 @@ impl Bar {
 
                         let title_row = Row::new()
                             .push(
-                                //TODO: Room number
-                                text(fl!("name"))
+                                text(fl!("room-name"))
                                     .size(Self::TITLE_TEXT_SIZE)
                                     .width(250.)
                                     .align_y(Alignment::Center),
@@ -304,8 +303,7 @@ impl Bar {
                             for reservation_room in &reservation.rooms {
                                 let row = Row::new()
                                     .push(
-                                        //TODO: Room Number
-                                        text(reservation_room.room_id.unwrap_or_default())
+                                        text(&*reservation_room.room_name)
                                             .size(Self::TITLE_TEXT_SIZE)
                                             .width(250.)
                                             .align_y(Alignment::Center),

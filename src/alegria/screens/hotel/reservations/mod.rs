@@ -227,6 +227,7 @@ impl Reservations {
                         guests: Vec::new(),
                         price: clicked_room.default_room_price,
                         invoices: Vec::new(),
+                        room_name: Box::from(""),
                     });
                 }
 
