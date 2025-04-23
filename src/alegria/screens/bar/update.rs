@@ -680,6 +680,7 @@ impl Bar {
             // Changes the currently selected payment method for the given one
             Message::ChangeSelectedPaymentMethod(p_method) => {
                 self.pay_screen.selected_payment_method = Some(p_method);
+                self.pay_screen.selected_adeudo_room = None;
             }
             // Tries to execute the pay transaction for the given TemporalTicketId
             Message::PayTemporalTicket(id) => {
@@ -688,6 +689,14 @@ impl Bar {
                 // this way we know if it's already a simple invoice or not
                 if let Some(pool) = &self.database {
                     if let Some(payment_method) = &self.pay_screen.selected_payment_method {
+                        // if this is an adeudo && no room is selected do not call the pay method
+                        if payment_method.id.unwrap_or_default() == 3
+                            && self.pay_screen.selected_adeudo_room.is_none()
+                        {
+                            self.toasts
+                                .push(error_toast("No client selected for adeudo"));
+                            return action;
+                        }
                         action.add_task(Task::perform(
                             SimpleInvoice::pay_temporal_ticket(
                                 pool.clone(),
@@ -712,6 +721,10 @@ impl Bar {
                     self.toasts.push(error_toast(e.to_string()));
                 }
             },
+            // Selects a room for the aduedo payment method
+            Message::SelectAdeudoSoldRoom(sold_room_id) => {
+                self.pay_screen.selected_adeudo_room = sold_room_id;
+            }
         }
 
         action

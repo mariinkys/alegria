@@ -127,6 +127,7 @@ pub struct PayScreenState {
     payment_methods: Vec<PaymentMethod>,
     selected_payment_method: Option<PaymentMethod>,
     occupied_reservations: Vec<Reservation>,
+    selected_adeudo_room: Option<i32>,
 }
 
 pub struct Bar {
@@ -205,6 +206,7 @@ pub enum Message {
     ChangeSelectedPaymentMethod(PaymentMethod), // Changes the currently selected payment method for the given one
     PayTemporalTicket(i32), // Tries to execute the pay transaction for the given TemporalTicketId
     PaidTemporalTicket(Result<(), String>), // Callback after executing the pay temporal ticket transaction
+    SelectAdeudoSoldRoom(Option<i32>),      // Selects a sold_room for the aduedo payment method
 }
 
 // Messages/Tasks that need to modify state on the main screen

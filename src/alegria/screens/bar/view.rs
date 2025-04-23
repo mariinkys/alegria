@@ -257,104 +257,111 @@ impl Bar {
             let p_methods_col = column![text(fl!("payment-method")), p_methods_row];
 
             // If selected payment method = adeudo we need to show a currently occupied reservation selector
-            let reservations_selector: Element<Message> =
-                if let Some(selected_p_method) = &self.pay_screen.selected_payment_method {
-                    // We're hardcoding the value here which should be fine because the user
-                    // can't change the values of the payment method table, but yk
-                    if selected_p_method.id.unwrap_or_default().eq(&3) {
-                        // TODO: Reservation selector for adeudo
-                        let refresh_button = button(
-                            text(fl!("refresh"))
-                                .align_x(Alignment::Center)
-                                .align_y(Alignment::Center),
-                        )
-                        .on_press(Message::FetchOccupiedReservations)
-                        .height(button_height);
-
-                        let title_row = Row::new()
-                            .push(
-                                text(fl!("room-name"))
-                                    .size(Self::TITLE_TEXT_SIZE)
-                                    .width(250.)
-                                    .align_y(Alignment::Center),
-                            )
-                            .push(
-                                text(fl!("name"))
-                                    .size(Self::TITLE_TEXT_SIZE)
-                                    .width(250.)
-                                    .align_y(Alignment::Center),
-                            )
-                            .push(
-                                text(fl!("select"))
-                                    .size(Self::TITLE_TEXT_SIZE)
-                                    .width(250.)
-                                    .align_y(Alignment::Center),
-                            )
-                            .width(Length::Shrink)
-                            .align_y(Alignment::Center);
-
-                        let mut grid = Column::new()
-                            .push(title_row)
+            let reservations_selector: Element<Message> = if let Some(selected_p_method) =
+                &self.pay_screen.selected_payment_method
+            {
+                // We're hardcoding the value here which should be fine because the user
+                // can't change the values of the payment method table, but yk
+                if selected_p_method.id.unwrap_or_default().eq(&3) {
+                    let refresh_button = button(
+                        text(fl!("refresh"))
                             .align_x(Alignment::Center)
-                            .spacing(spacing)
-                            .width(Length::Shrink);
+                            .align_y(Alignment::Center),
+                    )
+                    .on_press(Message::FetchOccupiedReservations)
+                    .height(button_height);
 
-                        for reservation in &self.pay_screen.occupied_reservations {
-                            for reservation_room in &reservation.rooms {
-                                let row = Row::new()
-                                    .push(
-                                        text(&*reservation_room.room_name)
-                                            .size(Self::TITLE_TEXT_SIZE)
-                                            .width(250.)
-                                            .align_y(Alignment::Center),
-                                    )
-                                    .push(
-                                        text(&reservation.client_name)
-                                            .size(Self::TITLE_TEXT_SIZE)
-                                            .width(250.)
-                                            .align_y(Alignment::Center),
-                                    )
-                                    .push(
-                                        //TODO: Select button
-                                        text(fl!("select"))
-                                            .size(Self::TITLE_TEXT_SIZE)
-                                            .width(250.)
-                                            .align_y(Alignment::Center),
-                                    )
-                                    .width(Length::Shrink)
-                                    .align_y(Alignment::Center);
+                    let title_row = Row::new()
+                        .push(
+                            text(fl!("room-name"))
+                                .size(Self::TITLE_TEXT_SIZE)
+                                .width(250.)
+                                .center(),
+                        )
+                        .push(
+                            text(fl!("name"))
+                                .size(Self::TITLE_TEXT_SIZE)
+                                .width(250.)
+                                .center(),
+                        )
+                        .push(
+                            text(fl!("select"))
+                                .size(Self::TITLE_TEXT_SIZE)
+                                .width(250.)
+                                .center(),
+                        )
+                        .width(Length::Shrink)
+                        .align_y(Alignment::Center);
 
-                                // Limit Rule size to sum of all column widths
-                                grid = grid.push(row![Rule::horizontal(1.)].width(750.));
-                                grid = grid.push(row);
-                            }
+                    let mut grid = Column::new()
+                        .push(title_row)
+                        .align_x(Alignment::Center)
+                        .spacing(spacing)
+                        .width(Length::Shrink);
+
+                    for reservation in &self.pay_screen.occupied_reservations {
+                        for reservation_room in &reservation.rooms {
+                            let row = Row::new()
+                                .push(
+                                    text(&*reservation_room.room_name)
+                                        .width(250.)
+                                        .align_y(Alignment::Center),
+                                )
+                                .push(
+                                    text(&reservation.client_name)
+                                        .width(250.)
+                                        .align_y(Alignment::Center),
+                                )
+                                .push(
+                                    button(text(fl!("select")).center())
+                                        .on_press(Message::SelectAdeudoSoldRoom(
+                                            reservation_room.id,
+                                        ))
+                                        .style(match self.pay_screen.selected_adeudo_room {
+                                            Some(id) => {
+                                                if id == reservation_room.id.unwrap_or_default() {
+                                                    button::success
+                                                } else {
+                                                    button::secondary
+                                                }
+                                            }
+                                            None => button::secondary,
+                                        }),
+                                )
+                                .width(Length::Shrink)
+                                .align_y(Alignment::Center);
+
+                            // Limit Rule size to sum of all column widths
+                            grid = grid.push(row![Rule::horizontal(1.)].width(750.));
+                            grid = grid.push(row);
                         }
-
-                        let result = column![
-                            refresh_button,
-                            text(format!(
-                                "Number of reservations {}",
-                                &self.pay_screen.occupied_reservations.len()
-                            )),
-                            text(format!(
-                                "Number of sold rooms {}",
-                                &self
-                                    .pay_screen
-                                    .occupied_reservations
-                                    .iter()
-                                    .map(|x| x.rooms.len())
-                                    .sum::<usize>()
-                            )),
-                            grid
-                        ];
-
-                        container(result).into()
-                    } else {
-                        container(Space::new(Length::Shrink, Length::Shrink)).into()
                     }
+
+                    let result = column![
+                        refresh_button,
+                        text(format!(
+                            "Number of reservations {}",
+                            &self.pay_screen.occupied_reservations.len()
+                        )),
+                        text(format!(
+                            "Number of sold rooms {}",
+                            &self
+                                .pay_screen
+                                .occupied_reservations
+                                .iter()
+                                .map(|x| x.rooms.len())
+                                .sum::<usize>()
+                        )),
+                        Scrollable::new(grid)
+                    ];
+
+                    container(result).into()
                 } else {
                     container(Space::new(Length::Shrink, Length::Shrink)).into()
-                };
+                }
+            } else {
+                container(Space::new(Length::Shrink, Length::Shrink)).into()
+            };
 
             let submit_button = button(
                 text(fl!("pay"))
