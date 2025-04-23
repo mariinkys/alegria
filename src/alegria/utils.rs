@@ -96,10 +96,13 @@ pub fn parse_date_to_naive_datetime(date: &str) -> Option<NaiveDateTime> {
     NaiveDate::from_ymd_opt(year, month, day).map(|date| NaiveDateTime::new(date, NaiveTime::MIN))
 }
 
-pub fn error_toast(err_msg: String) -> Toast {
+pub fn error_toast<T>(err_msg: T) -> Toast
+where
+    T: ToString,
+{
     Toast {
         title: String::from("Error"),
-        body: err_msg,
+        body: err_msg.to_string(),
         status: super::widgets::toast::Status::Danger,
     }
 }
