@@ -214,6 +214,7 @@ impl SimpleInvoice {
         pool: Arc<PgPool>,
         temporal_ticket_id: i32,
         payment_method_id: i32,
+        sold_room_id: Option<i32>, // TODO: If payment method is adeudo assign the ticket to the sold_room
     ) -> Result<(), sqlx::Error> {
         let mut transaction: Transaction<Postgres> = pool.begin().await?;
 
@@ -238,6 +239,28 @@ impl SimpleInvoice {
             )
             .execute(&mut *transaction)
             .await?;
+
+            // if the paymeent method is adeudo add the simple invoice to the sold room
+            if payment_method_id == 3 {
+                if let Some(sold_room_id) = sold_room_id {
+                    sqlx::query!(
+                        r#"
+                            INSERT INTO sold_room_invoices (sold_room_id, simple_invoice_id)
+                            VALUES ($1, $2)
+                        
+                        "#,
+                        sold_room_id,
+                        simple_invoice_id
+                    )
+                    .execute(&mut *transaction)
+                    .await?;
+                } else {
+                    eprintln!("Error, adeudo without sold_room_id hit the db");
+                    return Err(sqlx::Error::Protocol(
+                        "Missing sold_room_id for adeudo hit the db".into(),
+                    ));
+                }
+            }
         } else {
             // if the temporal ticket is not yet a simple_invoice_id create it with the data of the retrieved temporal ticket
             let invoice = sqlx::query!(
@@ -254,8 +277,8 @@ impl SimpleInvoice {
             // retrieve temporal products associated with the temporal ticket
             let temporal_products = sqlx::query!(
                 r#"
-            SELECT original_product_id, price FROM temporal_products WHERE temporal_ticket_id = $1
-            "#,
+                SELECT original_product_id, price FROM temporal_products WHERE temporal_ticket_id = $1
+                "#,
                 temporal_ticket_id
             )
             .fetch_all(&mut *transaction)
@@ -265,15 +288,37 @@ impl SimpleInvoice {
             for product in temporal_products {
                 sqlx::query!(
                     r#"
-                INSERT INTO sold_products (simple_invoice_id, original_product_id, price)
-                VALUES ($1, $2, $3)
-                "#,
+                    INSERT INTO sold_products (simple_invoice_id, original_product_id, price)
+                    VALUES ($1, $2, $3)
+                    "#,
                     invoice.id,
                     product.original_product_id,
                     product.price
                 )
                 .execute(&mut *transaction)
                 .await?;
+            }
+
+            // if the paymeent method is adeudo add the simple invoice to the sold room
+            if payment_method_id == 3 {
+                if let Some(sold_room_id) = sold_room_id {
+                    sqlx::query!(
+                        r#"
+                            INSERT INTO sold_room_invoices (sold_room_id, simple_invoice_id)
+                            VALUES ($1, $2)
+                        
+                        "#,
+                        sold_room_id,
+                        invoice.id
+                    )
+                    .execute(&mut *transaction)
+                    .await?;
+                } else {
+                    eprintln!("Error, adeudo without sold_room_id hit the db");
+                    return Err(sqlx::Error::Protocol(
+                        "Missing sold_room_id for adeudo hit the db".into(),
+                    ));
+                }
             }
         }
 

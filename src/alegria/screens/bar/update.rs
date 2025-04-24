@@ -702,6 +702,7 @@ impl Bar {
                                 pool.clone(),
                                 id,
                                 payment_method.id.unwrap_or_default(),
+                                self.pay_screen.selected_adeudo_room,
                             ),
                             |res| {
                                 let mapped_result = res.map_err(|e| e.to_string());
