@@ -628,6 +628,7 @@ impl Bar {
             }
             // Callback after creating a simple invoice from the selected temporal ticket in order to print it
             Message::PrintTicket(invoice) => {
+                // TODO: Change TemporalTicket ticket_status when printed
                 if let Some(p) = &self.print_modal.selected_printer {
                     let printer = Arc::new(p.clone());
                     action.add_task(Task::perform(
