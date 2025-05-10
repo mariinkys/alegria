@@ -7,8 +7,8 @@ use iced::advanced::widget::tree::Tree;
 use iced::mouse::{self, Cursor};
 use iced::overlay::menu;
 use iced::theme::palette::{Background, Pair};
-use iced::widget::text::{LineHeight, Shaping, Wrapping};
-use iced::{Border, Theme, event};
+use iced::widget::text::{Alignment, LineHeight, Shaping, Wrapping};
+use iced::{Border, Theme};
 use iced::{Color, Element, Length, Rectangle, Size};
 
 /// A custom Numpad widget.
@@ -120,7 +120,7 @@ where
         Renderer: iced::advanced::Renderer + iced::advanced::text::Renderer<Font = iced::Font>,
     {
         use iced::advanced::Text;
-        use iced::alignment::{Horizontal, Vertical};
+        use iced::alignment::Vertical;
         use iced::{Font, Point};
 
         let bounds = layout.bounds();
@@ -178,8 +178,8 @@ where
                     size: text_size.into(),
                     line_height: LineHeight::default(),
                     font,
-                    horizontal_alignment: Horizontal::Center,
-                    vertical_alignment: Vertical::Center,
+                    align_x: Alignment::Center,
+                    align_y: Vertical::Center,
                     shaping: Shaping::Basic,
                     wrapping: Wrapping::Word,
                 };
@@ -223,10 +223,10 @@ where
             size: text_size.into(),
             line_height: LineHeight::default(),
             font,
-            horizontal_alignment: Horizontal::Center,
-            vertical_alignment: Vertical::Center,
             shaping: Shaping::Advanced,
             wrapping: Wrapping::Word,
+            align_x: Alignment::Center,
+            align_y: Vertical::Center,
         };
 
         let text_position = Point::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
@@ -248,17 +248,17 @@ where
         layout::Node::new(Size::new(width, total_height))
     }
 
-    fn on_event(
+    fn update(
         &mut self,
         _tree: &mut iced::advanced::widget::Tree,
-        event: iced::Event,
+        event: &iced::Event,
         layout: Layout<'_>,
         cursor: iced::advanced::mouse::Cursor,
         _renderer: &Renderer,
         _clipboard: &mut dyn iced::advanced::Clipboard,
         shell: &mut iced::advanced::Shell<'_, Message>,
         _viewport: &Rectangle,
-    ) -> event::Status {
+    ) {
         match event {
             iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left))
             | iced::Event::Touch(iced::touch::Event::FingerPressed { .. }) => {
@@ -287,7 +287,6 @@ where
 
                         if let Some(message) = maybe_message {
                             shell.publish(message);
-                            return event::Status::Captured;
                         }
                     } else {
                         // Check if the click is within the delete button row.
@@ -296,14 +295,12 @@ where
                         {
                             if let Some(ref on_delete_clicked) = self.on_delete_clicked {
                                 shell.publish(on_delete_clicked());
-                                return event::Status::Captured;
                             }
                         }
                     }
                 }
-                event::Status::Ignored
             }
-            _ => event::Status::Ignored,
+            _ => {}
         }
     }
 
@@ -389,6 +386,14 @@ pub fn default(theme: &Theme) -> Style {
             strong: Pair::new(
                 palette.background.strong.color,
                 palette.background.strong.color,
+            ),
+            weakest: Pair::new(
+                palette.background.weakest.color,
+                palette.background.weakest.color,
+            ),
+            strongest: Pair::new(
+                palette.background.strongest.color,
+                palette.background.strongest.color,
             ),
         },
         border: Border {
