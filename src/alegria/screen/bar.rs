@@ -19,6 +19,7 @@ pub struct Bar {
 pub enum Message {
     None,
     AddToast(Toast),
+    Loaded(State), // Inital Page Loading Completed
 
     FetchTemporalTickets, // Fetches all the current temporal tickets
     SetTemporalTickets(Vec<TemporalTicket>), // Sets the temporal tickets on the app state
@@ -26,11 +27,13 @@ pub enum Message {
     SetPrinters(Box<Option<AlegriaPrinter>>, Vec<AlegriaPrinter>), // Sets the printers on the app state
 }
 
+#[derive(Debug, Clone)]
 pub enum State {
     Loading,
     Ready { sub_screen: SubScreen },
 }
 
+#[derive(Debug, Clone)]
 pub enum SubScreen {
     Bar {
         temporal_tickets: Vec<TemporalTicket>,
@@ -40,6 +43,7 @@ pub enum SubScreen {
     Pay,
 }
 
+#[derive(Debug, Clone)]
 pub struct PrintModal {
     show_modal: bool,
     ticket_type: TicketType,
@@ -57,42 +61,11 @@ pub enum Action {
 
 impl Bar {
     pub fn new(database: &Arc<Pool<Postgres>>) -> (Self, Task<Message>) {
-        let mut init_tasks = vec![];
-
-        // Get the temporal tickets
-        init_tasks.push(Task::perform(
-            TemporalTicket::get_all(database.clone()),
-            |res| match res {
-                Ok(res) => Message::SetTemporalTickets(res),
-                Err(err) => {
-                    eprintln!("{err}");
-                    Message::AddToast(Toast::error_toast(err))
-                }
-            },
-        ));
-
-        // Get the product categories
-        init_tasks.push(Task::perform(
-            ProductCategory::get_all(database.clone()),
-            |res| match res {
-                Ok(res) => Message::SetProductCategories(res),
-                Err(err) => {
-                    eprintln!("{err}");
-                    Message::AddToast(Toast::error_toast(err))
-                }
-            },
-        ));
-
-        // Get the printers
-        init_tasks.push(Task::perform(AlegriaPrinter::load_printers(), |res| {
-            Message::SetPrinters(Box::new(res.0), res.1)
-        }));
-
         (
             Self {
                 state: State::Loading,
             },
-            Task::batch(init_tasks),
+            Task::perform(init_page(database.clone()), Message::Loaded),
         )
     }
 
@@ -105,6 +78,11 @@ impl Bar {
         match message {
             Message::None => Action::None,
             Message::AddToast(toast) => Action::AddToast(toast),
+            // Inital Page Loading Completed
+            Message::Loaded(state) => {
+                self.state = state;
+                Action::None
+            }
             Message::FetchTemporalTickets => Action::Run(Task::perform(
                 TemporalTicket::get_all(database.clone()),
                 |res| match res {
@@ -163,5 +141,30 @@ impl Bar {
 
     pub fn subscription(&self, now: Instant) -> Subscription<Message> {
         Subscription::none()
+    }
+}
+
+async fn init_page(database: Arc<Pool<Postgres>>) -> State {
+    // TODO: Error handling
+    let temporal_tickets = TemporalTicket::get_all(database.clone())
+        .await
+        .unwrap_or_default();
+    let product_categories = ProductCategory::get_all(database.clone())
+        .await
+        .unwrap_or_default();
+    let (default_printer, all_printers) = AlegriaPrinter::load_printers().await;
+
+    State::Ready {
+        sub_screen: SubScreen::Bar {
+            temporal_tickets,
+            product_categories,
+            printer_modal: PrintModal {
+                show_modal: false,
+                ticket_type: TicketType::Receipt,
+                selected_printer: Box::new(default_printer.clone()),
+                all_printers: Arc::new(all_printers),
+                default_printer: Arc::new(default_printer),
+            },
+        },
     }
 }

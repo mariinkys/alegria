@@ -30,6 +30,7 @@ impl From<Printer> for AlegriaPrinter {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum TicketType {
     Invoice,
     Receipt,
