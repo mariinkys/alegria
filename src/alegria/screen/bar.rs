@@ -5,12 +5,14 @@ use iced::widget::{container, text};
 use iced::{Element, Length, Subscription, Task};
 use sqlx::{Pool, Postgres};
 
+use crate::alegria::core::models::product::Product;
 use crate::alegria::core::models::product_category::ProductCategory;
 use crate::alegria::core::models::temporal_ticket::TemporalTicket;
 use crate::alegria::core::print::{AlegriaPrinter, TicketType};
 use crate::alegria::widgets::toast::Toast;
 
 pub struct Bar {
+    printer_modal: PrintModal,
     state: State,
 }
 
@@ -21,7 +23,8 @@ pub enum Message {
 
     FetchTemporalTickets, // Fetches all the current temporal tickets
     SetTemporalTickets(Vec<TemporalTicket>), // Sets the temporal tickets on the app state
-    SetProductCategories(Vec<ProductCategory>), // Sets the product categories on the state
+    FetchProductCategoryProducts(Option<i32>), // Fetches the products for a given product category
+    SetProductCategoryProducts(Vec<Product>), // Sets the products on the state
     SetPrinters(Box<Option<AlegriaPrinter>>, Vec<AlegriaPrinter>), // Sets the printers on the app state
 }
 
@@ -36,12 +39,12 @@ pub enum SubScreen {
     Bar {
         temporal_tickets: Vec<TemporalTicket>,
         product_categories: Vec<ProductCategory>,
-        printer_modal: PrintModal, // TODO: Printer modal should not be inside the BarScreen since we also need it on the pay screen
+        product_category_products: Option<Vec<Product>>,
     },
     Pay,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct PrintModal {
     show_modal: bool,
     ticket_type: TicketType,
@@ -61,9 +64,15 @@ impl Bar {
     pub fn new(database: &Arc<Pool<Postgres>>) -> (Self, Task<Message>) {
         (
             Self {
+                printer_modal: PrintModal::default(),
                 state: State::Loading,
             },
-            Task::perform(init_page(database.clone()), Message::Loaded),
+            Task::batch([
+                Task::perform(init_page(database.clone()), Message::Loaded),
+                Task::perform(AlegriaPrinter::load_printers(), |res| {
+                    Message::SetPrinters(Box::from(res.0), res.1)
+                }),
+            ]),
         )
     }
 
@@ -108,33 +117,46 @@ impl Bar {
                 }
                 Action::None
             }
-            // Sets the product categories on the state
-            Message::SetProductCategories(items) => {
+            // Fetches all the current temporal tickets
+            Message::FetchProductCategoryProducts(category_id) => {
+                if let Some(category_id) = category_id {
+                    Action::Run(Task::perform(
+                        Product::get_all_by_category(database.clone(), category_id),
+                        |res| match res {
+                            Ok(res) => Message::SetProductCategoryProducts(res),
+                            Err(err) => {
+                                eprintln!("{err}");
+                                Message::AddToast(Toast::error_toast(err))
+                            }
+                        },
+                    ))
+                } else {
+                    Action::None
+                }
+            }
+            // Sets the temporal tickets on the app state
+            Message::SetProductCategoryProducts(res) => {
                 #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
                     if let SubScreen::Bar {
-                        product_categories, ..
+                        product_category_products,
+                        ..
                     } = sub_screen
                     {
-                        *product_categories = items;
+                        *product_category_products = Some(res);
                     }
                 }
                 Action::None
             }
             // Sets the printers on the app state
             Message::SetPrinters(default_printer, all_printers) => {
-                #[allow(clippy::collapsible_match)]
-                if let State::Ready { sub_screen, .. } = &mut self.state {
-                    if let SubScreen::Bar { printer_modal, .. } = sub_screen {
-                        *printer_modal = PrintModal {
-                            show_modal: false,
-                            ticket_type: TicketType::Receipt,
-                            selected_printer: default_printer.clone(),
-                            all_printers: Arc::new(all_printers),
-                            default_printer: Arc::new(*default_printer),
-                        };
-                    }
-                }
+                self.printer_modal = PrintModal {
+                    show_modal: false,
+                    ticket_type: TicketType::Receipt,
+                    selected_printer: default_printer.clone(),
+                    all_printers: Arc::new(all_printers),
+                    default_printer: Arc::new(*default_printer),
+                };
                 Action::None
             }
         }
@@ -147,7 +169,7 @@ impl Bar {
                 SubScreen::Bar {
                     temporal_tickets,
                     product_categories,
-                    printer_modal,
+                    product_category_products,
                 } => text("Data loaded correctly"),
                 SubScreen::Pay => todo!(),
             },
@@ -164,19 +186,12 @@ impl Bar {
 async fn init_page(database: Arc<Pool<Postgres>>) -> Result<Box<State>, anywho::Error> {
     let temporal_tickets = TemporalTicket::get_all(database.clone()).await?;
     let product_categories = ProductCategory::get_all(database.clone()).await?;
-    let (default_printer, all_printers) = AlegriaPrinter::load_printers().await;
 
     Ok(Box::from(State::Ready {
         sub_screen: SubScreen::Bar {
             temporal_tickets,
             product_categories,
-            printer_modal: PrintModal {
-                show_modal: false,
-                ticket_type: TicketType::Receipt,
-                selected_printer: Box::new(default_printer.clone()),
-                all_printers: Arc::new(all_printers),
-                default_printer: Arc::new(default_printer),
-            },
+            product_category_products: None,
         },
     }))
 }
