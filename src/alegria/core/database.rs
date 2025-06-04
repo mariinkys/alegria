@@ -14,13 +14,13 @@ pub async fn init_database(migrate: bool) -> Result<Arc<PgPool>, String> {
     let pool = timeout(Duration::from_secs(3), PgPool::connect(db_url))
         .await
         .map_err(|_| "Timed out connecting to the database".to_string())?
-        .map_err(|e| format!("Could not connect to database: {}", e))?;
+        .map_err(|e| format!("Could not connect to database: {e}"))?;
 
     if migrate {
         match sqlx::migrate!("./migrations").run(&pool).await {
             Ok(_) => println!("Migrations run successfully"),
             Err(err) => {
-                return Err(format!("Error occurred running migrations: {}", err));
+                return Err(format!("Error occurred running migrations: {err}"));
             }
         };
     }
