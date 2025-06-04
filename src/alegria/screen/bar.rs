@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use iced::time::Instant;
-use iced::widget::text;
-use iced::{Element, Subscription, Task};
+use iced::widget::{container, text};
+use iced::{Element, Length, Subscription, Task};
 use sqlx::{Pool, Postgres};
 
-use crate::alegria::core::models::payment_method::PaymentMethod;
 use crate::alegria::core::models::product_category::ProductCategory;
 use crate::alegria::core::models::temporal_ticket::TemporalTicket;
 use crate::alegria::core::print::{AlegriaPrinter, TicketType};
@@ -17,9 +16,8 @@ pub struct Bar {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    None,
-    AddToast(Toast),
-    Loaded(State), // Inital Page Loading Completed
+    AddToast(Toast),                           // Asks to add a toast to the parent state
+    Loaded(Result<Box<State>, anywho::Error>), // Inital Page Loading Completed
 
     FetchTemporalTickets, // Fetches all the current temporal tickets
     SetTemporalTickets(Vec<TemporalTicket>), // Sets the temporal tickets on the app state
@@ -38,7 +36,7 @@ pub enum SubScreen {
     Bar {
         temporal_tickets: Vec<TemporalTicket>,
         product_categories: Vec<ProductCategory>,
-        printer_modal: PrintModal,
+        printer_modal: PrintModal, // TODO: Printer modal should not be inside the BarScreen since we also need it on the pay screen
     },
     Pay,
 }
@@ -73,16 +71,20 @@ impl Bar {
         &mut self,
         message: Message,
         database: &Arc<Pool<Postgres>>,
-        now: Instant,
+        _now: Instant,
     ) -> Action {
         match message {
-            Message::None => Action::None,
+            // Asks to add a toast to the parent state
             Message::AddToast(toast) => Action::AddToast(toast),
             // Inital Page Loading Completed
-            Message::Loaded(state) => {
-                self.state = state;
-                Action::None
-            }
+            Message::Loaded(result) => match result {
+                Ok(state) => {
+                    self.state = *state;
+                    Action::None
+                }
+                Err(err) => Action::AddToast(Toast::error_toast(err)),
+            },
+            // Fetches all the current temporal tickets
             Message::FetchTemporalTickets => Action::Run(Task::perform(
                 TemporalTicket::get_all(database.clone()),
                 |res| match res {
@@ -93,6 +95,7 @@ impl Bar {
                     }
                 },
             )),
+            // Sets the temporal tickets on the app state
             Message::SetTemporalTickets(res) => {
                 #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
@@ -105,6 +108,7 @@ impl Bar {
                 }
                 Action::None
             }
+            // Sets the product categories on the state
             Message::SetProductCategories(items) => {
                 #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
@@ -117,6 +121,7 @@ impl Bar {
                 }
                 Action::None
             }
+            // Sets the printers on the app state
             Message::SetPrinters(default_printer, all_printers) => {
                 #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
@@ -135,26 +140,33 @@ impl Bar {
         }
     }
 
-    pub fn view(&self, now: Instant) -> Element<Message> {
-        text("text").into()
+    pub fn view(&self, _now: Instant) -> Element<Message> {
+        let content = match &self.state {
+            State::Loading => text("Loading..."),
+            State::Ready { sub_screen } => match sub_screen {
+                SubScreen::Bar {
+                    temporal_tickets,
+                    product_categories,
+                    printer_modal,
+                } => text("Data loaded correctly"),
+                SubScreen::Pay => todo!(),
+            },
+        };
+
+        container(content).center(Length::Fill).into()
     }
 
-    pub fn subscription(&self, now: Instant) -> Subscription<Message> {
+    pub fn subscription(&self, _now: Instant) -> Subscription<Message> {
         Subscription::none()
     }
 }
 
-async fn init_page(database: Arc<Pool<Postgres>>) -> State {
-    // TODO: Error handling
-    let temporal_tickets = TemporalTicket::get_all(database.clone())
-        .await
-        .unwrap_or_default();
-    let product_categories = ProductCategory::get_all(database.clone())
-        .await
-        .unwrap_or_default();
+async fn init_page(database: Arc<Pool<Postgres>>) -> Result<Box<State>, anywho::Error> {
+    let temporal_tickets = TemporalTicket::get_all(database.clone()).await?;
+    let product_categories = ProductCategory::get_all(database.clone()).await?;
     let (default_printer, all_printers) = AlegriaPrinter::load_printers().await;
 
-    State::Ready {
+    Ok(Box::from(State::Ready {
         sub_screen: SubScreen::Bar {
             temporal_tickets,
             product_categories,
@@ -166,5 +178,5 @@ async fn init_page(database: Arc<Pool<Postgres>>) -> State {
                 default_printer: Arc::new(default_printer),
             },
         },
-    }
+    }))
 }
