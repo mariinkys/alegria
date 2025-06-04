@@ -17,7 +17,7 @@ iced = { git = "https://github.com/iced-rs/iced", default-features = false, feat
     "debug",
 ] }
 anywho = "0.1.2"
-sqlx = { version = "0.8.5", features = [
+sqlx = { version = "0.8.6", features = [
     "runtime-tokio",
     "postgres",
     "chrono",
@@ -26,10 +26,10 @@ sqlx = { version = "0.8.5", features = [
 chrono = { version = "0.4.41", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 i18n-embed-fl = "0.9.4" # needed for fl support
-rust-embed = "8.7.1" # needed for fl support
+rust-embed = "8.7.2" # needed for fl support
 dotenvy = "0.15.7" # .env support
 printers = "2.1.3" # getting printers, sending docs to print...
-tokio = "1.45.0"
+tokio = "1.45.1"
 printpdf = "0.8.2" # pdf generation
 fontdue = "0.9.3" # needed to measure the text width in order to print
 
