@@ -26,13 +26,16 @@ pub enum Message {
     FetchProductCategoryProducts(Option<i32>), // Fetches the products for a given product category
     SetProductCategoryProducts(Vec<Product>), // Sets the products on the state
     SetPrinters(Box<Option<AlegriaPrinter>>, Vec<AlegriaPrinter>), // Sets the printers on the app state
+
+    ProductCategoriesPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategories
+    ProductCategoryProductsPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategoryProducts
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
 // that makes us able to remove this two Derives, for now switching to a manual implementation of Debug helps us not lose
 // speed because of the derives (same on SubScreen enum)
 #[derive(Clone)]
-pub enum State {
+enum State {
     Loading,
     Ready { sub_screen: SubScreen },
 }
@@ -41,17 +44,18 @@ impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Loading => write!(f, "Loading"),
-            Self::Ready { sub_screen: _ } => write!(f, "Ready"),
+            Self::Ready { .. } => write!(f, "Ready"),
         }
     }
 }
 
 #[derive(Clone)]
-pub enum SubScreen {
+enum SubScreen {
     Bar {
         temporal_tickets: Vec<TemporalTicket>,
         product_categories: Vec<ProductCategory>,
         product_category_products: Option<Vec<Product>>,
+        pagination: BarPagination,
     },
     Pay,
 }
@@ -59,18 +63,44 @@ pub enum SubScreen {
 impl std::fmt::Debug for SubScreen {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Bar {
-                temporal_tickets: _,
-                product_categories: _,
-                product_category_products: _,
-            } => write!(f, "Bar"),
+            Self::Bar { .. } => write!(f, "Bar"),
             Self::Pay => write!(f, "Pay"),
         }
     }
 }
 
+/// Holds the state of the pagination for various entities of the BarScreen
 #[derive(Default, Debug, Clone)]
-pub struct PrintModal {
+struct BarPagination {
+    product_categories: PaginationConfig,
+    product_category_products: PaginationConfig,
+}
+
+/// Holds the pagination state (generic, for various entities)
+#[derive(Debug, Clone)]
+pub struct PaginationConfig {
+    items_per_page: i32,
+    current_page: i32,
+}
+
+impl Default for PaginationConfig {
+    fn default() -> Self {
+        PaginationConfig {
+            items_per_page: 13,
+            current_page: 0,
+        }
+    }
+}
+
+/// Identifies a pagination action
+#[derive(Debug, Clone, PartialEq)]
+pub enum PaginationAction {
+    Up,
+    Down,
+}
+
+#[derive(Default, Debug, Clone)]
+struct PrintModal {
     show_modal: bool,
     ticket_type: TicketType,
     selected_printer: Box<Option<AlegriaPrinter>>,
@@ -184,6 +214,82 @@ impl Bar {
                 };
                 Action::None
             }
+            // Try to go up or down a page on the ProductCategories
+            Message::ProductCategoriesPaginationAction(action) => {
+                #[allow(clippy::collapsible_match)]
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    if let SubScreen::Bar {
+                        pagination,
+                        product_categories,
+                        ..
+                    } = sub_screen
+                    {
+                        match action {
+                            PaginationAction::Up => {
+                                if pagination.product_categories.current_page > 0 {
+                                    pagination.product_categories.current_page -= 1;
+                                }
+                            }
+                            PaginationAction::Down => {
+                                let next_page_start = (pagination.product_categories.current_page
+                                    + 1)
+                                    * pagination.product_categories.items_per_page;
+                                // let p_cat_len: i32 =
+                                //     self.product_categories.len().try_into().unwrap_or_default();
+                                // This aberration happens since adding the printpdf crate which added the deranged crate that causes this,
+                                // I think I can either to this or use the line above
+                                if next_page_start
+                                    < <usize as std::convert::TryInto<i32>>::try_into(
+                                        product_categories.len(),
+                                    )
+                                    .unwrap_or_default()
+                                {
+                                    pagination.product_categories.current_page += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                Action::None
+            }
+            // Try to go up or down a page on the ProductCategoryProducts
+            Message::ProductCategoryProductsPaginationAction(action) => {
+                #[allow(clippy::collapsible_match)]
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    if let SubScreen::Bar {
+                        pagination,
+                        product_category_products,
+                        ..
+                    } = sub_screen
+                    {
+                        match action {
+                            PaginationAction::Up => {
+                                if pagination.product_category_products.current_page > 0 {
+                                    pagination.product_category_products.current_page -= 1;
+                                }
+                            }
+                            PaginationAction::Down => {
+                                let next_page_start =
+                                    (pagination.product_category_products.current_page + 1)
+                                        * pagination.product_category_products.items_per_page;
+                                // This aberration happens since adding the printpdf crate which added the deranged crate that causes this
+                                if next_page_start
+                                    < <usize as std::convert::TryInto<i32>>::try_into(
+                                        product_category_products
+                                            .as_ref()
+                                            .map(|v| v.len())
+                                            .unwrap_or(0),
+                                    )
+                                    .unwrap_or_default()
+                                {
+                                    pagination.product_category_products.current_page += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                Action::None
+            }
         }
     }
 
@@ -195,6 +301,7 @@ impl Bar {
                     temporal_tickets,
                     product_categories,
                     product_category_products,
+                    pagination,
                 } => text("Data loaded correctly"),
                 SubScreen::Pay => todo!(),
             },
@@ -217,6 +324,7 @@ async fn init_page(database: Arc<Pool<Postgres>>) -> Result<Box<State>, anywho::
             temporal_tickets,
             product_categories,
             product_category_products: None,
+            pagination: BarPagination::default(),
         },
     }))
 }
