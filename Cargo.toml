@@ -3,10 +3,6 @@ name = "iced-alegria"
 version = "0.1.0"
 edition = "2024"
 
-[profile.release]
-opt-level = 3
-lto = "thin"
-
 [dependencies]
 iced = { git = "https://github.com/iced-rs/iced", default-features = false, features = [
     "tokio",
@@ -36,3 +32,20 @@ fontdue = "0.9.3" # needed to measure the text width in order to print
 [dependencies.i18n-embed]
 version = "0.15.4"
 features = ["fluent-system", "desktop-requester"]
+
+# Enable a small amount of optimization in the dev profile.
+[profile.dev]
+opt-level = 1
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 3
+
+# Enable more optimization in the release profile at the cost of compile time.
+[profile.release]
+# Compile the entire crate as one unit.
+# Slows compile times, marginal improvements.
+codegen-units = 1
+# Do a second optimization pass over the entire program, including dependenc.
+# Slows compile times, marginal improvements.
+lto = "thin"
