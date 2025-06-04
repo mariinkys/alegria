@@ -28,13 +28,25 @@ pub enum Message {
     SetPrinters(Box<Option<AlegriaPrinter>>, Vec<AlegriaPrinter>), // Sets the printers on the app state
 }
 
-#[derive(Debug, Clone)]
+// We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
+// that makes us able to remove this two Derives, for now switching to a manual implementation of Debug helps us not lose
+// speed because of the derives (same on SubScreen enum)
+#[derive(Clone)]
 pub enum State {
     Loading,
     Ready { sub_screen: SubScreen },
 }
 
-#[derive(Debug, Clone)]
+impl std::fmt::Debug for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Loading => write!(f, "Loading"),
+            Self::Ready { sub_screen: _ } => write!(f, "Ready"),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub enum SubScreen {
     Bar {
         temporal_tickets: Vec<TemporalTicket>,
@@ -42,6 +54,19 @@ pub enum SubScreen {
         product_category_products: Option<Vec<Product>>,
     },
     Pay,
+}
+
+impl std::fmt::Debug for SubScreen {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Bar {
+                temporal_tickets: _,
+                product_categories: _,
+                product_category_products: _,
+            } => write!(f, "Bar"),
+            Self::Pay => write!(f, "Pay"),
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone)]
@@ -117,7 +142,7 @@ impl Bar {
                 }
                 Action::None
             }
-            // Fetches all the current temporal tickets
+            // Fetches the products for a given product category
             Message::FetchProductCategoryProducts(category_id) => {
                 if let Some(category_id) = category_id {
                     Action::Run(Task::perform(
@@ -134,7 +159,7 @@ impl Bar {
                     Action::None
                 }
             }
-            // Sets the temporal tickets on the app state
+            // Sets the products on the state
             Message::SetProductCategoryProducts(res) => {
                 #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
