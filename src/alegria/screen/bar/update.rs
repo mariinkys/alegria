@@ -1,136 +1,20 @@
 use std::sync::Arc;
 
+use iced::Task;
 use iced::time::Instant;
-use iced::widget::{container, text};
-use iced::{Element, Length, Subscription, Task};
 use sqlx::{Pool, Postgres};
 
-use crate::alegria::core::models::product::Product;
-use crate::alegria::core::models::product_category::ProductCategory;
-use crate::alegria::core::models::temporal_ticket::TemporalTicket;
-use crate::alegria::core::print::{AlegriaPrinter, TicketType};
-use crate::alegria::widgets::toast::Toast;
-
-pub struct Bar {
-    printer_modal: PrintModal,
-    state: State,
-}
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    AddToast(Toast),                           // Asks to add a toast to the parent state
-    Loaded(Result<Box<State>, anywho::Error>), // Inital Page Loading Completed
-
-    FetchTemporalTickets, // Fetches all the current temporal tickets
-    SetTemporalTickets(Vec<TemporalTicket>), // Sets the temporal tickets on the app state
-    FetchProductCategoryProducts(Option<i32>), // Fetches the products for a given product category
-    SetProductCategoryProducts(Vec<Product>), // Sets the products on the state
-    SetPrinters(Box<Option<AlegriaPrinter>>, Vec<AlegriaPrinter>), // Sets the printers on the app state
-
-    ProductCategoriesPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategories
-    ProductCategoryProductsPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategoryProducts
-}
-
-// We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
-// that makes us able to remove this two Derives, for now switching to a manual implementation of Debug helps us not lose
-// speed because of the derives (same on SubScreen enum)
-#[derive(Clone)]
-enum State {
-    Loading,
-    Ready { sub_screen: SubScreen },
-}
-
-impl std::fmt::Debug for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Loading => write!(f, "Loading"),
-            Self::Ready { .. } => write!(f, "Ready"),
-        }
-    }
-}
-
-#[derive(Clone)]
-enum SubScreen {
-    Bar {
-        temporal_tickets: Vec<TemporalTicket>,
-        product_categories: Vec<ProductCategory>,
-        product_category_products: Option<Vec<Product>>,
-        pagination: BarPagination,
+use super::{Bar, State};
+use crate::alegria::{
+    core::{
+        models::{product::Product, temporal_ticket::TemporalTicket},
+        print::TicketType,
     },
-    Pay,
-}
-
-impl std::fmt::Debug for SubScreen {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Bar { .. } => write!(f, "Bar"),
-            Self::Pay => write!(f, "Pay"),
-        }
-    }
-}
-
-/// Holds the state of the pagination for various entities of the BarScreen
-#[derive(Default, Debug, Clone)]
-struct BarPagination {
-    product_categories: PaginationConfig,
-    product_category_products: PaginationConfig,
-}
-
-/// Holds the pagination state (generic, for various entities)
-#[derive(Debug, Clone)]
-pub struct PaginationConfig {
-    items_per_page: i32,
-    current_page: i32,
-}
-
-impl Default for PaginationConfig {
-    fn default() -> Self {
-        PaginationConfig {
-            items_per_page: 13,
-            current_page: 0,
-        }
-    }
-}
-
-/// Identifies a pagination action
-#[derive(Debug, Clone, PartialEq)]
-pub enum PaginationAction {
-    Up,
-    Down,
-}
-
-#[derive(Default, Debug, Clone)]
-struct PrintModal {
-    show_modal: bool,
-    ticket_type: TicketType,
-    selected_printer: Box<Option<AlegriaPrinter>>,
-    all_printers: Arc<Vec<AlegriaPrinter>>,
-    default_printer: Arc<Option<AlegriaPrinter>>,
-}
-
-pub enum Action {
-    None,
-    Back,
-    Run(Task<Message>),
-    AddToast(Toast),
-}
+    screen::bar::{Action, Message, PaginationAction, PrintModal, SubScreen},
+    widgets::toast::Toast,
+};
 
 impl Bar {
-    pub fn new(database: &Arc<Pool<Postgres>>) -> (Self, Task<Message>) {
-        (
-            Self {
-                printer_modal: PrintModal::default(),
-                state: State::Loading,
-            },
-            Task::batch([
-                Task::perform(init_page(database.clone()), Message::Loaded),
-                Task::perform(AlegriaPrinter::load_printers(), |res| {
-                    Message::SetPrinters(Box::from(res.0), res.1)
-                }),
-            ]),
-        )
-    }
-
     pub fn update(
         &mut self,
         message: Message,
@@ -292,39 +176,4 @@ impl Bar {
             }
         }
     }
-
-    pub fn view(&self, _now: Instant) -> Element<Message> {
-        let content = match &self.state {
-            State::Loading => text("Loading..."),
-            State::Ready { sub_screen } => match sub_screen {
-                SubScreen::Bar {
-                    temporal_tickets,
-                    product_categories,
-                    product_category_products,
-                    pagination,
-                } => text("Data loaded correctly"),
-                SubScreen::Pay => todo!(),
-            },
-        };
-
-        container(content).center(Length::Fill).into()
-    }
-
-    pub fn subscription(&self, _now: Instant) -> Subscription<Message> {
-        Subscription::none()
-    }
-}
-
-async fn init_page(database: Arc<Pool<Postgres>>) -> Result<Box<State>, anywho::Error> {
-    let temporal_tickets = TemporalTicket::get_all(database.clone()).await?;
-    let product_categories = ProductCategory::get_all(database.clone()).await?;
-
-    Ok(Box::from(State::Ready {
-        sub_screen: SubScreen::Bar {
-            temporal_tickets,
-            product_categories,
-            product_category_products: None,
-            pagination: BarPagination::default(),
-        },
-    }))
 }
