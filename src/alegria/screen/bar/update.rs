@@ -24,6 +24,8 @@ impl Bar {
         match message {
             // Asks to add a toast to the parent state
             Message::AddToast(toast) => Action::AddToast(toast),
+            // Asks to go back a screen
+            Message::Back => Action::Back,
             // Inital Page Loading Completed
             Message::Loaded(result) => match result {
                 Ok(state) => {

@@ -21,6 +21,7 @@ pub struct Bar {
 #[derive(Debug, Clone)]
 pub enum Message {
     AddToast(Toast),                           // Asks to add a toast to the parent state
+    Back,                                      // Asks to go back a screen
     Loaded(Result<Box<State>, anywho::Error>), // Inital Page Loading Completed
 
     FetchTemporalTickets, // Fetches all the current temporal tickets
@@ -58,6 +59,7 @@ pub enum SubScreen {
         product_categories: Vec<ProductCategory>,
         product_category_products: Option<Vec<Product>>,
         pagination: BarPagination,
+        current_position: CurrentPosition,
     },
     Pay,
 }
@@ -99,6 +101,26 @@ impl Default for PaginationConfig {
 pub enum PaginationAction {
     Up,
     Down,
+}
+
+/// Holds the pagination state (generic, for various entities)
+#[derive(Default, Debug, Clone)]
+pub struct CurrentPosition {
+    /// Currently selected table location
+    table_location: TableLocation,
+    /// Currently selected table index
+    table_index: i32,
+    /// Currently selected product_category id (needed for correct button styling)
+    selected_product_category: Option<i32>,
+}
+
+/// Defines the different locations in which a table can be located at
+#[derive(Default, Debug, Clone, PartialEq)]
+pub enum TableLocation {
+    #[default]
+    Bar,
+    Resturant,
+    Garden,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -148,6 +170,15 @@ async fn init_page(database: Arc<Pool<Postgres>>) -> Result<Box<State>, anywho::
             product_categories,
             product_category_products: None,
             pagination: BarPagination::default(),
+            current_position: CurrentPosition::default(),
         },
     }))
+}
+
+pub fn match_table_location_with_number(tl: &TableLocation) -> i32 {
+    match tl {
+        TableLocation::Bar => 0,
+        TableLocation::Resturant => 1,
+        TableLocation::Garden => 2,
+    }
 }
