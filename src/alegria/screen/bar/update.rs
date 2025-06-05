@@ -12,16 +12,20 @@ use crate::alegria::{
         },
         print::TicketType,
     },
-    screen::bar::{Action, Message, PaginationAction, PrintModal, SubScreen, TemporalProductField},
+    screen::bar::{
+        Action, Message, NumPadAction, PaginationAction, PrintModal, SubScreen,
+        TemporalProductField,
+    },
     widgets::toast::Toast,
 };
 
 impl Bar {
+    #[allow(clippy::only_used_in_recursion)]
     pub fn update(
         &mut self,
         message: Message,
         database: &Arc<Pool<Postgres>>,
-        _now: Instant,
+        now: Instant,
     ) -> Action {
         match message {
             Message::AddToast(toast) => Action::AddToast(toast),
@@ -245,6 +249,250 @@ impl Bar {
                                     }
                                 },
                             ));
+                        }
+                    }
+                }
+                Action::None
+            }
+            // Callback after a numpad number has been clicked
+            Message::OnNumpadNumberClicked(num) => {
+                #[allow(clippy::collapsible_match)]
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Bar {
+                        active_temporal_product,
+                        ..
+                    } = sub_screen
+                    {
+                        // Extract the data we need before calling self.update()
+                        let update_data = if let Some(product) =
+                            &active_temporal_product.temporal_product
+                        {
+                            if let Some(field) = &active_temporal_product.temporal_product_field {
+                                match field {
+                                    // we add the new number to the corresponding field and pass it as if it was inputed via the keyboard
+                                    // to the input handler
+                                    TemporalProductField::Quantity => {
+                                        let value = format!("{}{}", product.quantity, num);
+                                        Some((product.clone(), value))
+                                    }
+                                    TemporalProductField::Price => {
+                                        let value = format!("{}{}", product.price_input, num);
+                                        Some((product.clone(), value))
+                                    }
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+
+                        if let Some((product, value)) = update_data {
+                            return self.update(
+                                Message::TemporalProductInput(product, value),
+                                &database.clone(),
+                                now,
+                            );
+                        }
+                    }
+                }
+                Action::None
+            }
+            // Callback after a numpad key (not a number) has been clicked
+            Message::OnNumpadKeyClicked(action_type) => {
+                #[allow(clippy::collapsible_match)]
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Bar {
+                        active_temporal_product,
+                        temporal_tickets,
+                        current_position,
+                        ..
+                    } = sub_screen
+                    {
+                        // we will need the current ticket to check if there are no more products we will need to delete the temporal ticket
+                        // and we also need to not allow input the current temporal ticket is_some and simple_invoice_id is_some
+                        let current_ticket = temporal_tickets.iter().find(|x| {
+                            x.ticket_location
+                                == super::match_table_location_with_number(
+                                    &current_position.table_location,
+                                )
+                                && x.table_id == current_position.table_index
+                        });
+
+                        if current_ticket.is_some_and(|x| x.simple_invoice_id.is_some()) {
+                            return Action::None;
+                        }
+
+                        match action_type {
+                            // we clicked the delete button of the numpad
+                            NumPadAction::Delete => {
+                                // if we have a product selected we delete that product
+                                if let Some(active_product) =
+                                    &active_temporal_product.temporal_product
+                                {
+                                    let mut tasks = vec![];
+                                    tasks.push(Task::perform(
+                                        TemporalProduct::delete(
+                                            database.clone(),
+                                            active_product.id.unwrap_or_default(),
+                                        ),
+                                        |res| match res {
+                                            Ok(_) => Message::FetchTemporalTickets,
+                                            Err(err) => {
+                                                eprintln!("{err}");
+                                                Message::FetchTemporalTickets
+                                            }
+                                        },
+                                    ));
+
+                                    active_temporal_product.temporal_product = None;
+                                    active_temporal_product.temporal_product_field = None;
+
+                                    // check if there are no more products we will need to delete the temporal ticket
+                                    if let Some(ticket) = current_ticket
+                                        && ticket.products.len() == 1
+                                    {
+                                        tasks.push(Task::perform(
+                                            TemporalTicket::delete(
+                                                database.clone(),
+                                                ticket.id.unwrap_or_default(),
+                                            ),
+                                            |res| match res {
+                                                Ok(_) => Message::FetchTemporalTickets,
+                                                Err(err) => {
+                                                    eprintln!("{err}");
+                                                    Message::FetchTemporalTickets
+                                                }
+                                            },
+                                        ));
+                                    }
+
+                                    return Action::Run(Task::batch(tasks));
+
+                                // if we don't have a product selected but there is a ticket and we pressed delete
+                                } else if let Some(ticket) = current_ticket {
+                                    if let Some(product) = ticket.products.first() {
+                                        let mut tasks = vec![];
+                                        // we delete the first product of the list
+                                        tasks.push(Task::perform(
+                                            TemporalProduct::delete(
+                                                database.clone(),
+                                                product.id.unwrap_or_default(),
+                                            ),
+                                            |res| match res {
+                                                Ok(_) => Message::FetchTemporalTickets,
+                                                Err(err) => {
+                                                    eprintln!("{err}");
+                                                    Message::FetchTemporalTickets
+                                                }
+                                            },
+                                        ));
+
+                                        // check if there are no more products we will need to delete the temporal ticket
+                                        if ticket.products.len() == 1 {
+                                            tasks.push(Task::perform(
+                                                TemporalTicket::delete(
+                                                    database.clone(),
+                                                    ticket.id.unwrap_or_default(),
+                                                ),
+                                                |res| match res {
+                                                    Ok(_) => Message::FetchTemporalTickets,
+                                                    Err(err) => {
+                                                        eprintln!("{err}");
+                                                        Message::FetchTemporalTickets
+                                                    }
+                                                },
+                                            ));
+                                        }
+                                        return Action::Run(Task::batch(tasks));
+                                    }
+                                    return Action::None;
+                                }
+                            }
+                            // we clicked the erase button of the numpad
+                            NumPadAction::Erase => {
+                                // Extract the product and field data before dropping the mutable borrow
+                                let update_data = if let Some(product) =
+                                    &active_temporal_product.temporal_product
+                                {
+                                    if let Some(field) =
+                                        &active_temporal_product.temporal_product_field
+                                    {
+                                        match field {
+                                            TemporalProductField::Quantity => {
+                                                let product_quantity = product.quantity.to_string();
+                                                if product_quantity.len() > 1 {
+                                                    let value = &product_quantity
+                                                        [..product_quantity.len() - 1];
+                                                    Some((product.clone(), value.to_string()))
+                                                } else {
+                                                    // if we only have one "char" we put a 0
+                                                    Some((product.clone(), 0.to_string()))
+                                                }
+                                            }
+                                            TemporalProductField::Price => {
+                                                let product_price = &product.price_input;
+                                                if product_price.len() > 1 {
+                                                    let value =
+                                                        &product_price[..product_price.len() - 1];
+                                                    Some((product.clone(), value.to_string()))
+                                                } else {
+                                                    Some((product.clone(), String::new()))
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                };
+
+                                // Now call self.update with the extracted data
+                                if let Some((product, value)) = update_data {
+                                    return self.update(
+                                        Message::TemporalProductInput(product, value),
+                                        &database.clone(),
+                                        now,
+                                    );
+                                }
+                            }
+                            // we clicked the '.' button of the numpad
+                            NumPadAction::Decimal => {
+                                // Extract the product data before dropping the mutable borrow
+                                let update_data = if let Some(product) =
+                                    &active_temporal_product.temporal_product
+                                {
+                                    if let Some(field) =
+                                        &active_temporal_product.temporal_product_field
+                                    {
+                                        // only the price can be decimal
+                                        if *field == TemporalProductField::Price {
+                                            Some((
+                                                product.clone(),
+                                                format!("{}.", product.price_input),
+                                            ))
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                };
+
+                                // Now call self.update with the extracted data
+                                if let Some((product, value)) = update_data {
+                                    return self.update(
+                                        Message::TemporalProductInput(product, value),
+                                        &database.clone(),
+                                        now,
+                                    );
+                                }
+                            }
                         }
                     }
                 }

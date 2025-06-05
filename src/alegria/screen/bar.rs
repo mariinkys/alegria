@@ -36,6 +36,9 @@ pub enum Message {
 
     FocusTemporalProduct(TemporalProduct, TemporalProductField), // Callback after user focus a TemporalProduct
     TemporalProductInput(TemporalProduct, String),               // text_input of a temporal product
+
+    OnNumpadNumberClicked(u8), // Callback after a numpad number has been clicked
+    OnNumpadKeyClicked(NumPadAction), // Callback after a numpad key (not a number) has been clicked
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
@@ -141,6 +144,14 @@ pub enum TableLocation {
     Bar,
     Resturant,
     Garden,
+}
+
+/// Identifies an action of the numpad
+#[derive(Debug, Clone, PartialEq)]
+pub enum NumPadAction {
+    Delete,
+    Erase,
+    Decimal,
 }
 
 #[derive(Default, Debug, Clone)]

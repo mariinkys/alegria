@@ -6,8 +6,9 @@ use crate::{
         screen::{
             Bar,
             bar::{
-                ActiveTemporalProduct, BarPagination, CurrentPosition, Message, PaginationAction,
-                State, SubScreen, TableLocation, match_table_location_with_number,
+                ActiveTemporalProduct, BarPagination, CurrentPosition, Message, NumPadAction,
+                PaginationAction, State, SubScreen, TableLocation,
+                match_table_location_with_number,
             },
         },
         utils::{TemporalTicketStatus, match_number_with_temporal_ticket_status},
@@ -290,10 +291,10 @@ fn total_ticket_price<'a>(
 /// Returns the view of the numpad
 fn numpad<'a>() -> iced::Element<'a, Message> {
     crate::alegria::widgets::numpad::Numpad::new()
-        //.on_number_clicked(Message::OnNumpadNumberClicked)
-        //.on_back_clicked(Message::OnNumpadKeyClicked(NumPadAction::Erase))
-        //.on_delete_clicked(Message::OnNumpadKeyClicked(NumPadAction::Delete))
-        //.on_comma_clicked(Message::OnNumpadKeyClicked(NumPadAction::Decimal))
+        .on_number_clicked(Message::OnNumpadNumberClicked)
+        .on_back_clicked(Message::OnNumpadKeyClicked(NumPadAction::Erase))
+        .on_delete_clicked(Message::OnNumpadKeyClicked(NumPadAction::Delete))
+        .on_comma_clicked(Message::OnNumpadKeyClicked(NumPadAction::Decimal))
         .into()
 }
 
