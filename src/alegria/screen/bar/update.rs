@@ -7,10 +7,12 @@ use sqlx::{Pool, Postgres};
 use super::{Bar, State};
 use crate::alegria::{
     core::{
-        models::{product::Product, temporal_ticket::TemporalTicket},
+        models::{
+            product::Product, temporal_product::TemporalProduct, temporal_ticket::TemporalTicket,
+        },
         print::TicketType,
     },
-    screen::bar::{Action, Message, PaginationAction, PrintModal, SubScreen},
+    screen::bar::{Action, Message, PaginationAction, PrintModal, SubScreen, TemporalProductField},
     widgets::toast::Toast,
 };
 
@@ -22,11 +24,8 @@ impl Bar {
         _now: Instant,
     ) -> Action {
         match message {
-            // Asks to add a toast to the parent state
             Message::AddToast(toast) => Action::AddToast(toast),
-            // Asks to go back a screen
             Message::Back => Action::Back,
-            // Inital Page Loading Completed
             Message::Loaded(result) => match result {
                 Ok(state) => {
                     self.state = *state;
@@ -34,7 +33,6 @@ impl Bar {
                 }
                 Err(err) => Action::AddToast(Toast::error_toast(err)),
             },
-            // Fetches all the current temporal tickets
             Message::FetchTemporalTickets => Action::Run(Task::perform(
                 TemporalTicket::get_all(database.clone()),
                 |res| match res {
@@ -45,10 +43,9 @@ impl Bar {
                     }
                 },
             )),
-            // Sets the temporal tickets on the app state
             Message::SetTemporalTickets(res) => {
-                #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
                     if let SubScreen::Bar {
                         temporal_tickets, ..
                     } = sub_screen
@@ -58,7 +55,6 @@ impl Bar {
                 }
                 Action::None
             }
-            // Fetches the products for a given product category
             Message::FetchProductCategoryProducts(category_id) => {
                 if let Some(category_id) = category_id {
                     Action::Run(Task::perform(
@@ -75,10 +71,9 @@ impl Bar {
                     Action::None
                 }
             }
-            // Sets the products on the state
             Message::SetProductCategoryProducts(res) => {
-                #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
                     if let SubScreen::Bar {
                         product_category_products,
                         ..
@@ -89,7 +84,6 @@ impl Bar {
                 }
                 Action::None
             }
-            // Sets the printers on the app state
             Message::SetPrinters(default_printer, all_printers) => {
                 self.printer_modal = PrintModal {
                     show_modal: false,
@@ -100,10 +94,9 @@ impl Bar {
                 };
                 Action::None
             }
-            // Try to go up or down a page on the ProductCategories
             Message::ProductCategoriesPaginationAction(action) => {
-                #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
                     if let SubScreen::Bar {
                         pagination,
                         product_categories,
@@ -138,10 +131,9 @@ impl Bar {
                 }
                 Action::None
             }
-            // Try to go up or down a page on the ProductCategoryProducts
             Message::ProductCategoryProductsPaginationAction(action) => {
-                #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
                     if let SubScreen::Bar {
                         pagination,
                         product_category_products,
@@ -171,6 +163,88 @@ impl Bar {
                                     pagination.product_category_products.current_page += 1;
                                 }
                             }
+                        }
+                    }
+                }
+                Action::None
+            }
+            Message::FocusTemporalProduct(temporal_product, field) => {
+                #[allow(clippy::collapsible_match)]
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Bar {
+                        active_temporal_product,
+                        ..
+                    } = sub_screen
+                    {
+                        active_temporal_product.temporal_product = Some(temporal_product);
+                        active_temporal_product.temporal_product_field = Some(field);
+                    }
+                }
+                Action::None
+            }
+            Message::TemporalProductInput(temporal_product, new_value) => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Bar {
+                        active_temporal_product,
+                        ..
+                    } = sub_screen
+                    {
+                        #[allow(clippy::collapsible_match)]
+                        if let Some(field) = &active_temporal_product.temporal_product_field {
+                            let mut mutable_product = temporal_product;
+
+                            match field {
+                                TemporalProductField::Quantity => {
+                                    // if we are focusing the quantity we assign the new_value
+                                    if let Ok(num) = new_value.parse::<i32>() {
+                                        mutable_product.quantity = num;
+                                    } else if new_value.is_empty() {
+                                        mutable_product.quantity = 0;
+                                    }
+                                }
+                                TemporalProductField::Price => {
+                                    //let new_value = new_value.trim_start_matches('0').to_string();
+                                    // We ignore the input if we already have two decimals and we're trying to add more
+                                    let ignore_action = new_value.len()
+                                        > mutable_product.price_input.len()
+                                        && mutable_product.price_input.find('.').is_some_and(
+                                            |idx| mutable_product.price_input.len() - idx > 2,
+                                        );
+
+                                    if !ignore_action {
+                                        if let Ok(num) = new_value.parse::<f32>() {
+                                            mutable_product.price = Some(num);
+
+                                            if let Some(active_product) =
+                                                &mut active_temporal_product.temporal_product
+                                            {
+                                                active_product.price_input = new_value;
+                                            }
+                                        } else if new_value.is_empty() {
+                                            mutable_product.price = Some(0.0);
+
+                                            if let Some(active_product) =
+                                                &mut active_temporal_product.temporal_product
+                                            {
+                                                active_product.price_input = new_value;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            return Action::Run(Task::perform(
+                                TemporalProduct::edit(database.clone(), mutable_product),
+                                |res| match res {
+                                    Ok(_) => Message::FetchTemporalTickets,
+                                    Err(err) => {
+                                        eprintln!("{err}");
+                                        Message::FetchTemporalTickets
+                                    }
+                                },
+                            ));
                         }
                     }
                 }

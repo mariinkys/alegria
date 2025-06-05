@@ -6,6 +6,7 @@ use sqlx::{Pool, Postgres};
 
 use crate::alegria::core::models::product::Product;
 use crate::alegria::core::models::product_category::ProductCategory;
+use crate::alegria::core::models::temporal_product::TemporalProduct;
 use crate::alegria::core::models::temporal_ticket::TemporalTicket;
 use crate::alegria::core::print::{AlegriaPrinter, TicketType};
 use crate::alegria::widgets::toast::Toast;
@@ -32,6 +33,9 @@ pub enum Message {
 
     ProductCategoriesPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategories
     ProductCategoryProductsPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategoryProducts
+
+    FocusTemporalProduct(TemporalProduct, TemporalProductField), // Callback after user focus a TemporalProduct
+    TemporalProductInput(TemporalProduct, String),               // text_input of a temporal product
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
@@ -60,6 +64,7 @@ pub enum SubScreen {
         product_category_products: Option<Vec<Product>>,
         pagination: BarPagination,
         current_position: CurrentPosition,
+        active_temporal_product: ActiveTemporalProduct,
     },
     Pay,
 }
@@ -112,6 +117,21 @@ pub struct CurrentPosition {
     table_index: i32,
     /// Currently selected product_category id (needed for correct button styling)
     selected_product_category: Option<i32>,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct ActiveTemporalProduct {
+    /// Keeps track of which temporal product is active (within a temporal ticket) in order to be able to modify it with the NumPad
+    temporal_product: Option<TemporalProduct>,
+    /// Keeps track of which temporal product field is active (within a temporal product) in order to be able to modify it with the NumPad
+    temporal_product_field: Option<TemporalProductField>,
+}
+
+/// What field of a TemporalProduct are we currently focusing on?
+#[derive(Debug, Clone, PartialEq)]
+pub enum TemporalProductField {
+    Quantity,
+    Price,
 }
 
 /// Defines the different locations in which a table can be located at
@@ -171,6 +191,7 @@ async fn init_page(database: Arc<Pool<Postgres>>) -> Result<Box<State>, anywho::
             product_category_products: None,
             pagination: BarPagination::default(),
             current_position: CurrentPosition::default(),
+            active_temporal_product: ActiveTemporalProduct::default(),
         },
     }))
 }
