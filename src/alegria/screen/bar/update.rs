@@ -498,6 +498,97 @@ impl Bar {
                 }
                 Action::None
             }
+            // Callback after a table has been clicked
+            Message::OnTableChange(table_index) => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Bar {
+                        active_temporal_product,
+                        current_position,
+                        ..
+                    } = sub_screen
+                    {
+                        current_position.table_index = table_index as i32;
+                        active_temporal_product.temporal_product = None;
+                        active_temporal_product.temporal_product_field = None;
+                        return self.update(Message::FetchTemporalTickets, &database.clone(), now);
+                    }
+                }
+                Action::None
+            }
+            // Callback after we ask to change our current TableLocation
+            Message::ChangeCurrentTablesLocation(location) => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Bar {
+                        current_position, ..
+                    } = sub_screen
+                    {
+                        current_position.table_location = location;
+                    }
+                }
+                Action::None
+            }
+
+            // When we click a product on the product list we have to add it to the temporal ticket...
+            Message::OnProductClicked(product_id) => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Bar {
+                        temporal_tickets,
+                        current_position,
+                        active_temporal_product,
+                        ..
+                    } = sub_screen
+                    {
+                        // not allow input the current temporal ticket is_some and simple_invoice_id is_some
+                        let current_ticket = temporal_tickets.iter().find(|x| {
+                            x.ticket_location
+                                == super::match_table_location_with_number(
+                                    &current_position.table_location,
+                                )
+                                && x.table_id == current_position.table_index
+                        });
+
+                        if current_ticket.is_some_and(|x| x.simple_invoice_id.is_some()) {
+                            return Action::None;
+                        }
+
+                        if let Some(new_product_id) = product_id {
+                            // Deselect the active temporal product
+                            active_temporal_product.temporal_product = None;
+
+                            let temporal_ticket = TemporalTicket {
+                                id: None,
+                                table_id: current_position.table_index,
+                                ticket_location: super::match_table_location_with_number(
+                                    &current_position.table_location.clone(),
+                                ),
+                                ticket_status: 0,
+                                simple_invoice_id: None,
+                                products: Vec::new(),
+                            };
+
+                            // Upsert a temporal ticket with the clicked product
+                            return Action::Run(Task::perform(
+                                TemporalTicket::upsert_ticket_by_id_and_tableloc(
+                                    database.clone(),
+                                    temporal_ticket,
+                                    new_product_id,
+                                ),
+                                |res| match res {
+                                    Ok(_) => Message::FetchTemporalTickets,
+                                    Err(err) => {
+                                        eprintln!("{err}");
+                                        Message::AddToast(Toast::error_toast(err.to_string()))
+                                    }
+                                },
+                            ));
+                        }
+                    }
+                }
+                Action::None
+            }
         }
     }
 }

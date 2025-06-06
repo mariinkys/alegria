@@ -189,7 +189,7 @@ fn tables_grid<'a>(
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
-            //.on_press(Message::ChangeCurrentTablesLocation(TableLocation::Bar))
+            .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Bar))
             .style(|t, s| {
                 determine_location_button_color(current_position, t, s, TableLocation::Bar)
             })
@@ -202,9 +202,9 @@ fn tables_grid<'a>(
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
-            // .on_press(Message::ChangeCurrentTablesLocation(
-            //     TableLocation::Resturant,
-            // ))
+            .on_press(Message::ChangeCurrentTablesLocation(
+                TableLocation::Resturant,
+            ))
             .style(|t, s| {
                 determine_location_button_color(current_position, t, s, TableLocation::Resturant)
             })
@@ -217,7 +217,7 @@ fn tables_grid<'a>(
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
-            //.on_press(Message::ChangeCurrentTablesLocation(TableLocation::Garden))
+            .on_press(Message::ChangeCurrentTablesLocation(TableLocation::Garden))
             .style(|t, s| {
                 determine_location_button_color(current_position, t, s, TableLocation::Garden)
             })
@@ -240,8 +240,8 @@ fn tables_grid<'a>(
         .height(button_height)
         .style(move |t, s| {
             determine_table_button_color(current_position, temporal_tickets, t, s, index)
-        });
-        //.on_press(Message::OnTableChange(index));
+        })
+        .on_press(Message::OnTableChange(index));
         current_row = current_row.push(table_button);
 
         if (index + 1) % TABLES_PER_ROW == 0 {
@@ -472,7 +472,7 @@ fn product_category_products_container<'a>(
                             .align_x(Alignment::Center)
                             .align_y(Alignment::Center),
                     )
-                    //.on_press(Message::OnProductClicked(product.id))
+                    .on_press(Message::OnProductClicked(product.id))
                     .height(button_height)
                     .width(Length::Fill)
                     .into()

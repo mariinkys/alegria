@@ -39,6 +39,10 @@ pub enum Message {
 
     OnNumpadNumberClicked(u8), // Callback after a numpad number has been clicked
     OnNumpadKeyClicked(NumPadAction), // Callback after a numpad key (not a number) has been clicked
+
+    OnTableChange(usize), // Callback after a table has been clicked
+    ChangeCurrentTablesLocation(TableLocation), // Callback after we ask to change our current TableLocation
+    OnProductClicked(Option<i32>), // When we click a product on the product list we have to add it to the temporal ticket...
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
