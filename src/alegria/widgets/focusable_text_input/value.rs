@@ -1,4 +1,4 @@
-pub use unicode_segmentation::UnicodeSegmentation;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// The value of a [`TextInput`].
 ///
