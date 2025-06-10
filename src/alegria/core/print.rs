@@ -5,8 +5,6 @@ use std::{collections::HashMap, sync::Arc};
 use printers::{common::base::printer::Printer, get_default_printer, get_printers};
 use printpdf::*;
 
-use crate::alegria::screens::bar::TicketType;
-
 use super::models::simple_invoice::SimpleInvoice;
 
 static TICKET_FONT_TTF: &[u8] = include_bytes!("../../../resources/fonts/RobotoFlex.ttf");
@@ -30,6 +28,13 @@ impl From<Printer> for AlegriaPrinter {
     fn from(printer: Printer) -> Self {
         AlegriaPrinter(printer)
     }
+}
+
+#[derive(Default, Debug, Clone)]
+pub enum TicketType {
+    Invoice,
+    #[default]
+    Receipt,
 }
 
 impl AlegriaPrinter {

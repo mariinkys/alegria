@@ -2,16 +2,6 @@
 
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 
-use super::{screens::bar::TableLocation, widgets::toast::Toast};
-
-pub fn match_table_location_with_number(tl: TableLocation) -> i32 {
-    match tl {
-        TableLocation::Bar => 0,
-        TableLocation::Resturant => 1,
-        TableLocation::Garden => 2,
-    }
-}
-
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum TemporalTicketStatus {
     #[default]
@@ -94,15 +84,4 @@ pub fn parse_date_to_naive_datetime(date: &str) -> Option<NaiveDateTime> {
 
     // Try to create a NaiveDate
     NaiveDate::from_ymd_opt(year, month, day).map(|date| NaiveDateTime::new(date, NaiveTime::MIN))
-}
-
-pub fn error_toast<T>(err_msg: T) -> Toast
-where
-    T: ToString,
-{
-    Toast {
-        title: String::from("Error"),
-        body: err_msg.to_string(),
-        status: super::widgets::toast::Status::Danger,
-    }
 }
