@@ -51,10 +51,31 @@ impl Bar {
                 if let State::Ready { sub_screen, .. } = &mut self.state {
                     #[allow(clippy::collapsible_match)]
                     if let SubScreen::Bar {
-                        temporal_tickets, ..
+                        temporal_tickets,
+                        active_temporal_product,
+                        ..
                     } = sub_screen
                     {
                         *temporal_tickets = res;
+
+                        // we need to update the active_temporal_product to so we can keep updating fields without having to focus again on the field
+                        // to update the active_temporal_product, also we want to keep the input of the text field of the currently selected
+                        // product, so we don't lose the '.' and we can input decimals
+                        if let Some(active_product) = &active_temporal_product.temporal_product {
+                            let old_price_input = active_product.price_input.clone();
+                            if let Some(product) = temporal_tickets
+                                .iter_mut()
+                                .flat_map(|ticket| ticket.products.iter_mut())
+                                .find(|product| product.id == active_product.id)
+                            {
+                                if active_temporal_product.temporal_product_field
+                                    == Some(TemporalProductField::Price)
+                                {
+                                    product.price_input = old_price_input;
+                                }
+                                active_temporal_product.temporal_product = Some(product.clone());
+                            }
+                        }
                     }
                 }
                 Action::None
