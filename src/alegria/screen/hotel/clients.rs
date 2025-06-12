@@ -119,11 +119,7 @@ impl Clients {
                             PaginationAction::Forward => {
                                 let next_page_start = (pagination_state.current_page + 1)
                                     * pagination_state.items_per_page;
-                                // This aberration happens since adding the printpdf crate which added the deranged crate that causes this
-                                if next_page_start
-                                    < <usize as std::convert::TryInto<i32>>::try_into(clients.len())
-                                        .unwrap_or_default()
-                                {
+                                if next_page_start < clients.len().try_into().unwrap_or_default() {
                                     pagination_state.current_page += 1;
                                 }
                             }
