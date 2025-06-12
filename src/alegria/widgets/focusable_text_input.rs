@@ -62,6 +62,7 @@ where
     line_height: text::LineHeight,
     alignment: alignment::Horizontal,
     on_focus: Option<Box<dyn Fn(String) -> Message + 'a>>,
+    on_blur: Option<Message>,
     on_input: Option<Box<dyn Fn(String) -> Message + 'a>>,
     on_paste: Option<Box<dyn Fn(String) -> Message + 'a>>,
     on_submit: Option<Message>,
@@ -94,6 +95,7 @@ where
             line_height: text::LineHeight::default(),
             alignment: alignment::Horizontal::Left,
             on_focus: None,
+            on_blur: None,
             on_input: None,
             on_paste: None,
             on_submit: None,
@@ -119,6 +121,13 @@ where
     /// focused.
     pub fn on_focus(mut self, on_focus: impl Fn(String) -> Message + 'a) -> Self {
         self.on_focus = Some(Box::new(on_focus));
+        self
+    }
+
+    /// Sets the message that should be produced when the [`TextInput`] is
+    /// blurred.
+    pub fn on_blur(mut self, on_blur: Message) -> Self {
+        self.on_blur = Some(on_blur);
         self
     }
 
@@ -640,6 +649,12 @@ where
                         is_window_focused: true,
                     })
                 } else {
+                    if let Some(on_blur) = &self.on_blur
+                        && state.is_focused()
+                    {
+                        shell.publish(on_blur.clone());
+                    }
+
                     None
                 };
 
