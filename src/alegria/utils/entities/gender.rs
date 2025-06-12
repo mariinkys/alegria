@@ -21,6 +21,8 @@ impl Display for Gender {
 }
 
 impl Gender {
+    pub const ALL: &'static [Self] = &[Self::Male, Self::Female, Self::Other];
+
     pub fn to_id(self) -> i32 {
         match self {
             Gender::Male => 1,

@@ -25,6 +25,14 @@ impl Display for IdentityDocumentType {
 }
 
 impl IdentityDocumentType {
+    pub const ALL: &'static [Self] = &[
+        Self::Dni,
+        Self::Nie,
+        Self::Nif,
+        Self::Pasaporte,
+        Self::CarnetConducir,
+    ];
+
     pub fn to_id(self) -> i32 {
         match self {
             IdentityDocumentType::Dni => 1,

@@ -22,6 +22,8 @@ impl Display for PaymentMethod {
 }
 
 impl PaymentMethod {
+    pub const ALL: &'static [Self] = &[Self::Efectivo, Self::Tarjeta, Self::Adeudo];
+
     pub fn to_id(self) -> i32 {
         match self {
             PaymentMethod::Efectivo => 1,
