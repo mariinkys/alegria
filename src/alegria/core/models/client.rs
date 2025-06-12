@@ -5,12 +5,15 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
+use crate::alegria::utils::entities::{
+    gender::Gender, identity_document_type::IdentityDocumentType,
+};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Client {
     pub id: Option<i32>,
-    pub gender_id: Option<i32>,
-    // TODO: Should IdentityDocument be it's own table?
-    pub identity_document_type_id: Option<i32>,
+    pub gender: Option<Gender>,
+    pub identity_document_type: Option<IdentityDocumentType>,
     pub identity_document: String,
     pub identity_document_expedition_date: Option<NaiveDateTime>,
     pub identity_document_expiration_date: Option<NaiveDateTime>,
@@ -31,8 +34,6 @@ pub struct Client {
     pub updated_at: Option<NaiveDateTime>,
 
     // Not in the db
-    pub identity_document_type_name: Box<str>, // Helps us JOIN and return the name of the selected identity_document_type_id
-    pub gender_name: Box<str>, // Helps us JOIN and return the name of the selected gender
     pub birthdate_string: String, // Helps us input the date as a string
     pub identity_document_expedition_date_string: String, // Helps us input the date as a string
     pub identity_document_expiration_date_string: String, // Helps us input the date as a string
@@ -44,8 +45,8 @@ impl Default for Client {
     fn default() -> Self {
         Self {
             id: None,
-            gender_id: Some(1), // This makes male the default selected gender
-            identity_document_type_id: Some(1), // This makes DNI the dfault selected type
+            gender: Some(Gender::Male), // This makes male the default selected gender
+            identity_document_type: Some(IdentityDocumentType::Dni), // This makes DNI the dfault selected type
             identity_document: String::new(),
             identity_document_expedition_date: None,
             identity_document_expiration_date: None,
@@ -65,8 +66,6 @@ impl Default for Client {
             created_at: None,
             updated_at: None,
 
-            identity_document_type_name: String::new().into_boxed_str(),
-            gender_name: String::new().into_boxed_str(),
             birthdate_string: String::new(),
             identity_document_expedition_date_string: String::new(),
             identity_document_expiration_date_string: String::new(),
@@ -91,9 +90,7 @@ impl Client {
                 clients.is_deleted, 
                 clients.created_at, 
                 clients.updated_at,
-                identity_document_types.name as identity_document_type_name 
             FROM clients 
-            LEFT JOIN identity_document_types ON clients.identity_document_type_id = identity_document_types.id 
             WHERE clients.is_deleted = $1 
             ORDER BY clients.id DESC",
         )
@@ -105,7 +102,7 @@ impl Client {
 
         for row in rows {
             let id: Option<i32> = row.try_get("id")?;
-            let identity_document_type_id: Option<i32> =
+            let identity_document_type: Option<IdentityDocumentType> =
                 row.try_get("identity_document_type_id")?;
             let identity_document: String = row.try_get("identity_document")?;
             let name: String = row.try_get("name")?;
@@ -115,9 +112,6 @@ impl Client {
             let is_deleted: bool = row.try_get("is_deleted")?;
             let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
             let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
-            let identity_document_type_name: String = row
-                .try_get("identity_document_type_name")
-                .unwrap_or_default();
 
             let search_field: String = format!(
                 "{} {} {} {} {} {}",
@@ -131,7 +125,7 @@ impl Client {
 
             let client = Client {
                 id,
-                identity_document_type_id,
+                identity_document_type,
                 identity_document,
                 name,
                 first_surname,
@@ -140,7 +134,6 @@ impl Client {
                 is_deleted,
                 created_at,
                 updated_at,
-                identity_document_type_name: identity_document_type_name.into_boxed_str(),
                 search_field: search_field.into_boxed_str(),
                 ..Default::default()
             };
@@ -177,8 +170,6 @@ impl Client {
                 identity_document_types.name as identity_document_type_name,
                 genders.name as gender_name 
             FROM clients 
-            LEFT JOIN identity_document_types ON clients.identity_document_type_id = identity_document_types.id 
-            LEFT JOIN genders ON clients.gender_id = genders.id 
             WHERE clients.id = $1",
         )
         .bind(client_id)
@@ -186,8 +177,9 @@ impl Client {
         .await?;
 
         let id: Option<i32> = row.try_get("id")?;
-        let gender_id: Option<i32> = row.try_get("gender_id")?;
-        let identity_document_type_id: Option<i32> = row.try_get("identity_document_type_id")?;
+        let gender: Option<Gender> = row.try_get("gender_id")?;
+        let identity_document_type: Option<IdentityDocumentType> =
+            row.try_get("identity_document_type_id")?;
         let identity_document: String = row.try_get("identity_document")?;
         let identity_document_expedition_date: Option<NaiveDateTime> =
             row.try_get("identity_document_expedition_date")?;
@@ -208,10 +200,6 @@ impl Client {
         let is_deleted: bool = row.try_get("is_deleted")?;
         let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
         let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
-        let identity_document_type_name: String = row
-            .try_get("identity_document_type_name")
-            .unwrap_or_default();
-        let gender_name: String = row.try_get("gender_name").unwrap_or_default();
 
         let birthdate_string: String = if let Some(date) = birthdate {
             format!("{}-{}-{}", date.year(), date.month(), date.day())
@@ -235,8 +223,8 @@ impl Client {
 
         let client = Client {
             id,
-            gender_id,
-            identity_document_type_id,
+            gender,
+            identity_document_type,
             identity_document,
             identity_document_expedition_date,
             identity_document_expiration_date,
@@ -255,8 +243,6 @@ impl Client {
             is_deleted,
             created_at,
             updated_at,
-            identity_document_type_name: identity_document_type_name.into_boxed_str(),
-            gender_name: gender_name.into_boxed_str(),
             birthdate_string,
             identity_document_expedition_date_string,
             identity_document_expiration_date_string,
@@ -268,8 +254,8 @@ impl Client {
 
     pub async fn add(pool: Arc<PgPool>, client: Client) -> Result<(), sqlx::Error> {
         sqlx::query("INSERT INTO clients (identity_document_type_id, gender_id, identity_document, identity_document_expedition_date, identity_document_expiration_date, name, first_surname, second_surname, birthdate, address, postal_code, city, province, country, nationality, phone_number, mobile_phone, is_deleted) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)")
-            .bind(client.identity_document_type_id)
-            .bind(client.gender_id)
+            .bind(client.identity_document_type)
+            .bind(client.gender)
             .bind(client.identity_document)
             .bind(client.identity_document_expedition_date)
             .bind(client.identity_document_expiration_date)
@@ -294,7 +280,7 @@ impl Client {
 
     pub async fn edit(pool: Arc<PgPool>, client: Client) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE clients SET identity_document_type_id = $1, identity_document = $2, identity_document_expedition_date = $3, identity_document_expiration_date = $4, name = $5, first_surname = $6, second_surname = $7, birthdate = $8, address = $9, postal_code = $10, city = $11, province = $12, country = $13, nationality = $14, phone_number = $15, mobile_phone = $16, gender_id = $17, is_deleted = $18 WHERE id = $19")
-            .bind(client.identity_document_type_id)
+            .bind(client.identity_document_type)
             .bind(client.identity_document)
             .bind(client.identity_document_expedition_date)
             .bind(client.identity_document_expiration_date)
@@ -310,7 +296,7 @@ impl Client {
             .bind(client.nationality)
             .bind(client.phone_number)
             .bind(client.mobile_phone)
-            .bind(client.gender_id)
+            .bind(client.gender)
             .bind(client.is_deleted)
             .bind(client.id)
             .execute(pool.as_ref())
