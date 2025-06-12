@@ -18,6 +18,32 @@ pub fn match_number_with_temporal_ticket_status(n: i32) -> TemporalTicketStatus 
     }
 }
 
+/// Holds the pagination state (generic, for various entities)
+#[derive(Debug, Clone)]
+pub struct PaginationConfig {
+    pub items_per_page: i32,
+    pub current_page: i32,
+}
+
+impl Default for PaginationConfig {
+    fn default() -> Self {
+        PaginationConfig {
+            items_per_page: 13,
+            current_page: 0,
+        }
+    }
+}
+
+/// Identifies a pagination action
+#[derive(Debug, Clone, PartialEq)]
+pub enum PaginationAction {
+    Up,
+    Down,
+
+    Back,
+    Forward,
+}
+
 /// Checks if a date (string) is on a valid format of yyyy-(m)m-(d)d
 pub fn check_date_format(date: &str) -> bool {
     let parts: Vec<&str> = date.split('-').collect();

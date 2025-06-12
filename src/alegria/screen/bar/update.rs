@@ -151,6 +151,8 @@ impl Bar {
                                     pagination.product_categories.current_page += 1;
                                 }
                             }
+                            PaginationAction::Back => {}
+                            PaginationAction::Forward => {}
                         }
                     }
                 }
@@ -188,6 +190,8 @@ impl Bar {
                                     pagination.product_category_products.current_page += 1;
                                 }
                             }
+                            PaginationAction::Back => {}
+                            PaginationAction::Forward => {}
                         }
                     }
                 }

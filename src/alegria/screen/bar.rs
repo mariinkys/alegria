@@ -9,6 +9,7 @@ use crate::alegria::core::models::product_category::ProductCategory;
 use crate::alegria::core::models::temporal_product::TemporalProduct;
 use crate::alegria::core::models::temporal_ticket::TemporalTicket;
 use crate::alegria::core::print::{AlegriaPrinter, TicketType};
+use crate::alegria::utils::{PaginationAction, PaginationConfig};
 use crate::alegria::widgets::toast::Toast;
 
 mod update;
@@ -90,29 +91,6 @@ impl std::fmt::Debug for SubScreen {
 pub struct BarPagination {
     product_categories: PaginationConfig,
     product_category_products: PaginationConfig,
-}
-
-/// Holds the pagination state (generic, for various entities)
-#[derive(Debug, Clone)]
-pub struct PaginationConfig {
-    items_per_page: i32,
-    current_page: i32,
-}
-
-impl Default for PaginationConfig {
-    fn default() -> Self {
-        PaginationConfig {
-            items_per_page: 13,
-            current_page: 0,
-        }
-    }
-}
-
-/// Identifies a pagination action
-#[derive(Debug, Clone, PartialEq)]
-pub enum PaginationAction {
-    Up,
-    Down,
 }
 
 /// Holds the pagination state (generic, for various entities)
