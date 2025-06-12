@@ -9,7 +9,7 @@ use crate::alegria::core::models::product_category::ProductCategory;
 use crate::alegria::core::models::temporal_product::TemporalProduct;
 use crate::alegria::core::models::temporal_ticket::TemporalTicket;
 use crate::alegria::core::print::{AlegriaPrinter, TicketType};
-use crate::alegria::utils::{PaginationAction, PaginationConfig};
+use crate::alegria::utils::pagination::{PaginationAction, PaginationConfig};
 use crate::alegria::widgets::toast::Toast;
 
 mod update;

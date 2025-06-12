@@ -11,7 +11,7 @@ use crate::{
                 match_table_location_with_number,
             },
         },
-        utils::{TemporalTicketStatus, match_number_with_temporal_ticket_status},
+        utils::temporal_tickets::{TemporalTicketStatus, match_number_with_temporal_ticket_status},
         widgets::focusable_text_input::TextInput,
     },
     fl,
