@@ -7,6 +7,7 @@ use iced::widget::{container, text};
 use iced::{Length, Subscription, Task};
 use sqlx::{Pool, Postgres};
 
+use crate::alegria::core::models::client::Client;
 use crate::alegria::widgets::toast::Toast;
 
 pub struct Clients {
@@ -20,11 +21,15 @@ enum State {
 
 pub enum SubScreen {
     List,
-    Edit,
+    Upsert,
 }
 
 #[derive(Debug, Clone)]
-pub enum Message {}
+pub enum Message {
+    Back,
+
+    SetClients(Vec<Client>),
+}
 
 pub enum Action {
     None,
@@ -50,7 +55,10 @@ impl Clients {
         database: &Arc<Pool<Postgres>>,
         now: Instant,
     ) -> Action {
-        match message {}
+        match message {
+            Message::Back => todo!(),
+            Message::SetClients(clients) => todo!(),
+        }
         Action::None
     }
 
@@ -59,7 +67,7 @@ impl Clients {
             State::Loading => container(text("Loading...")).center(Length::Fill).into(),
             State::Ready { sub_screen } => match sub_screen {
                 SubScreen::List => todo!(),
-                SubScreen::Edit => todo!(),
+                SubScreen::Upsert => todo!(),
             },
         }
     }
