@@ -98,10 +98,8 @@ impl Reservation {
             let client_second_surname: String =
                 row.try_get("client_second_surname").unwrap_or_default();
 
-            let client_name = format!(
-                "{} {} {}",
-                client_name, client_first_surname, client_second_surname
-            );
+            let client_name =
+                format!("{client_name} {client_first_surname} {client_second_surname}");
 
             // get rooms for this reservation
             let rooms = if let Some(reservation_id) = id {
@@ -287,10 +285,8 @@ impl Reservation {
             let client_second_surname: String =
                 row.try_get("client_second_surname").unwrap_or_default();
 
-            let client_name = format!(
-                "{} {} {}",
-                client_name, client_first_surname, client_second_surname
-            );
+            let client_name =
+                format!("{client_name} {client_first_surname} {client_second_surname}");
 
             // get rooms for this reservation
             let rooms = if let Some(reservation_id) = id {
