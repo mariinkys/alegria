@@ -45,8 +45,8 @@ impl Default for Client {
     fn default() -> Self {
         Self {
             id: None,
-            gender: Some(Gender::Male), // This makes male the default selected gender
-            identity_document_type: Some(IdentityDocumentType::Dni), // This makes DNI the dfault selected type
+            gender: Some(Gender::default()),
+            identity_document_type: Some(IdentityDocumentType::default()),
             identity_document: String::new(),
             identity_document_expedition_date: None,
             identity_document_expiration_date: None,
@@ -89,7 +89,7 @@ impl Client {
                 clients.country, 
                 clients.is_deleted, 
                 clients.created_at, 
-                clients.updated_at,
+                clients.updated_at
             FROM clients 
             WHERE clients.is_deleted = $1 
             ORDER BY clients.id DESC",
@@ -166,9 +166,7 @@ impl Client {
                 clients.mobile_phone, 
                 clients.is_deleted, 
                 clients.created_at, 
-                clients.updated_at,
-                identity_document_types.name as identity_document_type_name,
-                genders.name as gender_name 
+                clients.updated_at
             FROM clients 
             WHERE clients.id = $1",
         )
