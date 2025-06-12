@@ -8,7 +8,7 @@ use iced::{Alignment, Length, Subscription};
 use iced::{Task, widget::text};
 use sqlx::{PgPool, Pool, Postgres};
 
-use crate::alegria::screen::{self, Screen, bar};
+use crate::alegria::screen::{self, Screen, bar, hotel};
 use crate::alegria::widgets::toast::{self, Toast};
 use crate::fl;
 
@@ -31,8 +31,10 @@ pub enum Message {
     DatabaseLoaded(Result<Arc<PgPool>, String>),
 
     Bar(bar::Message),
+    Hotel(hotel::Message),
 
     OpenBar,
+    OpenHotel,
 
     AddToast(Toast),
     CloseToast(usize),
@@ -59,6 +61,7 @@ impl IcedAlegria {
             State::Ready { screen, .. } => match screen {
                 Screen::Welcome => self.welcome_view(),
                 Screen::Bar(bar) => bar.view(self.now).map(Message::Bar),
+                Screen::Hotel(hotel) => hotel.view(self.now).map(Message::Hotel),
             },
         };
 
@@ -77,10 +80,11 @@ impl IcedAlegria {
                     }
                 }
                 Err(err) => {
-                    eprintln!("Database init failed: {}", err);
+                    eprintln!("Database init failed: {err}");
                     std::process::exit(1);
                 }
             },
+
             Message::Bar(message) => {
                 let State::Ready {
                     screen, database, ..
@@ -117,6 +121,44 @@ impl IcedAlegria {
                 *screen = Screen::Bar(bar);
                 return task.map(Message::Bar);
             }
+
+            Message::Hotel(message) => {
+                let State::Ready {
+                    screen, database, ..
+                } = &mut self.state
+                else {
+                    return Task::none();
+                };
+
+                let Screen::Hotel(hotel) = screen else {
+                    return Task::none();
+                };
+
+                return match hotel.update(message, database, self.now) {
+                    hotel::Action::None => Task::none(),
+                    hotel::Action::Run(task) => task.map(Message::Hotel),
+                    hotel::Action::Back => {
+                        *screen = Screen::Welcome;
+                        return Task::none();
+                    }
+                    hotel::Action::AddToast(toast) => {
+                        return self.update(Message::AddToast(toast), now);
+                    }
+                };
+            }
+            Message::OpenHotel => {
+                let State::Ready {
+                    screen, database, ..
+                } = &mut self.state
+                else {
+                    return Task::none();
+                };
+
+                let (hotel, task) = screen::Hotel::new(database);
+                *screen = Screen::Hotel(hotel);
+                return task.map(Message::Hotel);
+            }
+
             Message::AddToast(toast) => {
                 self.toasts.push(toast);
             }
@@ -142,7 +184,10 @@ impl IcedAlegria {
                 .width(100.)
                 .height(100.)
                 .on_press(Message::OpenBar),
-            button(text(fl!("hotel")).center()).width(100.).height(100.),
+            button(text(fl!("hotel")).center())
+                .width(100.)
+                .height(100.)
+                .on_press(Message::OpenHotel),
             button(text(fl!("managment")).center())
                 .width(100.)
                 .height(100.)
