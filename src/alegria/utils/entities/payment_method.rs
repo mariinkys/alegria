@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use iced::widget::text::IntoFragment;
 use serde::{Deserialize, Serialize};
 use sqlx::{Decode, Encode, Postgres, Type, postgres::PgTypeInfo};
 
@@ -18,6 +19,12 @@ impl Display for PaymentMethod {
             PaymentMethod::Tarjeta => write!(f, "Tarjeta"),
             PaymentMethod::Adeudo => write!(f, "Adeudo"),
         }
+    }
+}
+
+impl<'a> IntoFragment<'a> for PaymentMethod {
+    fn into_fragment(self) -> iced::widget::text::Fragment<'a> {
+        iced::widget::text::Fragment::Owned(self.to_string())
     }
 }
 

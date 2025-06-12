@@ -1,10 +1,12 @@
 use std::fmt::Display;
 
+use iced::widget::text::IntoFragment;
 use serde::{Deserialize, Serialize};
 use sqlx::{Decode, Encode, Postgres, Type, postgres::PgTypeInfo};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum IdentityDocumentType {
+    #[default]
     Dni,
     Nie,
     Nif,
@@ -21,6 +23,12 @@ impl Display for IdentityDocumentType {
             IdentityDocumentType::Pasaporte => write!(f, "Pasaporte"),
             IdentityDocumentType::CarnetConducir => write!(f, "Carnet de Conducir"),
         }
+    }
+}
+
+impl<'a> IntoFragment<'a> for IdentityDocumentType {
+    fn into_fragment(self) -> iced::widget::text::Fragment<'a> {
+        iced::widget::text::Fragment::Owned(self.to_string())
     }
 }
 

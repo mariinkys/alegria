@@ -1,10 +1,12 @@
 use std::fmt::Display;
 
+use iced::widget::text::IntoFragment;
 use serde::{Deserialize, Serialize};
 use sqlx::{Decode, Encode, Postgres, Type, postgres::PgTypeInfo};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Gender {
+    #[default]
     Male,
     Female,
     Other,
@@ -17,6 +19,12 @@ impl Display for Gender {
             Gender::Female => write!(f, "Mujer"),
             Gender::Other => write!(f, "Otros"),
         }
+    }
+}
+
+impl<'a> IntoFragment<'a> for Gender {
+    fn into_fragment(self) -> iced::widget::text::Fragment<'a> {
+        iced::widget::text::Fragment::Owned(self.to_string())
     }
 }
 
