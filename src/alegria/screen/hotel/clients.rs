@@ -224,7 +224,7 @@ const GLOBAL_BUTTON_HEIGHT: f32 = 60.;
 const TEXT_SIZE: f32 = 18.0;
 
 fn list_screen<'a>(
-    current_search: &'a String,
+    current_search: &'a str,
     pagination_state: &'a PaginationConfig,
     clients: &'a [Client],
 ) -> iced::Element<'a, Message> {
