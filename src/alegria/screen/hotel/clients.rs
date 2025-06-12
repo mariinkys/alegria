@@ -29,7 +29,7 @@ pub enum SubScreen {
         clients: Vec<Client>,
     },
     Upsert {
-        client: Client,
+        client: Box<Client>,
     },
 }
 
@@ -182,7 +182,6 @@ impl Clients {
                     if let SubScreen::List {
                         current_search,
                         pagination_state,
-                        clients,
                         ..
                     } = sub_screen
                     {
