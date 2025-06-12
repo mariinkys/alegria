@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use iced::time::Instant;
 use iced::widget::{button, column, container, row, text};
-use iced::{Alignment, Length, Pixels, Subscription, Task};
+use iced::{Alignment, Length, Subscription, Task};
 use sqlx::{Pool, Postgres};
 
 use crate::alegria::widgets::toast::Toast;
@@ -17,8 +17,11 @@ pub struct Hotel {
 }
 
 enum State {
+    #[allow(dead_code)]
     Loading,
-    Ready { sub_screen: SubScreen },
+    Ready {
+        sub_screen: SubScreen,
+    },
 }
 
 pub enum SubScreen {
@@ -123,8 +126,15 @@ impl Hotel {
         }
     }
 
-    pub fn subscription(&self, _now: Instant) -> Subscription<Message> {
-        Subscription::none()
+    pub fn subscription(&self, now: Instant) -> Subscription<Message> {
+        let State::Ready { sub_screen, .. } = &self.state else {
+            return Subscription::none();
+        };
+
+        match sub_screen {
+            SubScreen::Home => Subscription::none(),
+            SubScreen::Clients(clients) => clients.subscription(now).map(Message::Clients),
+        }
     }
 
     // VIEW IMPLEMENTATION

@@ -171,7 +171,15 @@ impl IcedAlegria {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::none()
+        let State::Ready { screen, .. } = &self.state else {
+            return Subscription::none();
+        };
+
+        match screen {
+            Screen::Welcome => Subscription::none(),
+            Screen::Bar(bar) => bar.subscription(self.now).map(Message::Bar),
+            Screen::Hotel(hotel) => hotel.subscription(self.now).map(Message::Hotel),
+        }
     }
 
     pub fn theme(&self) -> iced::Theme {
