@@ -5,14 +5,16 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Postgres, Transaction};
 use std::sync::Arc;
 
-use crate::alegria::core::models::product::Product;
+use crate::alegria::{
+    core::models::product::Product, utils::entities::payment_method::PaymentMethod,
+};
 
 use super::{sold_product::SoldProduct, temporal_ticket::TemporalTicket};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimpleInvoice {
     pub id: Option<i32>,
-    pub payment_method_id: i32,
+    pub payment_method: PaymentMethod,
     pub products: Vec<SoldProduct>,
     pub paid: bool,
     pub is_deleted: bool,
@@ -35,7 +37,7 @@ impl SimpleInvoice {
             VALUES ($1, FALSE, FALSE)
             RETURNING id, payment_method_id, paid, is_deleted, created_at, updated_at
             "#,
-            1 // assume payment method is 1
+            PaymentMethod::to_id(PaymentMethod::Efectivo) // assume payment method is efectivo
         )
         .fetch_one(&mut *transaction)
         .await?;
@@ -95,7 +97,7 @@ impl SimpleInvoice {
 
         Ok(SimpleInvoice {
             id: Some(invoice.id),
-            payment_method_id: invoice.payment_method_id,
+            payment_method: PaymentMethod::from_id(invoice.payment_method_id).unwrap_or_default(),
             products: sold_products,
             paid: invoice.paid,
             is_deleted: invoice.is_deleted,
@@ -157,7 +159,7 @@ impl SimpleInvoice {
 
         Ok(SimpleInvoice {
             id: Some(invoice.id),
-            payment_method_id: invoice.payment_method_id,
+            payment_method: PaymentMethod::from_id(invoice.payment_method_id).unwrap_or_default(),
             products: sold_products,
             paid: invoice.paid,
             is_deleted: invoice.is_deleted,
@@ -213,7 +215,7 @@ impl SimpleInvoice {
     pub async fn pay_temporal_ticket(
         pool: Arc<PgPool>,
         temporal_ticket_id: i32,
-        payment_method_id: i32,
+        payment_method: PaymentMethod,
         sold_room_id: Option<i32>, // TODO: If payment method is adeudo assign the ticket to the sold_room
     ) -> Result<(), sqlx::Error> {
         let mut transaction: Transaction<Postgres> = pool.begin().await?;
@@ -234,14 +236,14 @@ impl SimpleInvoice {
                 r#"
                 UPDATE simple_invoices SET paid = TRUE, payment_method_id = $1 WHERE id = $2
                 "#,
-                payment_method_id,
+                payment_method.to_id(),
                 simple_invoice_id
             )
             .execute(&mut *transaction)
             .await?;
 
             // if the paymeent method is adeudo add the simple invoice to the sold room
-            if payment_method_id == 3 {
+            if payment_method == PaymentMethod::Adeudo {
                 if let Some(sold_room_id) = sold_room_id {
                     sqlx::query!(
                         r#"
@@ -269,7 +271,7 @@ impl SimpleInvoice {
                 VALUES ($1, TRUE, FALSE)
                 RETURNING id
                 "#,
-                payment_method_id
+                payment_method.to_id()
             )
             .fetch_one(&mut *transaction)
             .await?;
@@ -300,7 +302,7 @@ impl SimpleInvoice {
             }
 
             // if the paymeent method is adeudo add the simple invoice to the sold room
-            if payment_method_id == 3 {
+            if payment_method == PaymentMethod::Adeudo {
                 if let Some(sold_room_id) = sold_room_id {
                     sqlx::query!(
                         r#"

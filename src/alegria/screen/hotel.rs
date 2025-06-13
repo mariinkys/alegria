@@ -107,8 +107,8 @@ impl Hotel {
             State::Loading => container(text("Loading...")).center(Length::Fill).into(),
             State::Ready { sub_screen } => match sub_screen {
                 SubScreen::Home => {
-                    let header = Self::header();
-                    let home = Self::home();
+                    let header = header();
+                    let home = home();
 
                     container(
                         column![header, home]
@@ -136,70 +136,72 @@ impl Hotel {
             SubScreen::Clients(clients) => clients.subscription(now).map(Message::Clients),
         }
     }
+}
 
-    // VIEW IMPLEMENTATION
+//
+// VIEW COMPOSING
+//
 
-    /// Returns the view of the header row of the hotel screen
-    fn header<'a>() -> iced::Element<'a, Message> {
-        let back_button = button(text(fl!("back")).center())
-            .on_press(Message::Back)
-            .height(GLOBAL_BUTTON_HEIGHT);
+/// Returns the view of the header row of the hotel screen
+fn header<'a>() -> iced::Element<'a, Message> {
+    let back_button = button(text(fl!("back")).center())
+        .on_press(Message::Back)
+        .height(GLOBAL_BUTTON_HEIGHT);
 
-        row![
-            back_button,
-            text(fl!("hotel"))
-                .size(TITLE_TEXT_SIZE)
-                .align_y(Alignment::Center)
-        ]
-        .width(Length::Fill)
-        .align_y(Alignment::Center)
-        .spacing(GLOBAL_SPACING)
-        .into()
-    }
+    row![
+        back_button,
+        text(fl!("hotel"))
+            .size(TITLE_TEXT_SIZE)
+            .align_y(Alignment::Center)
+    ]
+    .width(Length::Fill)
+    .align_y(Alignment::Center)
+    .spacing(GLOBAL_SPACING)
+    .into()
+}
 
-    /// Returns the view of the homepage of the hotel screen
-    fn home<'a>() -> iced::Element<'a, Message> {
-        let buttons_row = iced::widget::Row::new()
-            .push(
-                button(
-                    text(fl!("reservations"))
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center),
-                )
-                //.on_press(Message::OpenReservations)
-                .width(SQUAREBUTTONXY)
-                .height(SQUAREBUTTONXY),
+/// Returns the view of the homepage of the hotel screen
+fn home<'a>() -> iced::Element<'a, Message> {
+    let buttons_row = iced::widget::Row::new()
+        .push(
+            button(
+                text(fl!("reservations"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
             )
-            .push(
-                button(
-                    text(fl!("room-types"))
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center),
-                )
-                .width(SQUAREBUTTONXY)
-                .height(SQUAREBUTTONXY),
+            //.on_press(Message::OpenReservations)
+            .width(SQUAREBUTTONXY)
+            .height(SQUAREBUTTONXY),
+        )
+        .push(
+            button(
+                text(fl!("room-types"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
             )
-            .push(
-                button(
-                    text(fl!("rooms"))
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center),
-                )
-                .width(SQUAREBUTTONXY)
-                .height(SQUAREBUTTONXY),
+            .width(SQUAREBUTTONXY)
+            .height(SQUAREBUTTONXY),
+        )
+        .push(
+            button(
+                text(fl!("rooms"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
             )
-            .push(
-                button(
-                    text(fl!("clients"))
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center),
-                )
-                .on_press(Message::OpenClients)
-                .width(SQUAREBUTTONXY)
-                .height(SQUAREBUTTONXY),
+            .width(SQUAREBUTTONXY)
+            .height(SQUAREBUTTONXY),
+        )
+        .push(
+            button(
+                text(fl!("clients"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
             )
-            .spacing(5.);
+            .on_press(Message::OpenClients)
+            .width(SQUAREBUTTONXY)
+            .height(SQUAREBUTTONXY),
+        )
+        .spacing(5.);
 
-        container(buttons_row).center(Length::Fill).into()
-    }
+    container(buttons_row).center(Length::Fill).into()
 }

@@ -21,12 +21,6 @@ CREATE TABLE IF NOT EXISTS products (
     FOREIGN KEY (category_id) REFERENCES product_categories(id) ON DELETE SET NULL
 );
 
--- Create Payment Methods Table
-CREATE TABLE IF NOT EXISTS payment_methods (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
 -- Create SimpleInvoice Table
 CREATE TABLE IF NOT EXISTS simple_invoices (
     id SERIAL PRIMARY KEY,
@@ -93,18 +87,6 @@ CREATE TABLE IF NOT EXISTS rooms (
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create IdentityDocumentTypes Table
-CREATE TABLE IF NOT EXISTS identity_document_types (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
--- Create Genders Table
-CREATE TABLE IF NOT EXISTS genders (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL
 );
 
 -- Create Clients Table

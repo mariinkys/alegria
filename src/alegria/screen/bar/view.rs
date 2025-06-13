@@ -324,11 +324,12 @@ fn current_ticket_products<'a>(
                         super::TemporalProductField::Quantity,
                     )
                 })
-                .on_input_maybe(if current_ticket.simple_invoice_id.is_none() {
-                    Some(|value| Message::TemporalProductInput(product.clone(), value))
-                } else {
-                    None
-                })
+                .on_input_maybe(
+                    current_ticket
+                        .simple_invoice_id
+                        .is_none()
+                        .then_some(|value| Message::TemporalProductInput(product.clone(), value)),
+                )
                 .size(25.);
 
             let price_input = TextInput::new(&product.price_input, &product.price_input)
@@ -338,11 +339,12 @@ fn current_ticket_products<'a>(
                         super::TemporalProductField::Price,
                     )
                 })
-                .on_input_maybe(if current_ticket.simple_invoice_id.is_none() {
-                    Some(|value| Message::TemporalProductInput(product.clone(), value))
-                } else {
-                    None
-                })
+                .on_input_maybe(
+                    current_ticket
+                        .simple_invoice_id
+                        .is_none()
+                        .then_some(|value| Message::TemporalProductInput(product.clone(), value)),
+                )
                 .size(25.);
 
             let product_row = Row::new()
