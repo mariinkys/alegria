@@ -11,7 +11,10 @@ use crate::{
                 match_table_location_with_number,
             },
         },
-        utils::temporal_tickets::{TemporalTicketStatus, match_number_with_temporal_ticket_status},
+        utils::{
+            styling::*,
+            temporal_tickets::{TemporalTicketStatus, match_number_with_temporal_ticket_status},
+        },
         widgets::focusable_text_input::TextInput,
     },
     fl,
@@ -21,10 +24,6 @@ use iced::{
     time::Instant,
     widget::{Column, Row, Scrollable, Space, button, column, container, row, text},
 };
-
-const GLOBAL_SPACING: f32 = 6.;
-const GLOBAL_BUTTON_HEIGHT: f32 = 60.;
-const TITLE_TEXT_SIZE: f32 = 25.0;
 
 // Tables Grid
 const TABLES_PER_ROW: usize = 5;

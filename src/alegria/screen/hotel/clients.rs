@@ -15,6 +15,7 @@ use crate::alegria::utils::date::parse_date_to_naive_datetime;
 use crate::alegria::utils::entities::gender::Gender;
 use crate::alegria::utils::entities::identity_document_type::IdentityDocumentType;
 use crate::alegria::utils::pagination::{PaginationAction, PaginationConfig};
+use crate::alegria::utils::styling::*;
 use crate::alegria::widgets::toast::Toast;
 use crate::fl;
 
@@ -386,11 +387,6 @@ impl Clients {
 //
 // VIEW COMPOSING
 //
-
-const TITLE_TEXT_SIZE: f32 = 25.0;
-const GLOBAL_SPACING: f32 = 6.;
-const GLOBAL_BUTTON_HEIGHT: f32 = 60.;
-const TEXT_SIZE: f32 = 18.0;
 
 // LIST SCREEN
 

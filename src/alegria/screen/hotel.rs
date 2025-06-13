@@ -7,6 +7,7 @@ use iced::widget::{button, column, container, row, text};
 use iced::{Alignment, Length, Subscription, Task};
 use sqlx::{Pool, Postgres};
 
+use crate::alegria::utils::styling::*;
 use crate::alegria::widgets::toast::Toast;
 use crate::fl;
 
@@ -43,11 +44,6 @@ pub enum Action {
     Run(Task<Message>),
     AddToast(Toast),
 }
-
-const TITLE_TEXT_SIZE: f32 = 25.0;
-const GLOBAL_SPACING: f32 = 6.;
-const GLOBAL_BUTTON_HEIGHT: f32 = 60.;
-const SQUAREBUTTONXY: f32 = 120.;
 
 impl Hotel {
     pub fn new(_database: &Arc<Pool<Postgres>>) -> (Self, Task<Message>) {
