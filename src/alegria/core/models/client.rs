@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
-use crate::alegria::utils::entities::{
-    gender::Gender, identity_document_type::IdentityDocumentType,
+use crate::alegria::utils::{
+    date::check_date_format,
+    entities::{gender::Gender, identity_document_type::IdentityDocumentType},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,6 +76,31 @@ impl Default for Client {
 }
 
 impl Client {
+    /// Returns true if the client is valid (ready for submission to the db)
+    pub fn is_valid(&self) -> bool {
+        if self.identity_document_type.is_none()
+            || self.identity_document.is_empty()
+            || self.name.is_empty()
+            || self.country.is_empty()
+        {
+            return false;
+        }
+
+        let date_fields = [
+            &self.birthdate_string,
+            &self.identity_document_expedition_date_string,
+            &self.identity_document_expiration_date_string,
+        ];
+
+        for date_string in date_fields {
+            if !date_string.is_empty() && !check_date_format(date_string) {
+                return false;
+            }
+        }
+
+        true
+    }
+
     pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<Client>, sqlx::Error> {
         // We retrieve only the fields needed for the grid
 
