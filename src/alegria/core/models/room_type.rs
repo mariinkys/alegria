@@ -40,6 +40,15 @@ impl fmt::Display for RoomType {
 }
 
 impl RoomType {
+    /// Returns true if the client is valid (ready for submission to the db)
+    pub fn is_valid(&self) -> bool {
+        if self.name.is_empty() || self.price_input.is_empty() || self.price.is_none() {
+            return false;
+        }
+
+        true
+    }
+
     pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<RoomType>, sqlx::Error> {
         let rows = sqlx::query(
             "SELECT id, name, price, is_deleted, created_at, updated_at FROM room_types WHERE is_deleted = $1 ORDER BY id ASC",
@@ -71,6 +80,42 @@ impl RoomType {
         }
 
         Ok(result)
+    }
+
+    pub async fn get_single(pool: Arc<PgPool>, room_type_id: i32) -> Result<RoomType, sqlx::Error> {
+        let row = sqlx::query(
+            "SELECT 
+                room_types.id, 
+                room_types.name, 
+                room_types.price, 
+                room_types.is_deleted, 
+                room_types.created_at, 
+                room_types.updated_at
+            FROM room_types 
+            WHERE room_types.id = $1",
+        )
+        .bind(room_type_id)
+        .fetch_one(pool.as_ref())
+        .await?;
+
+        let id: Option<i32> = row.try_get("id")?;
+        let name: String = row.try_get("name")?;
+        let price: Option<f32> = row.try_get("price")?;
+        let is_deleted: bool = row.try_get("is_deleted")?;
+        let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
+        let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
+
+        let room_type = RoomType {
+            id,
+            name,
+            price,
+            is_deleted,
+            created_at,
+            updated_at,
+            price_input: price.map_or(String::new(), |p| format!("{p:.2}")),
+        };
+
+        Ok(room_type)
     }
 
     pub async fn add(pool: Arc<PgPool>, room_type: RoomType) -> Result<(), sqlx::Error> {
