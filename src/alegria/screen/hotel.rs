@@ -13,6 +13,7 @@ use crate::fl;
 
 mod clients;
 mod room_types;
+mod rooms;
 
 pub struct Hotel {
     state: State,
@@ -30,6 +31,7 @@ pub enum SubScreen {
     Home,
     Clients(clients::Clients),
     RoomTypes(room_types::RoomTypes),
+    Rooms(rooms::Rooms),
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +43,9 @@ pub enum Message {
 
     RoomTypes(room_types::Message),
     OpenRoomTypes,
+
+    Rooms(rooms::Message),
+    OpenRooms,
 }
 
 pub enum Action {
@@ -129,6 +134,35 @@ impl Hotel {
                 *sub_screen = SubScreen::RoomTypes(room_types);
                 Action::Run(task.map(Message::RoomTypes))
             }
+
+            Message::Rooms(message) => {
+                let State::Ready { sub_screen } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let SubScreen::Rooms(rooms) = sub_screen else {
+                    return Action::None;
+                };
+
+                match rooms.update(message, database, now) {
+                    rooms::Action::None => Action::None,
+                    rooms::Action::Run(task) => Action::Run(task.map(Message::Rooms)),
+                    rooms::Action::Back => {
+                        *sub_screen = SubScreen::Home;
+                        Action::None
+                    }
+                    rooms::Action::AddToast(toast) => Action::AddToast(toast),
+                }
+            }
+            Message::OpenRooms => {
+                let State::Ready { sub_screen, .. } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let (rooms, task) = rooms::Rooms::new(database);
+                *sub_screen = SubScreen::Rooms(rooms);
+                Action::Run(task.map(Message::Rooms))
+            }
         }
     }
 
@@ -153,6 +187,7 @@ impl Hotel {
                 }
                 SubScreen::Clients(clients) => clients.view(now).map(Message::Clients),
                 SubScreen::RoomTypes(room_types) => room_types.view(now).map(Message::RoomTypes),
+                SubScreen::Rooms(rooms) => rooms.view(now).map(Message::Rooms),
             },
         }
     }
@@ -168,6 +203,7 @@ impl Hotel {
             SubScreen::RoomTypes(room_types) => {
                 room_types.subscription(now).map(Message::RoomTypes)
             }
+            SubScreen::Rooms(rooms) => rooms.subscription(now).map(Message::Rooms),
         }
     }
 }
@@ -223,6 +259,7 @@ fn home<'a>() -> iced::Element<'a, Message> {
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
+            .on_press(Message::OpenRooms)
             .width(SQUAREBUTTONXY)
             .height(SQUAREBUTTONXY),
         )

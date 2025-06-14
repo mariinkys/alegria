@@ -40,7 +40,7 @@ impl fmt::Display for RoomType {
 }
 
 impl RoomType {
-    /// Returns true if the client is valid (ready for submission to the db)
+    /// Returns true if the entity is valid (ready for submission to the db)
     pub fn is_valid(&self) -> bool {
         if self.name.is_empty() || self.price_input.is_empty() || self.price.is_none() {
             return false;

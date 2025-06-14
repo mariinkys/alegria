@@ -42,6 +42,15 @@ impl fmt::Display for Room {
 }
 
 impl Room {
+    /// Returns true if the entity is valid (ready for submission to the db)
+    pub fn is_valid(&self) -> bool {
+        if self.name.is_empty() || self.room_type_id.is_none() {
+            return false;
+        }
+
+        true
+    }
+
     pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<Room>, sqlx::Error> {
         let rows = sqlx::query(
             "SELECT 
@@ -87,6 +96,42 @@ impl Room {
             result.push(room);
         }
         Ok(result)
+    }
+
+    pub async fn get_single(pool: Arc<PgPool>, room_id: i32) -> Result<Room, sqlx::Error> {
+        let row = sqlx::query(
+            "SELECT 
+                rooms.id, 
+                rooms.room_type_id, 
+                rooms.name, 
+                rooms.is_deleted, 
+                rooms.created_at, 
+                rooms.updated_at
+            FROM rooms 
+            WHERE rooms.id = $1",
+        )
+        .bind(room_id)
+        .fetch_one(pool.as_ref())
+        .await?;
+
+        let id: Option<i32> = row.try_get("id")?;
+        let room_type_id: Option<i32> = row.try_get("room_type_id")?;
+        let name: String = row.try_get("name")?;
+        let is_deleted: bool = row.try_get("is_deleted")?;
+        let created_at: Option<NaiveDateTime> = row.try_get("created_at")?;
+        let updated_at: Option<NaiveDateTime> = row.try_get("updated_at")?;
+
+        let room = Room {
+            id,
+            room_type_id,
+            name,
+            is_deleted,
+            created_at,
+            updated_at,
+            ..Default::default()
+        };
+
+        Ok(room)
     }
 
     pub async fn add(pool: Arc<PgPool>, room: Room) -> Result<(), sqlx::Error> {
