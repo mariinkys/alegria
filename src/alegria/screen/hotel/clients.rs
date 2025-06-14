@@ -3,11 +3,14 @@
 use std::sync::Arc;
 
 use iced::advanced::graphics::core::Element;
+use iced::keyboard::key::Named;
+use iced::keyboard::{self, Key, Modifiers};
 use iced::time::Instant;
 use iced::widget::{
-    Column, Row, Rule, Space, button, column, container, pick_list, row, text, text_input,
+    Column, Row, Rule, Space, button, column, container, focus_next, focus_previous, pick_list,
+    row, text, text_input,
 };
-use iced::{Alignment, Length, Renderer, Subscription, Task, Theme};
+use iced::{Alignment, Length, Renderer, Subscription, Task, Theme, event};
 use sqlx::{Pool, Postgres};
 
 use crate::alegria::core::models::client::Client;
@@ -62,6 +65,7 @@ pub enum ClientTextInputFields {
 pub enum Message {
     Back,
     AddToast(Toast),
+    Hotkey(Hotkey),
 
     FetchClients,
     PageLoaded(Vec<Client>),
@@ -126,6 +130,25 @@ impl Clients {
                 Action::None
             }
             Message::AddToast(toast) => Action::AddToast(toast),
+            Message::Hotkey(hotkey) => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Upsert { .. } = sub_screen {
+                        return match hotkey {
+                            Hotkey::Tab(modifiers) => {
+                                if modifiers.shift() {
+                                    Action::Run(focus_previous())
+                                } else {
+                                    Action::Run(focus_next())
+                                }
+                            }
+                        };
+                    }
+                }
+
+                Action::None
+            }
+
             Message::FetchClients => Action::Run(Task::perform(
                 Client::get_all(database.clone()),
                 |res| match res {
@@ -380,7 +403,27 @@ impl Clients {
     }
 
     pub fn subscription(&self, _now: Instant) -> Subscription<Message> {
-        Subscription::none()
+        event::listen_with(handle_event)
+    }
+}
+
+//
+// SUBSCRIPTION HANDLING
+//
+
+#[derive(Debug, Clone)]
+pub enum Hotkey {
+    Tab(Modifiers),
+}
+
+fn handle_event(event: event::Event, _: event::Status, _: iced::window::Id) -> Option<Message> {
+    match event {
+        #[allow(clippy::collapsible_match)]
+        event::Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. }) => match key {
+            Key::Named(Named::Tab) => Some(Message::Hotkey(Hotkey::Tab(modifiers))),
+            _ => None,
+        },
+        _ => None,
     }
 }
 
