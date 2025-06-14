@@ -291,6 +291,7 @@ where
                     } else {
                         // Check if the click is within the delete button row.
                         let delete_row_top = height_first_part + self.spacing;
+                        #[allow(clippy::collapsible_if)]
                         if local_y >= delete_row_top && local_y <= delete_row_top + self.button_size
                         {
                             if let Some(ref on_delete_clicked) = self.on_delete_clicked {
