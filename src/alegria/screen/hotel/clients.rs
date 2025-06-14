@@ -8,7 +8,7 @@ use iced::keyboard::{self, Key, Modifiers};
 use iced::time::Instant;
 use iced::widget::{
     Column, Row, Rule, Space, button, column, container, focus_next, focus_previous, pick_list,
-    row, text, text_input,
+    row, scrollable, text, text_input,
 };
 use iced::{Alignment, Length, Renderer, Subscription, Task, Theme, event};
 use sqlx::{Pool, Postgres};
@@ -439,6 +439,26 @@ fn list_screen<'a>(
     clients: &'a [Client],
 ) -> iced::Element<'a, Message> {
     let header = list_header();
+    let search_bar = Row::new()
+        .push(
+            text_input(fl!("search").as_str(), current_search)
+                .on_input(Message::SearchUpdate)
+                .on_submit(Message::SubmitSearch)
+                .size(TEXT_SIZE)
+                .width(Length::Fill),
+        )
+        .push(
+            button(
+                text(fl!("clear"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .size(TEXT_SIZE),
+            )
+            .on_press(Message::ClearSearch)
+            .width(Length::Shrink),
+        )
+        .spacing(GLOBAL_SPACING)
+        .width(850.);
     let grid: Element<'a, Message, Theme, Renderer> = if clients.is_empty() {
         container(text(fl!("no-clients")).size(TITLE_TEXT_SIZE))
             .width(Length::Fill)
@@ -542,14 +562,20 @@ fn list_screen<'a>(
             grid = grid.push(row);
         }
 
-        grid = grid.push(row![Rule::horizontal(1.)].width(850.));
-        grid = grid.push(text(format!(
-            "{} {}",
-            fl!("page").as_str(),
-            &pagination_state.current_page + 1
-        )));
-        grid = grid.push(Space::with_height(Length::Fill));
-        grid = grid.push(
+        scrollable(grid).spacing(GLOBAL_SPACING).into()
+    };
+
+    let page_controls = Column::new()
+        .push(row![Rule::horizontal(1.)].width(850.))
+        .push(
+            text(format!(
+                "{} {}",
+                fl!("page").as_str(),
+                &pagination_state.current_page + 1
+            ))
+            .align_x(Alignment::Center),
+        )
+        .push(
             Row::new()
                 .width(850.)
                 .push(
@@ -570,34 +596,14 @@ fn list_screen<'a>(
                     )
                     .on_press(Message::ClientsPaginationAction(PaginationAction::Forward)),
                 )
+                .align_y(Alignment::Center)
                 .spacing(GLOBAL_SPACING),
-        );
-
-        grid.into()
-    };
-    let search_bar = Row::new()
-        .push(
-            text_input(fl!("search").as_str(), current_search)
-                .on_input(Message::SearchUpdate)
-                .on_submit(Message::SubmitSearch)
-                .size(TEXT_SIZE)
-                .width(Length::Fill),
-        )
-        .push(
-            button(
-                text(fl!("clear"))
-                    .align_x(Alignment::Center)
-                    .align_y(Alignment::Center)
-                    .size(TEXT_SIZE),
-            )
-            .on_press(Message::ClearSearch)
-            .width(Length::Shrink),
         )
         .spacing(GLOBAL_SPACING)
-        .width(850.);
+        .align_x(Alignment::Center);
 
     let content = container(
-        column![search_bar, grid]
+        column![search_bar, grid, page_controls]
             .spacing(GLOBAL_SPACING)
             .width(850.),
     )
