@@ -6,6 +6,7 @@ use sqlx::{Pool, Postgres};
 
 use crate::alegria::core::models::product::Product;
 use crate::alegria::core::models::product_category::ProductCategory;
+use crate::alegria::core::models::simple_invoice::SimpleInvoice;
 use crate::alegria::core::models::temporal_product::TemporalProduct;
 use crate::alegria::core::models::temporal_ticket::TemporalTicket;
 use crate::alegria::core::print::{AlegriaPrinter, TicketType};
@@ -46,6 +47,11 @@ pub enum Message {
     OnProductClicked(Option<i32>), // When we click a product on the product list we have to add it to the temporal ticket...
 
     UnlockTicket(TemporalTicket), // Asks to unlock (delete the related invoice) of a locked ticket
+    PrintModalAction(PrintTicketModalActions), // Callback after some action has been requested on the print ticket modal
+    UpdateSelectedPrinter(AlegriaPrinter),     // Updates the selected printer
+    UpdateSelectedTicketType(TicketType),      // Updates the selected ticket type
+    PrintTicket(Box<SimpleInvoice>), // Callback after creating a simple invoice from the selected temporal ticket in order to print it
+    PrintJobCompleted(Result<(), &'static str>), // Callback after print job is completed
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
@@ -144,7 +150,15 @@ pub struct PrintModal {
     ticket_type: TicketType,
     selected_printer: Box<Option<AlegriaPrinter>>,
     all_printers: Arc<Vec<AlegriaPrinter>>,
-    default_printer: Arc<Option<AlegriaPrinter>>,
+    //default_printer: Arc<Option<AlegriaPrinter>>,
+}
+
+/// Identifies a modal action (the only modal is the print ticket one)
+#[derive(Debug, Clone)]
+pub enum PrintTicketModalActions {
+    ShowModal,
+    HideModal,
+    PrintTicket(TemporalTicket),
 }
 
 pub enum Action {

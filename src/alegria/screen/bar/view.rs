@@ -1,28 +1,32 @@
 use crate::{
     alegria::{
-        core::models::{
-            product::Product, product_category::ProductCategory, temporal_ticket::TemporalTicket,
+        core::{
+            models::{
+                product::Product, product_category::ProductCategory,
+                temporal_ticket::TemporalTicket,
+            },
+            print::TicketType,
         },
         screen::{
             Bar,
             bar::{
                 ActiveTemporalProduct, BarPagination, CurrentPosition, Message, NumPadAction,
-                PaginationAction, State, SubScreen, TableLocation,
-                match_table_location_with_number,
+                PaginationAction, PrintModal, PrintTicketModalActions, State, SubScreen,
+                TableLocation, match_table_location_with_number,
             },
         },
         utils::{
             styling::*,
             temporal_tickets::{TemporalTicketStatus, match_number_with_temporal_ticket_status},
         },
-        widgets::focusable_text_input::TextInput,
+        widgets::{focusable_text_input::TextInput, modal::modal},
     },
     fl,
 };
 use iced::{
     Alignment, Length, Pixels,
     time::Instant,
-    widget::{Column, Row, Scrollable, Space, button, column, container, row, text},
+    widget::{Column, Row, Scrollable, Space, button, column, container, pick_list, row, text},
 };
 
 // Tables Grid
@@ -48,6 +52,7 @@ impl Bar {
                     pagination,
                     current_position,
                     active_temporal_product,
+                    &self.printer_modal,
                 ))
                 .center(Length::Fill)
                 .into(),
@@ -65,6 +70,7 @@ fn bar_view<'a>(
     pagination: &'a BarPagination,
     current_position: &'a CurrentPosition,
     _active_temporal_product: &'a ActiveTemporalProduct,
+    print_modal: &'a PrintModal,
 ) -> iced::Element<'a, Message> {
     let spacing = Pixels::from(GLOBAL_SPACING);
 
@@ -99,7 +105,14 @@ fn bar_view<'a>(
     ]
     .spacing(spacing);
 
-    column![header, content].padding(3.).spacing(spacing).into()
+    match print_modal.show_modal {
+        true => modal(
+            column![header, content].padding(3.).spacing(spacing),
+            view_print_modal(print_modal, temporal_tickets, current_position),
+            Message::PrintModalAction(PrintTicketModalActions::HideModal),
+        ),
+        false => column![header, content].padding(3.).spacing(spacing).into(),
+    }
 }
 
 /// Returns the view of the header row of the bar screen
@@ -151,9 +164,9 @@ fn bar_header<'a>(
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
-                // .on_press(Message::PrintModalAction(
-                //     PrintTicketModalActions::ShowModal,
-                // ))
+                .on_press(Message::PrintModalAction(
+                    PrintTicketModalActions::ShowModal,
+                ))
                 .height(button_height),
             );
 
@@ -516,6 +529,72 @@ fn product_category_products_container<'a>(
         .height(Length::Fill)
         .width(Length::Fill)
         .into()
+}
+
+/// Returns the view of the print modal
+fn view_print_modal<'a>(
+    print_modal: &'a PrintModal,
+    temporal_tickets: &'a [TemporalTicket],
+    current_position: &'a CurrentPosition,
+) -> iced::Element<'a, Message> {
+    if print_modal.all_printers.is_empty() {
+        text("No printers detected...")
+            .size(25.)
+            .line_height(2.)
+            .into()
+    } else {
+        let printers_label = text(fl!("printer")).width(Length::Fill);
+        let printer_selector = pick_list(
+            print_modal.all_printers.as_slice(),
+            *print_modal.selected_printer.clone(),
+            Message::UpdateSelectedPrinter,
+        )
+        .width(Length::Fill);
+
+        let ticket_type_label = text(fl!("ticket-type")).width(Length::Fill);
+        let ticket_type_selector = pick_list(
+            vec![TicketType::Invoice, TicketType::Receipt],
+            Some(print_modal.ticket_type.clone()),
+            Message::UpdateSelectedTicketType,
+        )
+        .width(Length::Fill);
+
+        let current_ticket = temporal_tickets.iter().find(|x| {
+            x.ticket_location
+                == super::match_table_location_with_number(&current_position.table_location)
+                && x.table_id == current_position.table_index
+        });
+
+        let submit_button = button(
+            text(fl!("print"))
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center),
+        )
+        .on_press_maybe(
+            (print_modal.selected_printer.is_some() && current_ticket.is_some()).then_some(
+                Message::PrintModalAction(PrintTicketModalActions::PrintTicket(
+                    current_ticket.unwrap().clone(),
+                )),
+            ),
+        )
+        .width(Length::Fill);
+
+        container(
+            column![
+                column![printers_label, printer_selector].spacing(1.),
+                column![ticket_type_label, ticket_type_selector].spacing(1.),
+                submit_button
+            ]
+            .spacing(GLOBAL_SPACING)
+            .width(Length::Fill),
+        )
+        .width(700)
+        .padding(30)
+        .align_x(Alignment::Center)
+        .align_y(Alignment::Center)
+        .style(container::rounded_box)
+        .into()
+    }
 }
 
 //

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fmt::Display, sync::Arc};
 
 use printers::{common::base::printer::Printer, get_default_printer, get_printers};
 use printpdf::*;
@@ -30,11 +30,20 @@ impl From<Printer> for AlegriaPrinter {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub enum TicketType {
     Invoice,
     #[default]
     Receipt,
+}
+
+impl Display for TicketType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            TicketType::Invoice => write!(f, "Invoice"),
+            TicketType::Receipt => write!(f, "Receipt"),
+        }
+    }
 }
 
 impl AlegriaPrinter {

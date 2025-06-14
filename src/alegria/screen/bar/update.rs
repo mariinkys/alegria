@@ -114,9 +114,9 @@ impl Bar {
                 self.printer_modal = PrintModal {
                     show_modal: false,
                     ticket_type: TicketType::Receipt,
-                    selected_printer: default_printer.clone(),
+                    selected_printer: default_printer,
                     all_printers: Arc::new(all_printers),
-                    default_printer: Arc::new(*default_printer),
+                    //default_printer: Arc::new(*default_printer),
                 };
                 Action::None
             }
@@ -317,7 +317,6 @@ impl Bar {
                 }
                 Action::None
             }
-            // Callback after a numpad key (not a number) has been clicked
             Message::OnNumpadKeyClicked(action_type) => {
                 #[allow(clippy::collapsible_match)]
                 if let State::Ready { sub_screen, .. } = &mut self.state {
@@ -516,7 +515,6 @@ impl Bar {
                 }
                 Action::None
             }
-            // Callback after a table has been clicked
             Message::OnTableChange(table_index) => {
                 if let State::Ready { sub_screen, .. } = &mut self.state {
                     #[allow(clippy::collapsible_match)]
@@ -534,7 +532,6 @@ impl Bar {
                 }
                 Action::None
             }
-            // Callback after we ask to change our current TableLocation
             Message::ChangeCurrentTablesLocation(location) => {
                 if let State::Ready { sub_screen, .. } = &mut self.state {
                     #[allow(clippy::collapsible_match)]
@@ -547,8 +544,6 @@ impl Bar {
                 }
                 Action::None
             }
-
-            // When we click a product on the product list we have to add it to the temporal ticket...
             Message::OnProductClicked(product_id) => {
                 if let State::Ready { sub_screen, .. } = &mut self.state {
                     #[allow(clippy::collapsible_match)]
@@ -607,8 +602,6 @@ impl Bar {
                 }
                 Action::None
             }
-
-            // Asks to unlock (delete the related invoice) of a locked ticket
             Message::UnlockTicket(ticket) => Action::Run(Task::perform(
                 SimpleInvoice::unlock_temporal_ticket(database.clone(), ticket.clone()),
                 |res| match res {
@@ -619,6 +612,93 @@ impl Bar {
                     }
                 },
             )),
+            Message::PrintModalAction(action) => {
+                match action {
+                    super::PrintTicketModalActions::ShowModal => {
+                        self.printer_modal.show_modal = true;
+                        Action::Run(iced::widget::focus_next())
+                    }
+                    super::PrintTicketModalActions::HideModal => {
+                        self.printer_modal.show_modal = false;
+                        Action::None
+                    }
+                    super::PrintTicketModalActions::PrintTicket(ticket) => {
+                        match ticket.simple_invoice_id {
+                            Some(invoice_id) => {
+                                // if the current ticket is already a simple invoice get it and print it
+                                Action::Run(Task::perform(
+                                    SimpleInvoice::get_single(database.clone(), invoice_id),
+                                    |res| match res {
+                                        Ok(invoice) => Message::PrintTicket(Box::new(invoice)),
+                                        Err(err) => {
+                                            eprintln!("{err}");
+                                            Message::FetchTemporalTickets
+                                        }
+                                    },
+                                ))
+                            }
+                            None => {
+                                // if the current ticket is NOT already a simple invoice create it and print it
+                                Action::Run(Task::perform(
+                                    SimpleInvoice::create_from_temporal_ticket(
+                                        database.clone(),
+                                        ticket.clone(),
+                                    ),
+                                    |res| match res {
+                                        Ok(invoice) => Message::PrintTicket(Box::new(invoice)),
+                                        Err(err) => {
+                                            eprintln!("{err}");
+                                            Message::FetchTemporalTickets
+                                        }
+                                    },
+                                ))
+                            }
+                        }
+                    }
+                }
+            }
+            Message::UpdateSelectedPrinter(printer) => {
+                self.printer_modal.selected_printer = Box::new(Some(printer));
+                Action::None
+            }
+            Message::UpdateSelectedTicketType(ticket_type) => {
+                self.printer_modal.ticket_type = ticket_type;
+                Action::None
+            }
+            // Callback after creating a simple invoice from the selected temporal ticket in order to print it
+            Message::PrintTicket(invoice) => {
+                // TODO: Change TemporalTicket ticket_status when printed
+                if let Some(p) = self.printer_modal.selected_printer.as_ref() {
+                    let printer = Arc::new(p.clone());
+                    return Action::Run(Task::perform(
+                        printer.print(*invoice, self.printer_modal.ticket_type.clone()),
+                        Message::PrintJobCompleted,
+                    ));
+                }
+                Action::None
+            }
+            // Callback after print job is completed
+            Message::PrintJobCompleted(result) => {
+                if let Err(e) = result {
+                    eprintln!("Error: {e}");
+                    return Action::AddToast(Toast::error_toast(String::from(e)));
+                }
+
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Bar {
+                        active_temporal_product,
+                        ..
+                    } = sub_screen
+                    {
+                        active_temporal_product.temporal_product = None;
+                        active_temporal_product.temporal_product_field = None;
+                    }
+                }
+
+                self.printer_modal.ticket_type = TicketType::default();
+                self.update(Message::FetchTemporalTickets, &database.clone(), now)
+            }
         }
     }
 }
