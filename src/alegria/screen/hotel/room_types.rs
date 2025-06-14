@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 use std::sync::Arc;
 
 use iced::keyboard::key::Named;
@@ -14,7 +16,7 @@ use sqlx::{Pool, Postgres};
 use crate::alegria::utils::styling::{
     GLOBAL_BUTTON_HEIGHT, GLOBAL_SPACING, TEXT_SIZE, TITLE_TEXT_SIZE,
 };
-// SPDX-License-Identifier: GPL-3.0-only
+
 use crate::{
     alegria::{
         core::models::room_type::RoomType,
