@@ -86,6 +86,6 @@ impl<'r> Decode<'r, Postgres> for IdentityDocumentType {
         value: <Postgres as sqlx::Database>::ValueRef<'r>,
     ) -> Result<Self, sqlx::error::BoxDynError> {
         let id = <i32 as Decode<Postgres>>::decode(value)?;
-        Self::from_id(id).ok_or_else(|| format!("Invalid identity document type id: {}", id).into())
+        Self::from_id(id).ok_or_else(|| format!("Invalid identity document type id: {id}").into())
     }
 }

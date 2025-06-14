@@ -346,7 +346,7 @@ fn generate_receipt(invoice: &SimpleInvoice) -> Result<Vec<u8>, &'static str> {
         },
         // Write text with the built-in font
         Op::WriteText {
-            items: vec![TextItem::Text(format!("TOTAL: {:.2}€", total_price))],
+            items: vec![TextItem::Text(format!("TOTAL: {total_price:.2}€"))],
             font: custom_font_id.clone(),
         },
         // End the text section
