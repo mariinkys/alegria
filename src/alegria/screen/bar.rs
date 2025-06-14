@@ -23,35 +23,58 @@ pub struct Bar {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    AddToast(Toast),                           // Asks to add a toast to the parent state
-    Back,                                      // Asks to go back a screen
-    Loaded(Result<Box<State>, anywho::Error>), // Inital Page Loading Completed
+    /// Asks to add a toast to the parent state
+    AddToast(Toast),
+    /// Asks to go back a screen                     
+    Back,
+    /// Inital Page Loading Completed             
+    Loaded(Result<Box<State>, anywho::Error>),
 
-    FetchTemporalTickets, // Fetches all the current temporal tickets
-    SetTemporalTickets(Vec<TemporalTicket>), // Sets the temporal tickets on the app state
-    FetchProductCategoryProducts(Option<i32>), // Fetches the products for a given product category
-    SetProductCategoryProducts(Vec<Product>), // Sets the products on the state
-    SetPrinters(Box<Option<AlegriaPrinter>>, Vec<AlegriaPrinter>), // Sets the printers on the app state
+    /// Fetches all the current temporal tickets
+    FetchTemporalTickets,
+    /// Sets the temporal tickets on the app state
+    SetTemporalTickets(Vec<TemporalTicket>),
+    /// Fetches the products for a given product category
+    FetchProductCategoryProducts(Option<i32>),
+    /// Sets the products on the state
+    SetProductCategoryProducts(Vec<Product>),
+    /// Sets the printers on the app state
+    SetPrinters(Box<Option<AlegriaPrinter>>, Vec<AlegriaPrinter>),
 
-    ProductCategoriesPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategories
-    ProductCategoryProductsPaginationAction(PaginationAction), // Try to go up or down a page on the ProductCategoryProducts
+    /// Try to go up or down a page on the ProductCategories
+    ProductCategoriesPaginationAction(PaginationAction),
+    /// Try to go up or down a page on the ProductCategoryProducts
+    ProductCategoryProductsPaginationAction(PaginationAction),
 
-    FocusTemporalProduct(TemporalProduct, TemporalProductField), // Callback after user focus a TemporalProduct
-    TemporalProductInput(TemporalProduct, String),               // text_input of a temporal product
+    /// Callback after user focus a TemporalProduct
+    FocusTemporalProduct(TemporalProduct, TemporalProductField),
+    /// text_input of a temporal product
+    TemporalProductInput(TemporalProduct, String),
 
-    OnNumpadNumberClicked(u8), // Callback after a numpad number has been clicked
-    OnNumpadKeyClicked(NumPadAction), // Callback after a numpad key (not a number) has been clicked
+    /// Callback after a numpad number has been clicked
+    OnNumpadNumberClicked(u8),
+    /// Callback after a numpad key (not a number) has been clicked
+    OnNumpadKeyClicked(NumPadAction),
 
-    OnTableChange(usize), // Callback after a table has been clicked
-    ChangeCurrentTablesLocation(TableLocation), // Callback after we ask to change our current TableLocation
-    OnProductClicked(Option<i32>), // When we click a product on the product list we have to add it to the temporal ticket...
+    /// Callback after a table has been clicked
+    OnTableChange(usize),
+    /// Callback after we ask to change our current TableLocation
+    ChangeCurrentTablesLocation(TableLocation),
+    /// When we click a product on the product list we have to add it to the temporal ticket...
+    OnProductClicked(Option<i32>),
 
-    UnlockTicket(TemporalTicket), // Asks to unlock (delete the related invoice) of a locked ticket
-    PrintModalAction(PrintTicketModalActions), // Callback after some action has been requested on the print ticket modal
-    UpdateSelectedPrinter(AlegriaPrinter),     // Updates the selected printer
-    UpdateSelectedTicketType(TicketType),      // Updates the selected ticket type
-    PrintTicket(Box<SimpleInvoice>), // Callback after creating a simple invoice from the selected temporal ticket in order to print it
-    PrintJobCompleted(Result<(), &'static str>), // Callback after print job is completed
+    /// Asks to unlock (delete the related invoice) of a locked ticket
+    UnlockTicket(TemporalTicket),
+    /// Callback after some action has been requested on the print ticket modal
+    PrintModalAction(PrintTicketModalActions),
+    /// Updates the selected printer
+    UpdateSelectedPrinter(AlegriaPrinter),
+    /// Updates the selected ticket type  
+    UpdateSelectedTicketType(TicketType),
+    /// Callback after creating a simple invoice from the selected temporal ticket in order to print it  
+    PrintTicket(Box<SimpleInvoice>),
+    /// Callback after print job is completed
+    PrintJobCompleted(Result<(), &'static str>),
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this

@@ -63,28 +63,45 @@ pub enum ClientTextInputFields {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    /// Asks the parent to go back
     Back,
+    /// Asks the parent to add a toast
     AddToast(Toast),
+    /// Hotkey (Subscription) pressed
     Hotkey(Hotkey),
 
+    /// Asks to update the current list of clients
     FetchClients,
+    /// Callback after initial page loading, set's the client list on the state
     PageLoaded(Vec<Client>),
 
-    ClientsPaginationAction(PaginationAction), // Try to go left or right a page on the ClientsList
-    SearchUpdate(String),                      // Callback after writing on the search box
-    SubmitSearch,                              // Callback after pressing enter on the search bar
-    ClearSearch,                               // Callback after clicking on the clear search button
+    /// Try to go left or right a page on the ClientsList
+    ClientsPaginationAction(PaginationAction),
+    /// Callback after writing on the search box
+    SearchUpdate(String),
+    /// Callback after pressing enter on the search bar              
+    SubmitSearch,
+    /// Callback after clicking on the clear search button                         
+    ClearSearch,
 
-    AskEditClient(i32), // Callback after asking to edit a client, searches the client on the db
-    OpenUpsertScreen(Box<Client>), // Changes the upsert screen with the given client
+    /// Callback after asking to edit a client, searches the client on the db
+    AskEditClient(i32),
+    /// Changes the upsert screen with the given client
+    OpenUpsertScreen(Box<Client>),
 
-    TextInputUpdate(String, ClientTextInputFields), // Callback when using the text inputs to add or edit a client
-    UpdatedSelectedDocumentType(IdentityDocumentType), // Callback after selecting a new DocumentType for the current client
-    UpdatedSelectedGender(Gender), // Callback after selecting a new Gender for the current client
+    /// Callback when using the text inputs to add or edit a client
+    TextInputUpdate(String, ClientTextInputFields),
+    /// Callback after selecting a new DocumentType for the current client
+    UpdatedSelectedDocumentType(IdentityDocumentType),
+    /// Callback after selecting a new Gender for the current client
+    UpdatedSelectedGender(Gender),
 
-    UpsertCurrentClient, // Tries to Add or Edit the current client to the database
-    UpsertedCurrentClient, // Callback after upserting the client on the database
-    DeleteCurrentClient, // Tries to delete the current Client
+    /// Tries to Add or Edit the current client to the database
+    UpsertCurrentClient,
+    /// Callback after upserting the client on the database
+    UpsertedCurrentClient,
+    /// Tries to delete the current Client
+    DeleteCurrentClient,
 }
 
 pub enum Action {
