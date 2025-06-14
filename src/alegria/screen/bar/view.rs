@@ -139,7 +139,7 @@ fn bar_header<'a>(
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center),
                 )
-                //.on_press(Message::UnlockTicket(c_ticket.clone()))
+                .on_press(Message::UnlockTicket(c_ticket.clone()))
                 .style(button::danger)
                 .height(button_height),
             );

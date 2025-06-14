@@ -8,7 +8,8 @@ use super::{Bar, State};
 use crate::alegria::{
     core::{
         models::{
-            product::Product, temporal_product::TemporalProduct, temporal_ticket::TemporalTicket,
+            product::Product, simple_invoice::SimpleInvoice, temporal_product::TemporalProduct,
+            temporal_ticket::TemporalTicket,
         },
         print::TicketType,
     },
@@ -606,6 +607,18 @@ impl Bar {
                 }
                 Action::None
             }
+
+            // Asks to unlock (delete the related invoice) of a locked ticket
+            Message::UnlockTicket(ticket) => Action::Run(Task::perform(
+                SimpleInvoice::unlock_temporal_ticket(database.clone(), ticket.clone()),
+                |res| match res {
+                    Ok(_) => Message::FetchTemporalTickets,
+                    Err(err) => {
+                        eprintln!("{err}");
+                        Message::AddToast(Toast::error_toast(err.to_string()))
+                    }
+                },
+            )),
         }
     }
 }

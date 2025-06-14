@@ -44,6 +44,8 @@ pub enum Message {
     OnTableChange(usize), // Callback after a table has been clicked
     ChangeCurrentTablesLocation(TableLocation), // Callback after we ask to change our current TableLocation
     OnProductClicked(Option<i32>), // When we click a product on the product list we have to add it to the temporal ticket...
+
+    UnlockTicket(TemporalTicket), // Asks to unlock (delete the related invoice) of a locked ticket
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
