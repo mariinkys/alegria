@@ -382,6 +382,7 @@ fn list_header<'a>(date_filters: &'a DateFilters) -> iced::Element<'a, Message> 
         .on_press(Message::Back)
         .height(GLOBAL_BUTTON_HEIGHT);
 
+    // TODO: FIX DATE VALIDATION, NOW WE CAN ENTER WHATEVER...
     let initial_date_label =
         text(format!("{} (yyyy-mm-dd)", fl!("initial-date"))).width(Length::Fill);
     let initial_date_input = text_input(fl!("initial-date").as_str(), &date_filters.initial_date)
@@ -395,11 +396,6 @@ fn list_header<'a>(date_filters: &'a DateFilters) -> iced::Element<'a, Message> 
         .size(TEXT_SIZE)
         .width(Length::Fill);
 
-    let submit_button = button(text(fl!("filter")).center().size(TEXT_SIZE))
-        .on_press_maybe(date_filters.is_valid().then_some(Message::LoadListPage))
-        .width(Length::Shrink)
-        .height(GLOBAL_BUTTON_HEIGHT);
-
     let initial_date_input_column = column![initial_date_label, initial_date_input].spacing(1.);
     let last_date_input_column = column![last_date_label, last_date_input].spacing(1.);
 
@@ -408,8 +404,7 @@ fn list_header<'a>(date_filters: &'a DateFilters) -> iced::Element<'a, Message> 
         text(fl!("reservations")).size(TITLE_TEXT_SIZE),
         Space::new(Length::Fill, Length::Shrink),
         initial_date_input_column,
-        last_date_input_column,
-        submit_button
+        last_date_input_column
     ]
     .align_y(Alignment::Center)
     .spacing(GLOBAL_SPACING)
