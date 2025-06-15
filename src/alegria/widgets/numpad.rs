@@ -180,7 +180,7 @@ where
                     font,
                     align_x: Alignment::Center,
                     align_y: Vertical::Center,
-                    shaping: Shaping::Basic,
+                    shaping: Shaping::Advanced,
                     wrapping: Wrapping::Word,
                 };
 
