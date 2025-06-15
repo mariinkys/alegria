@@ -44,45 +44,44 @@ enum SubScreen {
 
 #[derive(Debug, Clone)]
 pub struct DateFilters {
-    initial_date: String,
-    last_date: String,
+    initial_date: NaiveDate,
+    initial_date_string: String,
+    last_date: NaiveDate,
+    last_date_string: String,
 }
 
 impl Default for DateFilters {
     fn default() -> Self {
-        let initial_date = Local::now().date_naive().to_string();
+        let initial_date = Local::now().date_naive();
         let last_date = Local::now()
             .checked_add_days(chrono::Days::new(14))
             .unwrap_or(Local::now())
-            .date_naive()
-            .to_string();
+            .date_naive();
 
         Self {
             initial_date,
             last_date,
+            initial_date_string: initial_date.to_string(),
+            last_date_string: last_date.to_string(),
         }
     }
 }
 
 impl DateFilters {
     pub fn is_valid(&self) -> bool {
-        if !check_date_format(&self.initial_date) || !check_date_format(&self.last_date) {
+        if !check_date_format(&self.initial_date_string)
+            || !check_date_format(&self.last_date_string)
+        {
+            return false;
+        }
+
+        if parse_date_to_naive_datetime(&self.initial_date_string).unwrap_or_default()
+            > parse_date_to_naive_datetime(&self.last_date_string).unwrap_or_default()
+        {
             return false;
         }
 
         true
-    }
-
-    pub fn get_initial_date(&self) -> NaiveDate {
-        parse_date_to_naive_datetime(&self.initial_date)
-            .unwrap_or_default()
-            .date()
-    }
-
-    pub fn get_last_date(&self) -> NaiveDate {
-        parse_date_to_naive_datetime(&self.last_date)
-            .unwrap_or_default()
-            .date()
     }
 }
 
@@ -128,9 +127,6 @@ pub enum Action {
 impl Reservations {
     pub fn new(database: &Arc<Pool<Postgres>>) -> (Self, Task<Message>) {
         let dates = DateFilters::default();
-        let initial_date = dates.get_initial_date();
-        let last_date = dates.get_last_date();
-
         let database = database.clone();
         (
             Self {
@@ -139,7 +135,7 @@ impl Reservations {
             Task::perform(
                 async move {
                     let (reservations, rooms) = tokio::join!(
-                        Reservation::get_all(database.clone(), initial_date, last_date),
+                        Reservation::get_all(database.clone(), dates.initial_date, dates.last_date),
                         Room::get_all(database.clone())
                     );
                     (reservations, rooms)
@@ -202,15 +198,21 @@ impl Reservations {
                     ..
                 } = &mut self.state
                 {
+                    if date_filters.is_valid() {
+                        date_filters.initial_date =
+                            parse_date_to_naive_datetime(&date_filters.initial_date_string)
+                                .unwrap_or_default()
+                                .date();
+                        date_filters.last_date =
+                            parse_date_to_naive_datetime(&date_filters.last_date_string)
+                                .unwrap_or_default()
+                                .date();
+                    }
+
                     date_filters
                 } else {
                     &DateFilters::default()
                 };
-
-                let (initial_date, last_date) = (
-                    date_filters.get_initial_date(),
-                    date_filters.get_last_date(),
-                );
 
                 let database = database.clone();
                 let date_filters = date_filters.clone();
@@ -218,7 +220,11 @@ impl Reservations {
                 Action::Run(Task::perform(
                     async move {
                         let (reservations, rooms) = tokio::join!(
-                            Reservation::get_all(database.clone(), initial_date, last_date),
+                            Reservation::get_all(
+                                database.clone(),
+                                date_filters.initial_date,
+                                date_filters.last_date
+                            ),
                             Room::get_all(database.clone())
                         );
                         (reservations, rooms)
@@ -249,14 +255,15 @@ impl Reservations {
                     if let SubScreen::List { date_filters, .. } = sub_screen {
                         match field {
                             ReservationsTextInputFields::InitialFilterDate => {
-                                date_filters.initial_date = new_value;
+                                date_filters.initial_date_string = new_value;
                             }
                             ReservationsTextInputFields::LastFilterDate => {
-                                date_filters.last_date = new_value;
+                                date_filters.last_date_string = new_value;
                             }
                         }
                     }
                 }
+
                 Action::None
             }
             Message::DirectionActionInput(action) => {
@@ -265,18 +272,28 @@ impl Reservations {
                     if let SubScreen::List { date_filters, .. } = sub_screen {
                         match action {
                             ReservationsListDirectionAction::Back => {
-                                let initial_date = date_filters.get_initial_date();
-                                let last_date = date_filters.get_last_date();
-
                                 #[allow(clippy::collapsible_if)]
-                                if let Some(new_initial_date) =
-                                    initial_date.checked_sub_days(chrono::Days::new(1))
+                                if let Some(new_initial_date) = date_filters
+                                    .initial_date
+                                    .checked_sub_days(chrono::Days::new(1))
                                 {
-                                    if let Some(new_last_date) =
-                                        last_date.checked_sub_days(chrono::Days::new(1))
+                                    if let Some(new_last_date) = date_filters
+                                        .last_date
+                                        .checked_sub_days(chrono::Days::new(1))
                                     {
-                                        date_filters.initial_date = new_initial_date.to_string();
-                                        date_filters.last_date = new_last_date.to_string();
+                                        date_filters.initial_date_string =
+                                            new_initial_date.to_string();
+                                        date_filters.last_date_string = new_last_date.to_string();
+                                        date_filters.initial_date = parse_date_to_naive_datetime(
+                                            &date_filters.initial_date_string,
+                                        )
+                                        .unwrap_or_default()
+                                        .date();
+                                        date_filters.last_date = parse_date_to_naive_datetime(
+                                            &date_filters.last_date_string,
+                                        )
+                                        .unwrap_or_default()
+                                        .date();
 
                                         return self.update(
                                             Message::LoadListPage,
@@ -287,18 +304,28 @@ impl Reservations {
                                 }
                             }
                             ReservationsListDirectionAction::Forward => {
-                                let initial_date = date_filters.get_initial_date();
-                                let last_date = date_filters.get_last_date();
-
                                 #[allow(clippy::collapsible_if)]
-                                if let Some(new_initial_date) =
-                                    initial_date.checked_add_days(chrono::Days::new(1))
+                                if let Some(new_initial_date) = date_filters
+                                    .initial_date
+                                    .checked_add_days(chrono::Days::new(1))
                                 {
-                                    if let Some(new_last_date) =
-                                        last_date.checked_add_days(chrono::Days::new(1))
+                                    if let Some(new_last_date) = date_filters
+                                        .last_date
+                                        .checked_add_days(chrono::Days::new(1))
                                     {
-                                        date_filters.initial_date = new_initial_date.to_string();
-                                        date_filters.last_date = new_last_date.to_string();
+                                        date_filters.initial_date_string =
+                                            new_initial_date.to_string();
+                                        date_filters.last_date_string = new_last_date.to_string();
+                                        date_filters.initial_date = parse_date_to_naive_datetime(
+                                            &date_filters.initial_date_string,
+                                        )
+                                        .unwrap_or_default()
+                                        .date();
+                                        date_filters.last_date = parse_date_to_naive_datetime(
+                                            &date_filters.last_date_string,
+                                        )
+                                        .unwrap_or_default()
+                                        .date();
 
                                         return self.update(
                                             Message::LoadListPage,
@@ -385,16 +412,24 @@ fn list_header<'a>(date_filters: &'a DateFilters) -> iced::Element<'a, Message> 
     // TODO: FIX DATE VALIDATION, NOW WE CAN ENTER WHATEVER...
     let initial_date_label =
         text(format!("{} (yyyy-mm-dd)", fl!("initial-date"))).width(Length::Fill);
-    let initial_date_input = text_input(fl!("initial-date").as_str(), &date_filters.initial_date)
-        .on_input(|c| Message::TextInputUpdate(c, ReservationsTextInputFields::InitialFilterDate))
-        .size(TEXT_SIZE)
-        .width(Length::Fill);
+    let initial_date_input = text_input(
+        fl!("initial-date").as_str(),
+        &date_filters.initial_date_string,
+    )
+    .on_input(|c| Message::TextInputUpdate(c, ReservationsTextInputFields::InitialFilterDate))
+    .size(TEXT_SIZE)
+    .width(Length::Fill);
 
     let last_date_label = text(format!("{} (yyyy-mm-dd)", fl!("last-date"))).width(Length::Fill);
-    let last_date_input = text_input(fl!("last-date").as_str(), &date_filters.last_date)
+    let last_date_input = text_input(fl!("last-date").as_str(), &date_filters.last_date_string)
         .on_input(|c| Message::TextInputUpdate(c, ReservationsTextInputFields::LastFilterDate))
         .size(TEXT_SIZE)
         .width(Length::Fill);
+
+    let submit_button = button(text(fl!("filter")).center().size(TEXT_SIZE))
+        .on_press_maybe(date_filters.is_valid().then_some(Message::LoadListPage))
+        .width(Length::Shrink)
+        .height(GLOBAL_BUTTON_HEIGHT);
 
     let initial_date_input_column = column![initial_date_label, initial_date_input].spacing(1.);
     let last_date_input_column = column![last_date_label, last_date_input].spacing(1.);
@@ -404,7 +439,8 @@ fn list_header<'a>(date_filters: &'a DateFilters) -> iced::Element<'a, Message> 
         text(fl!("reservations")).size(TITLE_TEXT_SIZE),
         Space::new(Length::Fill, Length::Shrink),
         initial_date_input_column,
-        last_date_input_column
+        last_date_input_column,
+        submit_button
     ]
     .align_y(Alignment::Center)
     .spacing(GLOBAL_SPACING)
@@ -466,8 +502,8 @@ fn reservations_calendar<'a>(
         .spacing(GLOBAL_SPACING);
 
     // add each day of range as a header
-    let mut current_date = date_filters.get_initial_date();
-    while current_date <= date_filters.get_last_date() {
+    let mut current_date = date_filters.initial_date;
+    while current_date <= date_filters.last_date {
         header_row = header_row.push(
             text(format!("{}/{}", current_date.day(), current_date.month()))
                 .size(16)
@@ -493,8 +529,8 @@ fn reservations_calendar<'a>(
         );
 
         // loop through each day in the range and check for reservations
-        let mut current_date = date_filters.get_initial_date();
-        while current_date <= date_filters.get_last_date() {
+        let mut current_date = date_filters.initial_date;
+        while current_date <= date_filters.last_date {
             let mut cell_content = container(
                 button("")
                     //.on_press(Message::OpenAddReservation)

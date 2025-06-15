@@ -70,6 +70,7 @@ mobile-phone = Número de Móvil
 gender = Género
 
 <#-- Reservations SubScreen -->
+filter = Filtrar
 initial-date = Fecha Inicial
 last-date = Fecha Final
 entry-date = Fecha de Entrada
