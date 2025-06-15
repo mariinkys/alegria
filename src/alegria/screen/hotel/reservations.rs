@@ -2,11 +2,14 @@
 
 use std::sync::Arc;
 
-use chrono::{Local, NaiveDate};
+use chrono::{Datelike, Local, NaiveDate};
 use iced::keyboard::key::Named;
 use iced::keyboard::{self, Key, Modifiers};
 use iced::time::Instant;
-use iced::widget::{Space, button, column, focus_next, focus_previous, row, text, text_input};
+use iced::widget::{
+    Column, Row, Space, Tooltip, button, column, focus_next, focus_previous, row, scrollable, text,
+    text_input, tooltip,
+};
 use iced::{Alignment, Length, Subscription, event};
 use iced::{Task, widget::container};
 use sqlx::{Pool, Postgres};
@@ -40,7 +43,7 @@ enum SubScreen {
 }
 
 #[derive(Debug, Clone)]
-struct DateFilters {
+pub struct DateFilters {
     initial_date: String,
     last_date: String,
 }
@@ -90,6 +93,12 @@ pub enum ReservationsTextInputFields {
 }
 
 #[derive(Debug, Clone)]
+pub enum ReservationsListDirectionAction {
+    Back,
+    Forward,
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     /// Asks the parent to go back
     Back,
@@ -101,10 +110,12 @@ pub enum Message {
     /// Asks to update the current state of the list page
     LoadListPage,
     /// Callback after initial page loading, set's the  list state
-    PageLoaded(Vec<Reservation>, Vec<Room>),
+    PageLoaded(Vec<Reservation>, Vec<Room>, DateFilters),
 
     /// Callback when using the text inputs of the reservations page
     TextInputUpdate(String, ReservationsTextInputFields),
+    /// Callback after clicking one of the two arrows to go one day back/forward
+    DirectionActionInput(ReservationsListDirectionAction),
 }
 
 pub enum Action {
@@ -134,7 +145,9 @@ impl Reservations {
                     (reservations, rooms)
                 },
                 |(reservations, rooms)| match (reservations, rooms) {
-                    (Ok(reservations), Ok(rooms)) => Message::PageLoaded(reservations, rooms),
+                    (Ok(reservations), Ok(rooms)) => {
+                        Message::PageLoaded(reservations, rooms, dates)
+                    }
                     _ => Message::AddToast(Toast::error_toast(
                         "Error fetching reservations of rooms",
                     )),
@@ -200,6 +213,7 @@ impl Reservations {
                 );
 
                 let database = database.clone();
+                let date_filters = date_filters.clone();
 
                 Action::Run(Task::perform(
                     async move {
@@ -210,16 +224,16 @@ impl Reservations {
                         (reservations, rooms)
                     },
                     |(reservations, rooms)| match (reservations, rooms) {
-                        (Ok(reservations), Ok(rooms)) => Message::PageLoaded(reservations, rooms),
+                        (Ok(reservations), Ok(rooms)) => {
+                            Message::PageLoaded(reservations, rooms, date_filters)
+                        }
                         _ => Message::AddToast(Toast::error_toast(
                             "Error fetching reservations of rooms",
                         )),
                     },
                 ))
             }
-            Message::PageLoaded(reservations, rooms) => {
-                let date_filters = DateFilters::default();
-
+            Message::PageLoaded(reservations, rooms, date_filters) => {
                 self.state = State::Ready {
                     sub_screen: SubScreen::List {
                         date_filters,
@@ -239,6 +253,60 @@ impl Reservations {
                             }
                             ReservationsTextInputFields::LastFilterDate => {
                                 date_filters.last_date = new_value;
+                            }
+                        }
+                    }
+                }
+                Action::None
+            }
+            Message::DirectionActionInput(action) => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::List { date_filters, .. } = sub_screen {
+                        match action {
+                            ReservationsListDirectionAction::Back => {
+                                let initial_date = date_filters.get_initial_date();
+                                let last_date = date_filters.get_last_date();
+
+                                #[allow(clippy::collapsible_if)]
+                                if let Some(new_initial_date) =
+                                    initial_date.checked_sub_days(chrono::Days::new(1))
+                                {
+                                    if let Some(new_last_date) =
+                                        last_date.checked_sub_days(chrono::Days::new(1))
+                                    {
+                                        date_filters.initial_date = new_initial_date.to_string();
+                                        date_filters.last_date = new_last_date.to_string();
+
+                                        return self.update(
+                                            Message::LoadListPage,
+                                            &database.clone(),
+                                            now,
+                                        );
+                                    }
+                                }
+                            }
+                            ReservationsListDirectionAction::Forward => {
+                                let initial_date = date_filters.get_initial_date();
+                                let last_date = date_filters.get_last_date();
+
+                                #[allow(clippy::collapsible_if)]
+                                if let Some(new_initial_date) =
+                                    initial_date.checked_add_days(chrono::Days::new(1))
+                                {
+                                    if let Some(new_last_date) =
+                                        last_date.checked_add_days(chrono::Days::new(1))
+                                    {
+                                        date_filters.initial_date = new_initial_date.to_string();
+                                        date_filters.last_date = new_last_date.to_string();
+
+                                        return self.update(
+                                            Message::LoadListPage,
+                                            &database.clone(),
+                                            now,
+                                        );
+                                    }
+                                }
                             }
                         }
                     }
@@ -300,7 +368,7 @@ fn list_screen<'a>(
     rooms: &'a [Room],
 ) -> iced::Element<'a, Message> {
     let header = list_header(date_filters);
-    let content = text("Content");
+    let content = reservations_calendar(date_filters, reservations, rooms);
 
     column![header, content]
         .spacing(GLOBAL_SPACING)
@@ -347,4 +415,142 @@ fn list_header<'a>(date_filters: &'a DateFilters) -> iced::Element<'a, Message> 
     .spacing(GLOBAL_SPACING)
     .padding(3.)
     .into()
+}
+
+fn reservations_calendar<'a>(
+    date_filters: &'a DateFilters,
+    reservations: &'a [Reservation],
+    rooms: &'a [Room],
+) -> iced::Element<'a, Message> {
+    let cell_width = Length::Fill; // If I put a fixed width here I also have to put it on the Header Row or everything breaks
+    let cell_height = Length::Fixed(GLOBAL_BUTTON_HEIGHT);
+
+    // header row with days
+    let mut header_row = Row::new();
+
+    // top left action buttons
+    header_row = header_row
+        .push(
+            Row::new()
+                .push(
+                    button(
+                        text("<")
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .height(Length::Fill)
+                            .width(Length::Fill),
+                    )
+                    .style(button::secondary)
+                    .height(Length::Fill)
+                    .width(Length::Fill)
+                    .on_press(Message::DirectionActionInput(
+                        ReservationsListDirectionAction::Back,
+                    )),
+                )
+                .push(
+                    button(
+                        text(">")
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .height(Length::Fill)
+                            .width(Length::Fill),
+                    )
+                    .style(button::secondary)
+                    .height(Length::Fill)
+                    .width(Length::Fill)
+                    .on_press(Message::DirectionActionInput(
+                        ReservationsListDirectionAction::Forward,
+                    )),
+                )
+                .align_y(Alignment::Center)
+                .spacing(GLOBAL_SPACING)
+                .width(cell_width)
+                .height(cell_height),
+        )
+        .width(Length::Fill)
+        .spacing(GLOBAL_SPACING);
+
+    // add each day of range as a header
+    let mut current_date = date_filters.get_initial_date();
+    while current_date <= date_filters.get_last_date() {
+        header_row = header_row.push(
+            text(format!("{}/{}", current_date.day(), current_date.month()))
+                .size(16)
+                .center()
+                .width(cell_width)
+                .height(cell_height),
+        );
+        current_date += chrono::Duration::days(1);
+    }
+
+    // final calendar view
+    let mut calendar_view = Column::new().push(header_row).spacing(GLOBAL_SPACING);
+
+    for room in rooms {
+        // each room is a row
+        let mut row = Row::new().spacing(GLOBAL_SPACING);
+        row = row.push(
+            text(&room.name)
+                .size(16)
+                .center()
+                .width(cell_width)
+                .height(cell_height),
+        );
+
+        // loop through each day in the range and check for reservations
+        let mut current_date = date_filters.get_initial_date();
+        while current_date <= date_filters.get_last_date() {
+            let mut cell_content = container(
+                button("")
+                    //.on_press(Message::OpenAddReservation)
+                    .style(button::secondary)
+                    .width(cell_width)
+                    .height(cell_height),
+            );
+
+            for reservation in reservations {
+                // check if the current room is part of the reservation and if the date falls within the reservation period
+                if reservation.rooms.iter().any(|r| r.room_id == room.id)
+                        && reservation.entry_date.unwrap_or_default().date() <= current_date
+                        // departure date does not have an equal because we can book a room the day someone departs
+                        && reservation.departure_date.unwrap_or_default().date() > current_date
+                {
+                    match reservation.occupied {
+                        true => {
+                            cell_content = container(Tooltip::new(
+                                button("")
+                                    .style(button::success)
+                                    .width(cell_width)
+                                    .height(cell_height),
+                                container(reservation.client_name.as_str())
+                                    .style(container::rounded_box)
+                                    .padding(3.),
+                                tooltip::Position::FollowCursor,
+                            ));
+                        }
+                        false => {
+                            cell_content = container(Tooltip::new(
+                                button("")
+                                    .style(button::danger)
+                                    .width(cell_width)
+                                    .height(cell_height),
+                                container(reservation.client_name.as_str())
+                                    .style(container::rounded_box)
+                                    .padding(3.),
+                                tooltip::Position::FollowCursor,
+                            ));
+                        }
+                    }
+                    break; // each room can only have one reservation per day
+                }
+            }
+
+            row = row.push(cell_content);
+            current_date += chrono::Duration::days(1);
+        }
+
+        calendar_view = calendar_view.push(row);
+    }
+
+    container(scrollable(calendar_view)).into()
 }
