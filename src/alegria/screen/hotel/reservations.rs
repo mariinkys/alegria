@@ -23,6 +23,9 @@ use crate::alegria::utils::styling::{
 
 use crate::{alegria::widgets::toast::Toast, fl};
 
+mod add;
+mod edit;
+
 pub struct Reservations {
     state: State,
 }
@@ -38,8 +41,8 @@ enum SubScreen {
         reservations: Vec<Reservation>,
         rooms: Vec<Room>,
     },
-    Add,
-    Edit,
+    Add(add::AddReservation),
+    Edit(edit::EditReservation),
 }
 
 #[derive(Debug, Clone)]
@@ -115,6 +118,16 @@ pub enum Message {
     TextInputUpdate(String, ReservationsTextInputFields),
     /// Callback after clicking one of the two arrows to go one day back/forward
     DirectionActionInput(ReservationsListDirectionAction),
+
+    /// Add Reservation page messages
+    AddReservation(add::Message),
+    /// Edit Reservation page messages
+    EditReservation(edit::Message),
+
+    /// Opens the add reservation page for the selected date and room
+    OpenAddReservation(NaiveDate, Room),
+    /// Opens the edit reservation page for the reservation with the given id
+    OpenEditReservation(i32),
 }
 
 pub enum Action {
@@ -164,10 +177,10 @@ impl Reservations {
                 if let State::Ready { sub_screen, .. } = &mut self.state {
                     match sub_screen {
                         SubScreen::List { .. } => return Action::Back,
-                        SubScreen::Add => {
+                        SubScreen::Add(_) => {
                             return self.update(Message::LoadListPage, &database.clone(), now);
                         }
-                        SubScreen::Edit => {
+                        SubScreen::Edit(_) => {
                             return self.update(Message::LoadListPage, &database.clone(), now);
                         }
                     }
@@ -178,7 +191,7 @@ impl Reservations {
             Message::Hotkey(hotkey) => {
                 if let State::Ready { sub_screen, .. } = &mut self.state {
                     #[allow(clippy::collapsible_match)]
-                    if let SubScreen::Add | SubScreen::Edit = sub_screen {
+                    if let SubScreen::List { .. } = sub_screen {
                         return match hotkey {
                             Hotkey::Tab(modifiers) => {
                                 if modifiers.shift() {
@@ -340,10 +353,62 @@ impl Reservations {
                 }
                 Action::None
             }
+            Message::AddReservation(message) => {
+                let State::Ready { sub_screen } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let SubScreen::Add(add) = sub_screen else {
+                    return Action::None;
+                };
+
+                match add.update(message, database, now) {
+                    add::Action::None => Action::None,
+                    add::Action::Run(task) => Action::Run(task.map(Message::AddReservation)),
+                    add::Action::Back => self.update(Message::LoadListPage, &database.clone(), now),
+                    add::Action::AddToast(toast) => Action::AddToast(toast),
+                }
+            }
+            Message::EditReservation(message) => {
+                let State::Ready { sub_screen } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let SubScreen::Edit(edit) = sub_screen else {
+                    return Action::None;
+                };
+
+                match edit.update(message, database, now) {
+                    edit::Action::None => Action::None,
+                    edit::Action::Run(task) => Action::Run(task.map(Message::EditReservation)),
+                    edit::Action::Back => {
+                        self.update(Message::LoadListPage, &database.clone(), now)
+                    }
+                    edit::Action::AddToast(toast) => Action::AddToast(toast),
+                }
+            }
+            Message::OpenAddReservation(initial_date, room) => {
+                let State::Ready { sub_screen, .. } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let (add, task) = add::AddReservation::new(database, initial_date, room);
+                *sub_screen = SubScreen::Add(add);
+                Action::Run(task.map(Message::AddReservation))
+            }
+            Message::OpenEditReservation(reservation_id) => {
+                let State::Ready { sub_screen, .. } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let (edit, task) = edit::EditReservation::new(database, reservation_id);
+                *sub_screen = SubScreen::Edit(edit);
+                Action::Run(task.map(Message::EditReservation))
+            }
         }
     }
 
-    pub fn view(&self, _now: Instant) -> iced::Element<'_, Message> {
+    pub fn view(&self, now: Instant) -> iced::Element<'_, Message> {
         match &self.state {
             State::Loading => container(text("Loading...")).center(Length::Fill).into(),
             State::Ready { sub_screen } => match sub_screen {
@@ -352,14 +417,22 @@ impl Reservations {
                     reservations,
                     rooms,
                 } => list_screen(date_filters, reservations, rooms),
-                SubScreen::Add => todo!(),
-                SubScreen::Edit => todo!(),
+                SubScreen::Add(add) => add.view(now).map(Message::AddReservation),
+                SubScreen::Edit(edit) => edit.view(now).map(Message::EditReservation),
             },
         }
     }
 
-    pub fn subscription(&self, _now: Instant) -> Subscription<Message> {
-        event::listen_with(handle_event)
+    pub fn subscription(&self, now: Instant) -> Subscription<Message> {
+        let State::Ready { sub_screen, .. } = &self.state else {
+            return Subscription::none();
+        };
+
+        match sub_screen {
+            SubScreen::List { .. } => event::listen_with(handle_event),
+            SubScreen::Add(add) => add.subscription(now).map(Message::AddReservation),
+            SubScreen::Edit(edit) => edit.subscription(now).map(Message::EditReservation),
+        }
     }
 }
 
@@ -533,7 +606,7 @@ fn reservations_calendar<'a>(
         while current_date <= date_filters.last_date {
             let mut cell_content = container(
                 button("")
-                    //.on_press(Message::OpenAddReservation)
+                    .on_press(Message::OpenAddReservation(current_date, room.clone()))
                     .style(button::secondary)
                     .width(cell_width)
                     .height(cell_height),
@@ -550,6 +623,9 @@ fn reservations_calendar<'a>(
                         true => {
                             cell_content = container(Tooltip::new(
                                 button("")
+                                    .on_press(Message::OpenEditReservation(
+                                        reservation.id.unwrap_or_default(),
+                                    ))
                                     .style(button::success)
                                     .width(cell_width)
                                     .height(cell_height),
@@ -562,6 +638,9 @@ fn reservations_calendar<'a>(
                         false => {
                             cell_content = container(Tooltip::new(
                                 button("")
+                                    .on_press(Message::OpenEditReservation(
+                                        reservation.id.unwrap_or_default(),
+                                    ))
                                     .style(button::danger)
                                     .width(cell_width)
                                     .height(cell_height),
