@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
+use crate::alegria::utils::date::check_date_format;
+
 use super::sold_room::SoldRoom;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,6 +23,8 @@ pub struct Reservation {
 
     // Not in the db
     pub client_name: String, // Helps us JOIN and return the name of the selected client
+    pub entry_date_string: String, // Helps us input the date
+    pub departure_date_string: String, // Helps us input the date
 }
 
 #[allow(clippy::derivable_impls)]
@@ -37,11 +41,31 @@ impl Default for Reservation {
             created_at: None,
             updated_at: None,
             client_name: String::new(),
+            entry_date_string: String::new(),
+            departure_date_string: String::new(),
         }
     }
 }
 
 impl Reservation {
+    /// Returns true if the client is valid (ready for submission to the db)
+    pub fn is_valid(&self) -> bool {
+        if self.client_id.is_none() {
+            return false;
+        }
+        if self.rooms.is_empty() {
+            return false;
+        }
+        if !check_date_format(&self.entry_date_string) {
+            return false;
+        }
+        if !check_date_format(&self.departure_date_string) {
+            return false;
+        }
+
+        true
+    }
+
     /// Retrieves all the reservations, but only the fields needed for the grid and main page of the reservation
     pub async fn get_all(
         pool: Arc<PgPool>,
@@ -147,6 +171,10 @@ impl Reservation {
                 created_at,
                 updated_at,
                 client_name,
+                entry_date_string: entry_date.map(|d| d.date().to_string()).unwrap_or_default(),
+                departure_date_string: departure_date
+                    .map(|d| d.date().to_string())
+                    .unwrap_or_default(),
             };
 
             result.push(reservation);
@@ -334,6 +362,10 @@ impl Reservation {
                 created_at,
                 updated_at,
                 client_name,
+                entry_date_string: entry_date.map(|d| d.date().to_string()).unwrap_or_default(),
+                departure_date_string: departure_date
+                    .map(|d| d.date().to_string())
+                    .unwrap_or_default(),
             };
 
             result.push(reservation);

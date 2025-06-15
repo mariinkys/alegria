@@ -16,6 +16,7 @@ use sqlx::{Pool, Postgres};
 
 use crate::alegria::core::models::reservation::Reservation;
 use crate::alegria::core::models::room::Room;
+use crate::alegria::core::models::sold_room::SoldRoom;
 use crate::alegria::utils::date::{check_date_format, parse_date_to_naive_datetime};
 use crate::alegria::utils::styling::{
     GLOBAL_BUTTON_HEIGHT, GLOBAL_SPACING, TEXT_SIZE, TITLE_TEXT_SIZE,
@@ -39,7 +40,7 @@ enum SubScreen {
     List {
         date_filters: DateFilters,
         reservations: Vec<Reservation>,
-        rooms: Vec<Room>,
+        rooms: Arc<Vec<Room>>,
     },
     Add(add::AddReservation),
     Edit(edit::EditReservation),
@@ -112,7 +113,7 @@ pub enum Message {
     /// Asks to update the current state of the list page
     LoadListPage,
     /// Callback after initial page loading, set's the  list state
-    PageLoaded(Vec<Reservation>, Vec<Room>, DateFilters),
+    PageLoaded(Vec<Reservation>, Arc<Vec<Room>>, DateFilters),
 
     /// Callback when using the text inputs of the reservations page
     TextInputUpdate(String, ReservationsTextInputFields),
@@ -155,7 +156,7 @@ impl Reservations {
                 },
                 |(reservations, rooms)| match (reservations, rooms) {
                     (Ok(reservations), Ok(rooms)) => {
-                        Message::PageLoaded(reservations, rooms, dates)
+                        Message::PageLoaded(reservations, Arc::from(rooms), dates)
                     }
                     _ => Message::AddToast(Toast::error_toast(
                         "Error fetching reservations of rooms",
@@ -244,7 +245,7 @@ impl Reservations {
                     },
                     |(reservations, rooms)| match (reservations, rooms) {
                         (Ok(reservations), Ok(rooms)) => {
-                            Message::PageLoaded(reservations, rooms, date_filters)
+                            Message::PageLoaded(reservations, Arc::from(rooms), date_filters)
                         }
                         _ => Message::AddToast(Toast::error_toast(
                             "Error fetching reservations of rooms",
@@ -387,14 +388,56 @@ impl Reservations {
                     edit::Action::AddToast(toast) => Action::AddToast(toast),
                 }
             }
-            Message::OpenAddReservation(initial_date, room) => {
+            Message::OpenAddReservation(initial_date, clicked_room) => {
                 let State::Ready { sub_screen, .. } = &mut self.state else {
                     return Action::None;
                 };
 
-                let (add, task) = add::AddReservation::new(database, initial_date, room);
-                *sub_screen = SubScreen::Add(add);
-                Action::Run(task.map(Message::AddReservation))
+                if let SubScreen::List {
+                    rooms,
+                    reservations,
+                    ..
+                } = sub_screen
+                {
+                    // Prepare the reservation for the add page
+                    let mut reservation = Reservation {
+                        entry_date: Some(initial_date.and_hms_opt(0, 0, 0).unwrap()),
+                        departure_date: Some(
+                            initial_date
+                                .and_hms_opt(0, 0, 0)
+                                .unwrap()
+                                .checked_add_days(chrono::Days::new(1))
+                                .unwrap(),
+                        ),
+                        ..Default::default()
+                    };
+
+                    // we only add the clicked room to the reservation if it's available on the selected dates
+                    let can_add_room = !reservations.iter().any(|r| {
+                        r.rooms.iter().any(|r| r.room_id == clicked_room.id)
+                            && r.entry_date.unwrap() < reservation.departure_date.unwrap()
+                            && r.departure_date.unwrap() > reservation.entry_date.unwrap()
+                    });
+
+                    // TODO: Maybe we should return and show a Toast here? Why do we continue?
+
+                    if can_add_room {
+                        reservation.rooms.push(SoldRoom {
+                            id: None,
+                            room_id: clicked_room.id,
+                            guests: Vec::new(),
+                            price: clicked_room.default_room_price,
+                            invoices: Vec::new(),
+                            room_name: Box::from(""),
+                        });
+                    }
+
+                    let (add, task) =
+                        add::AddReservation::new(database, rooms.clone(), reservation);
+                    *sub_screen = SubScreen::Add(add);
+                    return Action::Run(task.map(Message::AddReservation));
+                }
+                Action::None
             }
             Message::OpenEditReservation(reservation_id) => {
                 let State::Ready { sub_screen, .. } = &mut self.state else {
