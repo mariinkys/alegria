@@ -16,6 +16,7 @@ use sqlx::{Pool, Postgres};
 use crate::alegria::core::models::reservation::Reservation;
 use crate::alegria::core::models::room::Room;
 use crate::alegria::core::models::sold_room::SoldRoom;
+use crate::alegria::screen::hotel::clients::{self, Clients};
 use crate::alegria::utils::date::parse_date_to_naive_datetime;
 use crate::alegria::utils::styling::{
     GLOBAL_BUTTON_HEIGHT, GLOBAL_SPACING, TEXT_SIZE, TITLE_TEXT_SIZE,
@@ -29,11 +30,18 @@ pub struct AddReservation {
 
 enum State {
     Loading,
+    // We need to preserve the state of the add screen when we open the client selection
     Ready {
-        reservation: Reservation,
+        sub_screen: SubScreen,
+        reservation: Box<Reservation>,
         rooms: Arc<Vec<Room>>,
         reservations: Vec<Reservation>,
     },
+}
+
+pub enum SubScreen {
+    None,
+    ClientsSelection(Clients),
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +61,7 @@ pub enum Message {
     Hotkey(Hotkey),
 
     /// Callback after initial page load
-    PageLoaded(Reservation, Arc<Vec<Room>>, Vec<Reservation>),
+    PageLoaded(Box<Reservation>, Arc<Vec<Room>>, Vec<Reservation>),
 
     /// Callback when using the form inputs
     FormInputUpdate(String, InputFields),
@@ -61,6 +69,10 @@ pub enum Message {
     AddReservationRoom(i32, Option<f32>),
     /// Asks to remove a room to the vec of booked rooms of the current add reservation
     RemoveReservationRoom(i32),
+    /// Asks to open the client selector page/component
+    OpenClientSelector,
+    /// Messages of the clients (selector) page
+    Clients(clients::Message),
     /// Tries to add the current reservation to the database
     AddReservation,
 }
@@ -82,7 +94,6 @@ impl AddReservation {
             Self {
                 state: State::Loading,
             },
-            // TODO: Load Clients? How we gonna do the clients selector?
             Task::perform(
                 Reservation::get_all(
                     database.clone(),
@@ -95,7 +106,9 @@ impl AddReservation {
                         .unwrap_or_default(),
                 ),
                 |res| match res {
-                    Ok(reservations) => Message::PageLoaded(reservation, rooms, reservations),
+                    Ok(reservations) => {
+                        Message::PageLoaded(Box::from(reservation), rooms, reservations)
+                    }
                     Err(err) => {
                         eprintln!("{err}");
                         Message::AddToast(Toast::error_toast(err))
@@ -110,7 +123,7 @@ impl AddReservation {
         &mut self,
         message: Message,
         database: &Arc<Pool<Postgres>>,
-        _now: Instant,
+        now: Instant,
     ) -> Action {
         match message {
             Message::Back => Action::Back,
@@ -131,6 +144,7 @@ impl AddReservation {
             }
             Message::PageLoaded(reservation, rooms, reservations) => {
                 self.state = State::Ready {
+                    sub_screen: SubScreen::None,
                     reservation,
                     rooms,
                     reservations,
@@ -181,6 +195,55 @@ impl AddReservation {
                 }
                 Action::None
             }
+            Message::Clients(message) => {
+                let State::Ready {
+                    sub_screen,
+                    reservation,
+                    ..
+                } = &mut self.state
+                else {
+                    return Action::None;
+                };
+
+                let SubScreen::ClientsSelection(clients_selector_page) = sub_screen else {
+                    return Action::None;
+                };
+
+                match clients_selector_page.update(message, &database.clone(), now) {
+                    clients::Action::None => Action::None,
+                    clients::Action::Back => {
+                        if let State::Ready { sub_screen, .. } = &mut self.state {
+                            *sub_screen = SubScreen::None;
+                        }
+                        Action::None
+                    }
+                    clients::Action::Run(task) => Action::Run(task.map(Message::Clients)),
+                    clients::Action::AddToast(toast) => Action::AddToast(toast),
+                    clients::Action::ClientSelected(client) => {
+                        reservation.client_id = client.id;
+                        reservation.client_name = format!(
+                            "{} {} {} | {}",
+                            client.name,
+                            client.first_surname,
+                            client.second_surname,
+                            client.country
+                        );
+                        if let State::Ready { sub_screen, .. } = &mut self.state {
+                            *sub_screen = SubScreen::None;
+                        }
+                        Action::None
+                    }
+                }
+            }
+            Message::OpenClientSelector => {
+                let State::Ready { sub_screen, .. } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let (clients, task) = clients::Clients::new(database, clients::PageMode::Select);
+                *sub_screen = SubScreen::ClientsSelection(clients);
+                Action::Run(task.map(Message::Clients))
+            }
             Message::AddReservation => {
                 if let State::Ready { reservation, .. } = &mut self.state {
                     #[allow(clippy::collapsible_if)]
@@ -201,8 +264,16 @@ impl AddReservation {
                                 .unwrap(),
                         );
 
+                        if reservation.entry_date.unwrap().date()
+                            >= reservation.departure_date.unwrap().date()
+                        {
+                            return Action::AddToast(Toast::error_toast(
+                                "Entry date must not be greater than departure date",
+                            ));
+                        }
+
                         return Action::Run(Task::perform(
-                            Reservation::add(database.clone(), reservation.clone()),
+                            Reservation::add(database.clone(), *reservation.clone()),
                             |res| match res {
                                 Ok(_) => Message::Back,
                                 Err(err) => {
@@ -213,19 +284,24 @@ impl AddReservation {
                         ));
                     }
                 }
+
                 Action::None
             }
         }
     }
 
-    pub fn view(&self, _now: Instant) -> iced::Element<'_, Message> {
+    pub fn view(&self, now: Instant) -> iced::Element<'_, Message> {
         match &self.state {
             State::Loading => container(text("Loading...")).center(Length::Fill).into(),
             State::Ready {
+                sub_screen,
                 reservation,
                 rooms,
                 reservations,
-            } => add_form(reservation, rooms, reservations),
+            } => match sub_screen {
+                SubScreen::None => add_form(reservation, rooms, reservations),
+                SubScreen::ClientsSelection(clients) => clients.view(now).map(Message::Clients),
+            },
         }
     }
 
@@ -359,7 +435,18 @@ fn form_content<'a>(
         }
     }
 
-    // TODO: Client Selection
+    // Client Selection
+    let client_text = if new_reservation.client_name.is_empty() {
+        fl!("no-client-selected")
+    } else {
+        new_reservation.client_name.clone()
+    };
+    let client_row = row![
+        text(client_text).width(Length::Fill),
+        button(text(fl!("select")).center()).on_press(Message::OpenClientSelector)
+    ]
+    .align_y(Alignment::Center)
+    .spacing(GLOBAL_SPACING);
 
     // Submit
     let submit_button = button(text(fl!("add")).width(Length::Fill).center())
@@ -381,9 +468,13 @@ fn form_content<'a>(
         reservation_rooms_column.width(425.)
     ]
     .width(850.)
-    .spacing(1.);
+    .spacing(GLOBAL_SPACING);
+    let client_selection_column = column![text(fl!("main-client")).width(Length::Fill), client_row]
+        .width(850.)
+        .spacing(1.);
 
     Column::new()
+        .push(client_selection_column)
         .push(entry_date_input_column)
         .push(departure_date_input_column)
         .push(occupied)

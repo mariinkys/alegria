@@ -99,6 +99,10 @@ impl Hotel {
                         Action::None
                     }
                     clients::Action::AddToast(toast) => Action::AddToast(toast),
+                    clients::Action::ClientSelected(_) => {
+                        eprintln!("this should not happen, we can never reach this statement");
+                        Action::None
+                    }
                 }
             }
             Message::OpenClients => {
@@ -106,7 +110,7 @@ impl Hotel {
                     return Action::None;
                 };
 
-                let (clients, task) = clients::Clients::new(database);
+                let (clients, task) = clients::Clients::new(database, clients::PageMode::Normal);
                 *sub_screen = SubScreen::Clients(clients);
                 Action::Run(task.map(Message::Clients))
             }

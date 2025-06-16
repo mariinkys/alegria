@@ -23,12 +23,18 @@ use crate::alegria::widgets::toast::Toast;
 use crate::fl;
 
 pub struct Clients {
+    page_mode: PageMode,
     state: State,
 }
 
 enum State {
     Loading,
     Ready { sub_screen: SubScreen },
+}
+
+pub enum PageMode {
+    Normal,
+    Select,
 }
 
 pub enum SubScreen {
@@ -86,6 +92,8 @@ pub enum Message {
 
     /// Callback after asking to edit a client, searches the client on the db
     AskEditClient(i32),
+    /// Callback after asking to select a client, returns the selected client to the parent (Action)
+    AskSelectClient(Box<Client>),
     /// Changes the upsert screen with the given client
     OpenUpsertScreen(Box<Client>),
 
@@ -109,12 +117,14 @@ pub enum Action {
     Back,
     Run(Task<Message>),
     AddToast(Toast),
+    ClientSelected(Box<Client>),
 }
 
 impl Clients {
-    pub fn new(database: &Arc<Pool<Postgres>>) -> (Self, Task<Message>) {
+    pub fn new(database: &Arc<Pool<Postgres>>, page_mode: PageMode) -> (Self, Task<Message>) {
         (
             Self {
+                page_mode,
                 state: State::Loading,
             },
             Task::perform(Client::get_all(database.clone()), |res| match res {
@@ -282,6 +292,7 @@ impl Clients {
                     }
                 },
             )),
+            Message::AskSelectClient(client) => Action::ClientSelected(client),
             Message::OpenUpsertScreen(client) => {
                 self.state = State::Ready {
                     sub_screen: SubScreen::Upsert { client },
@@ -413,7 +424,7 @@ impl Clients {
                     current_search,
                     pagination_state,
                     clients,
-                } => list_screen(current_search, pagination_state, clients),
+                } => list_screen(&self.page_mode, current_search, pagination_state, clients),
                 SubScreen::Upsert { client } => upsert_screen(client),
             },
         }
@@ -451,6 +462,7 @@ fn handle_event(event: event::Event, _: event::Status, _: iced::window::Id) -> O
 // LIST SCREEN
 
 fn list_screen<'a>(
+    page_mode: &'a PageMode,
     current_search: &'a str,
     pagination_state: &'a PaginationConfig,
     clients: &'a [Client],
@@ -508,13 +520,18 @@ fn list_screen<'a>(
                     .width(150.)
                     .align_y(Alignment::Center),
             )
-            .push(
-                text(fl!("edit"))
+            .push(match page_mode {
+                PageMode::Normal => text(fl!("edit"))
                     .size(TITLE_TEXT_SIZE)
                     .width(150.)
                     .align_y(Alignment::Center)
                     .align_x(Alignment::End),
-            )
+                PageMode::Select => text(fl!("select"))
+                    .size(TITLE_TEXT_SIZE)
+                    .width(150.)
+                    .align_y(Alignment::Center)
+                    .align_x(Alignment::End),
+            })
             .width(Length::Shrink)
             .align_y(Alignment::Center);
 
@@ -562,8 +579,8 @@ fn list_screen<'a>(
                         .width(150.)
                         .align_y(Alignment::Center),
                 )
-                .push(
-                    container(
+                .push(match page_mode {
+                    PageMode::Normal => container(
                         button(text(fl!("edit")).size(TEXT_SIZE).align_y(Alignment::Center))
                             .on_press(Message::AskEditClient(client.id.unwrap()))
                             .width(Length::Shrink),
@@ -571,7 +588,19 @@ fn list_screen<'a>(
                     .width(150.)
                     .align_x(Alignment::End)
                     .align_y(Alignment::Center),
-                )
+                    PageMode::Select => container(
+                        button(
+                            text(fl!("select"))
+                                .size(TEXT_SIZE)
+                                .align_y(Alignment::Center),
+                        )
+                        .on_press(Message::AskSelectClient(Box::from(client.clone())))
+                        .width(Length::Shrink),
+                    )
+                    .width(150.)
+                    .align_x(Alignment::End)
+                    .align_y(Alignment::Center),
+                })
                 .align_y(Alignment::Center);
 
             // Limit Rule size to sum of all column widths
