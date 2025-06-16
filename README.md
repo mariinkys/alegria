@@ -33,17 +33,19 @@ cargo build --release
 sudo just install
 ```
 
+You will need to provide a valid Postgre connection string via .env file.
+
 ## Development Notes
-
-`cups-devel` (on Fedora) / `libcups2-dev` (on Ubuntu) is needed as a dependency for printing (required by the `printers` crate). 
-
-## About me
 
 <a href="https://github.com/iced-rs/iced">
   <img src="https://gist.githubusercontent.com/hecrj/ad7ecd38f6e47ff3688a38c79fd108f0/raw/74384875ecbad02ae2a926425e9bcafd0695bade/color.svg" width="130px">
 </a>
 
 <p></p>
+
+`cups-devel` (on Fedora) / `libcups2-dev` (on Ubuntu) is needed as a dependency for printing (required by the `printers` crate). 
+
+## About me
 
 Check out my [other projects](https://github.com/mariinkys) 
 
