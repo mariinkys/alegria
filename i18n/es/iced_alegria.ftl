@@ -82,4 +82,8 @@ add-reservation = Añadir Reserva
 
 <#-- Management Screen -->
 products = Productos
-product-types = Tipos de Productos
+product-categories = Categorías de Productos
+
+<#-- ProductCategories SubScreen -->
+no-product-categories = Nada todavía...
+product-category = Categoría de Producto

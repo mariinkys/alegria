@@ -11,6 +11,8 @@ use crate::alegria::utils::styling::*;
 use crate::alegria::widgets::toast::Toast;
 use crate::fl;
 
+mod product_categories;
+
 pub struct Management {
     state: State,
 }
@@ -26,7 +28,7 @@ enum State {
 pub enum SubScreen {
     Home,
     //Products(clients::Clients),
-    //ProductTypes(room_types::RoomTypes),
+    ProductCategories(product_categories::ProductCategories),
 }
 
 #[derive(Debug, Clone)]
@@ -34,9 +36,8 @@ pub enum Message {
     Back,
     //Products(clients::Message),
     //OpenProducts,
-
-    //ProductTypes(room_types::Message),
-    //OpenProductTypes,
+    ProductCategories(product_categories::Message),
+    OpenProductCategories,
 }
 
 pub enum Action {
@@ -67,6 +68,36 @@ impl Management {
     ) -> Action {
         match message {
             Message::Back => Action::Back,
+            Message::ProductCategories(message) => {
+                let State::Ready { sub_screen } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let SubScreen::ProductCategories(product_categories) = sub_screen else {
+                    return Action::None;
+                };
+
+                match product_categories.update(message, database, now) {
+                    product_categories::Action::None => Action::None,
+                    product_categories::Action::Run(task) => {
+                        Action::Run(task.map(Message::ProductCategories))
+                    }
+                    product_categories::Action::Back => {
+                        *sub_screen = SubScreen::Home;
+                        Action::None
+                    }
+                    product_categories::Action::AddToast(toast) => Action::AddToast(toast),
+                }
+            }
+            Message::OpenProductCategories => {
+                let State::Ready { sub_screen, .. } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let (room_types, task) = product_categories::ProductCategories::new(database);
+                *sub_screen = SubScreen::ProductCategories(room_types);
+                Action::Run(task.map(Message::ProductCategories))
+            }
         }
     }
 
@@ -89,7 +120,9 @@ impl Management {
                     .padding(3.)
                     .into()
                 } //SubScreen::Products(products) => products.view(now).map(Message::Products),
-                  //SubScreen::ProductTypes(product_types) => product_types.view(now).map(Message::ProductTypes),
+                SubScreen::ProductCategories(product_categories) => {
+                    product_categories.view(now).map(Message::ProductCategories)
+                }
             },
         }
     }
@@ -102,9 +135,9 @@ impl Management {
         match sub_screen {
             SubScreen::Home => Subscription::none(),
             // SubScreen::Products(products) => products.subscription(now).map(Message::Products),
-            // SubScreen::ProductTypes(prduct_types) => {
-            //     product_types.subscription(now).map(Message::ProductTypes)
-            // }
+            SubScreen::ProductCategories(product_categories) => product_categories
+                .subscription(now)
+                .map(Message::ProductCategories),
         }
     }
 }
@@ -146,11 +179,11 @@ fn home<'a>() -> iced::Element<'a, Message> {
         )
         .push(
             button(
-                text(fl!("product-types"))
+                text(fl!("product-categories"))
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center),
             )
-            //.on_press(Message::OpenProductTypes)
+            .on_press(Message::OpenProductCategories)
             .width(SQUAREBUTTONXY)
             .height(SQUAREBUTTONXY),
         )
