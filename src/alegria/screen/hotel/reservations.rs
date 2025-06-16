@@ -399,16 +399,19 @@ impl Reservations {
                     ..
                 } = sub_screen
                 {
+                    let entry_date = initial_date.and_hms_opt(0, 0, 0).unwrap();
+                    let departure_date = initial_date
+                        .and_hms_opt(0, 0, 0)
+                        .unwrap()
+                        .checked_add_days(chrono::Days::new(1))
+                        .unwrap();
+
                     // Prepare the reservation for the add page
                     let mut reservation = Reservation {
-                        entry_date: Some(initial_date.and_hms_opt(0, 0, 0).unwrap()),
-                        departure_date: Some(
-                            initial_date
-                                .and_hms_opt(0, 0, 0)
-                                .unwrap()
-                                .checked_add_days(chrono::Days::new(1))
-                                .unwrap(),
-                        ),
+                        entry_date: Some(entry_date),
+                        departure_date: Some(departure_date),
+                        entry_date_string: entry_date.date().to_string(),
+                        departure_date_string: departure_date.date().to_string(),
                         ..Default::default()
                     };
 
