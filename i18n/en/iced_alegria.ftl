@@ -12,7 +12,7 @@ delete = Delete
 <#-- Main Menu -->
 bar = Bar
 hotel = Hotel
-managment = Managment
+management = Management
 
 <#-- Bar Screen -->
 restaurant = Restaurant

@@ -20,7 +20,7 @@ refresh = Actualizar
 <#-- Main Menu -->
 bar = Bar
 hotel = Hotel
-managment = Gestión
+management = Gestión
 
 <#-- Bar Screen -->
 restaurant = Restaurante
@@ -79,3 +79,7 @@ occupied = Ocupada
 no-client-selected = Cliente no seleccionado
 main-client = Cliente Principal
 add-reservation = Añadir Reserva
+
+<#-- Management Screen -->
+products = Productos
+product-types = Tipos de Productos
