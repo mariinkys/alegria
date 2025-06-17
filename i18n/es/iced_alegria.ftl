@@ -87,3 +87,8 @@ product-categories = Categorías de Productos
 <#-- ProductCategories SubScreen -->
 no-product-categories = Nada todavía...
 product-category = Categoría de Producto
+
+<#-- Products SubScreen -->
+inside-price = Precio Dentro
+outside-price = Precio Fuera
+tax-percentage = IVA

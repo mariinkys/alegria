@@ -59,15 +59,14 @@ impl SimpleInvoice {
             .fetch_one(&mut *transaction)
             .await?;
 
-            let original_product = sqlx::query_as!(
-                Product,
+            let original_product = sqlx::query_as::<_, Product>(
                 r#"
                 SELECT id, category_id, name, inside_price, outside_price, tax_percentage, is_deleted, created_at, updated_at
                 FROM products
                 WHERE id = $1
                 "#,
-                sold_product.original_product_id
             )
+            .bind(sold_product.original_product_id)
             .fetch_one(&mut *transaction)
             .await?;
 
@@ -153,6 +152,8 @@ impl SimpleInvoice {
                 is_deleted: row.p_is_deleted,
                 created_at: row.p_created_at,
                 updated_at: row.p_updated_at,
+                product_category_name: String::new().into_boxed_str(),
+                ..Default::default()
             },
         })
         .collect();

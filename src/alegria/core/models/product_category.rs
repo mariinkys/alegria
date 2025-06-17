@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::{fmt, sync::Arc};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ProductCategory {
     pub id: Option<i32>,
     pub name: String,
