@@ -247,7 +247,7 @@ impl Products {
                     } = sub_screen
                     {
                         #[warn(clippy::collapsible_if)]
-                        if !product_categories.is_empty() {
+                        if !product_categories.is_empty() && product.category_id.is_none() {
                             product.category_id = product_categories.first().unwrap().id;
                         }
                     }

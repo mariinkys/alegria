@@ -237,7 +237,7 @@ impl Rooms {
                     #[allow(clippy::collapsible_match)]
                     if let SubScreen::Upsert { room, room_types } = sub_screen {
                         #[warn(clippy::collapsible_if)]
-                        if !room_types.is_empty() {
+                        if !room_types.is_empty() && room.room_type_id.is_none() {
                             room.room_type_id = room_types.first().unwrap().id;
                         }
                     }
