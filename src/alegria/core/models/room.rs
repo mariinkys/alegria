@@ -15,7 +15,7 @@ pub struct Room {
     pub updated_at: Option<NaiveDateTime>,
 
     // Not in the db
-    pub room_type_name: String, // Helps us JOIN adn return the room type name of the selected room_type_id
+    pub room_type_name: Box<str>, // Helps us JOIN adn return the room type name of the selected room_type_id
     pub default_room_price: Option<f32>, // Helps us JOIN the room_type_id and return the default price for this room
 }
 
@@ -29,7 +29,7 @@ impl Default for Room {
             is_deleted: false,
             created_at: Default::default(),
             updated_at: Default::default(),
-            room_type_name: String::new(),
+            room_type_name: String::new().into_boxed_str(),
             default_room_price: None,
         }
     }
@@ -90,7 +90,7 @@ impl Room {
                 is_deleted,
                 created_at,
                 updated_at,
-                room_type_name,
+                room_type_name: room_type_name.into_boxed_str(),
                 default_room_price,
             };
             result.push(room);

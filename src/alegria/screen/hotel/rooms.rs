@@ -424,7 +424,7 @@ fn list_screen<'a>(
                         .align_y(Alignment::Center),
                 )
                 .push(
-                    text(&room.room_type_name)
+                    text(&*room.room_type_name)
                         .size(TEXT_SIZE)
                         .width(300.)
                         .align_x(Alignment::Start)
