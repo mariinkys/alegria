@@ -4,8 +4,8 @@
     <developer id="dev.mariinkys">
         <name>mariinkys</name>
     </developer>
-    <url type="homepage">https://github.com/mariinkys/iced-alegria</url>
-    <url type="bugtracker">https://github.com/mariinkys/iced-alegria/issues</url>
+    <url type="homepage">https://github.com/mariinkys/alegria</url>
+    <url type="bugtracker">https://github.com/mariinkys/alegria/issues</url>
     <url type="donation">https://buymeacoffee.com/mariinkys</url>
 
     <name>Alegría</name>
@@ -17,7 +17,7 @@
     <provides>
         <id>dev.mariinkys.Alegria</id>
         <binaries>
-            <binary>iced-alegria</binary>
+            <binary>alegria</binary>
         </binaries>
     </provides>
 
@@ -27,17 +27,17 @@
       </p>
     </description>
 
-    <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/mariinkys/iced-alegria/main/resources/icons/hicolor/scalable/apps/icon.svg</icon>
+    <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/mariinkys/alegria/main/resources/icons/hicolor/scalable/apps/icon.svg</icon>
     <launchable type="desktop-id">dev.mariinkys.Alegria.desktop</launchable>
     <content_rating type="oars-1.1"/>
 
     <screenshots>
         <screenshot type="default" xml:lang="en">
-            <image>https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/bar.png</image>
+            <image>https://raw.githubusercontent.com/mariinkys/alegria/main/screenshots/bar.png</image>
             <caption>Bar Page</caption>
         </screenshot>
         <screenshot xml:lang="en">
-            <image>https://raw.githubusercontent.com/mariinkys/iced-alegria/main/screenshots/reservations.png</image>
+            <image>https://raw.githubusercontent.com/mariinkys/alegria/main/screenshots/reservations.png</image>
             <caption>Reservations Page</caption>
         </screenshot>
     </screenshots>

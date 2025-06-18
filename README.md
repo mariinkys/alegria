@@ -3,8 +3,8 @@
   <img src="./resources/icons/hicolor/scalable/apps/icon.svg" width="150" />
   <h1>Alegría</h1>
 
-  ![GitHub License](https://img.shields.io/github/license/mariinkys/iced-alegria)
-  ![GitHub Repo stars](https://img.shields.io/github/stars/mariinkys/iced-alegria)
+  ![GitHub License](https://img.shields.io/github/license/mariinkys/alegria)
+  ![GitHub Repo stars](https://img.shields.io/github/stars/mariinkys/alegria)
 
 
   <h3>Software básico TPV Hostelería</h3>
@@ -27,8 +27,8 @@ This software is being developed for a specific Spanish client; it just happens 
 Use [just](https://github.com/casey/just):
 
 ```
-git clone https://github.com/mariinkys/iced-alegria
-cd iced-alegria
+git clone https://github.com/mariinkys/alegria
+cd alegria
 cargo build --release
 sudo just install
 ```

@@ -12,7 +12,7 @@ use crate::alegria::screen::{self, Screen, bar, hotel, management};
 use crate::alegria::widgets::toast::{self, Toast};
 use crate::fl;
 
-pub struct IcedAlegria {
+pub struct Alegria {
     toasts: Vec<Toast>,
     state: State,
     now: Instant,
@@ -42,7 +42,7 @@ pub enum Message {
     CloseToast(usize),
 }
 
-impl IcedAlegria {
+impl Alegria {
     pub fn new(migrate: bool) -> (Self, Task<Message>) {
         (
             Self {

@@ -67,6 +67,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "alegria"
+version = "0.1.0"
+dependencies = [
+ "anywho",
+ "chrono",
+ "dotenvy",
+ "fontdue",
+ "i18n-embed",
+ "i18n-embed-fl",
+ "iced",
+ "printers",
+ "printpdf",
+ "rust-embed",
+ "serde",
+ "sqlx",
+ "tokio",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "aliasable"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1903,26 +1923,6 @@ dependencies = [
  "iced_winit",
  "image",
  "thiserror 1.0.69",
-]
-
-[[package]]
-name = "iced-alegria"
-version = "0.1.0"
-dependencies = [
- "anywho",
- "chrono",
- "dotenvy",
- "fontdue",
- "i18n-embed",
- "i18n-embed-fl",
- "iced",
- "printers",
- "printpdf",
- "rust-embed",
- "serde",
- "sqlx",
- "tokio",
- "unicode-segmentation",
 ]
 
 [[package]]

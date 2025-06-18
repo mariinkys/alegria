@@ -1,4 +1,4 @@
-name := 'iced-alegria'
+name := 'alegria'
 appid := 'dev.mariinkys.Alegria'
 
 rootdir := ''

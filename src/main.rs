@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-use app::IcedAlegria;
+use app::Alegria;
 use iced::{
     Size,
     window::{Settings, icon},
@@ -48,10 +48,10 @@ fn main() -> iced::Result {
     i18n::init(&requested_languages);
 
     iced::application::timed(
-        move || IcedAlegria::new(migrate),
-        IcedAlegria::update,
-        IcedAlegria::subscription,
-        IcedAlegria::view,
+        move || Alegria::new(migrate),
+        Alegria::update,
+        Alegria::subscription,
+        Alegria::view,
     )
     .window(Settings {
         position: iced::window::Position::Centered,
@@ -61,6 +61,6 @@ fn main() -> iced::Result {
         min_size: Some(Size::new(1200., 850.)),
         ..Default::default()
     })
-    .theme(IcedAlegria::theme)
+    .theme(Alegria::theme)
     .run()
 }
