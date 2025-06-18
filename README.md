@@ -22,7 +22,7 @@ This software is being developed for a specific Spanish client; it just happens 
 > [!WARNING]
 > This project is not ready for usage, very WIP
 
-## Installation
+<!-- ## Installation
 
 Use [just](https://github.com/casey/just):
 
@@ -33,7 +33,7 @@ cargo build --release
 sudo just install
 ```
 
-You will need to provide a valid Postgre connection string via .env file.
+You will need to provide a valid Postgre connection string via .env file. -->
 
 ## Development Notes
 
