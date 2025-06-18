@@ -364,15 +364,8 @@ fn list_screen<'a>(
             .push(
                 text(fl!("name"))
                     .size(TITLE_TEXT_SIZE)
-                    .width(300.)
+                    .width(600.)
                     .align_y(Alignment::Center),
-            )
-            .push(
-                text(fl!("price"))
-                    .size(TITLE_TEXT_SIZE)
-                    .width(300.)
-                    .align_x(Alignment::Start)
-                    .align_y(Alignment::End),
             )
             .push(
                 text(fl!("edit"))
