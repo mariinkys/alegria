@@ -17,7 +17,7 @@ pub async fn init_database(migrate: bool) -> Result<Arc<PgPool>, String> {
         .map_err(|e| format!("Could not connect to database: {e}"))?;
 
     if migrate {
-        match sqlx::migrate!("./migrations").run(&pool).await {
+        match sqlx::migrate!("../core/migrations").run(&pool).await {
             Ok(_) => println!("Migrations run successfully"),
             Err(err) => {
                 return Err(format!("Error occurred running migrations: {err}"));

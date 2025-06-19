@@ -14,13 +14,11 @@ use iced::{Alignment, Length, Subscription, event};
 use iced::{Task, widget::container};
 use sqlx::{Pool, Postgres};
 
-use crate::alegria::core::models::reservation::Reservation;
-use crate::alegria::core::models::room::Room;
-use crate::alegria::core::models::sold_room::SoldRoom;
-use crate::alegria::utils::date::{check_date_format, parse_date_to_naive_datetime};
-use crate::alegria::utils::styling::{
-    GLOBAL_BUTTON_HEIGHT, GLOBAL_SPACING, TEXT_SIZE, TITLE_TEXT_SIZE,
-};
+use alegria_core::models::reservation::Reservation;
+use alegria_core::models::room::Room;
+use alegria_core::models::sold_room::SoldRoom;
+use alegria_utils::date::{check_date_format, parse_date_to_naive_datetime};
+use alegria_utils::styling::{GLOBAL_BUTTON_HEIGHT, GLOBAL_SPACING, TEXT_SIZE, TITLE_TEXT_SIZE};
 
 use crate::{alegria::widgets::toast::Toast, fl};
 

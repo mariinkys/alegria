@@ -4,14 +4,14 @@ use iced::time::Instant;
 use iced::{Subscription, Task};
 use sqlx::{Pool, Postgres};
 
-use crate::alegria::core::models::product::Product;
-use crate::alegria::core::models::product_category::ProductCategory;
-use crate::alegria::core::models::simple_invoice::SimpleInvoice;
-use crate::alegria::core::models::temporal_product::TemporalProduct;
-use crate::alegria::core::models::temporal_ticket::TemporalTicket;
-use crate::alegria::core::print::{AlegriaPrinter, TicketType};
-use crate::alegria::utils::pagination::{PaginationAction, PaginationConfig};
 use crate::alegria::widgets::toast::Toast;
+use alegria_core::models::product::Product;
+use alegria_core::models::product_category::ProductCategory;
+use alegria_core::models::simple_invoice::SimpleInvoice;
+use alegria_core::models::temporal_product::TemporalProduct;
+use alegria_core::models::temporal_ticket::TemporalTicket;
+use alegria_core::print::{AlegriaPrinter, TicketType};
+use alegria_utils::pagination::{PaginationAction, PaginationConfig};
 
 mod update;
 mod view;

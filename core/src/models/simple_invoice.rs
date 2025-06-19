@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+use alegria_utils::entities::payment_method::PaymentMethod;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Postgres, Transaction};
 use std::sync::Arc;
 
-use crate::alegria::{
-    core::models::product::Product, utils::entities::payment_method::PaymentMethod,
-};
+use crate::models::product::Product;
 
 use super::{sold_product::SoldProduct, temporal_ticket::TemporalTicket};
 

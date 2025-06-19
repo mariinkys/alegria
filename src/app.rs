@@ -51,7 +51,7 @@ impl Alegria {
                 now: Instant::now(),
             },
             Task::perform(
-                async move { crate::alegria::core::database::init_database(migrate).await },
+                async move { alegria_core::database::init_database(migrate).await },
                 Message::DatabaseLoaded,
             ),
         )

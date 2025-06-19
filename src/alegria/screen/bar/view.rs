@@ -1,12 +1,5 @@
 use crate::{
     alegria::{
-        core::{
-            models::{
-                product::Product, product_category::ProductCategory,
-                temporal_ticket::TemporalTicket,
-            },
-            print::TicketType,
-        },
         screen::{
             Bar,
             bar::{
@@ -15,13 +8,19 @@ use crate::{
                 TableLocation, match_table_location_with_number,
             },
         },
-        utils::{
-            styling::*,
-            temporal_tickets::{TemporalTicketStatus, match_number_with_temporal_ticket_status},
-        },
         widgets::{focusable_text_input::TextInput, modal::modal},
     },
     fl,
+};
+use alegria_core::{
+    models::{
+        product::Product, product_category::ProductCategory, temporal_ticket::TemporalTicket,
+    },
+    print::TicketType,
+};
+use alegria_utils::{
+    styling::*,
+    temporal_tickets::{TemporalTicketStatus, match_number_with_temporal_ticket_status},
 };
 use iced::{
     Alignment, Length, Pixels,

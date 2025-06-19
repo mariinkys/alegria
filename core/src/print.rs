@@ -7,7 +7,7 @@ use printpdf::*;
 
 use super::models::simple_invoice::SimpleInvoice;
 
-static TICKET_FONT_TTF: &[u8] = include_bytes!("../../../resources/fonts/RobotoFlex.ttf");
+static TICKET_FONT_TTF: &[u8] = include_bytes!("../../resources/fonts/RobotoFlex.ttf");
 
 #[derive(Debug, Clone)]
 pub struct AlegriaPrinter(Printer);

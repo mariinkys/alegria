@@ -1,0 +1,23 @@
+[package]
+name = "alegria_core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+alegria_utils.workspace = true
+
+serde.workspace = true
+serde.features = ["derive"]
+
+sqlx.workspace = true
+sqlx.features = ["runtime-tokio", "postgres", "chrono", "uuid"]
+
+tokio.workspace = true
+
+chrono.workspace = true
+chrono.features = ["serde"]
+
+printers = "2.1.3" # getting printers, sending docs to print...
+printpdf = "0.8.2" # pdf generation
+fontdue = "0.9.3"  # needed to measure the text width in order to print
+dotenvy = "0.15.7" # .env support

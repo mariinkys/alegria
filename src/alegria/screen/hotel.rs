@@ -7,9 +7,9 @@ use iced::widget::{button, column, container, row, text};
 use iced::{Alignment, Length, Subscription, Task};
 use sqlx::{Pool, Postgres};
 
-use crate::alegria::utils::styling::*;
 use crate::alegria::widgets::toast::Toast;
 use crate::fl;
+use alegria_utils::styling::*;
 
 mod clients;
 mod reservations;

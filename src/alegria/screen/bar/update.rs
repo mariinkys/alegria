@@ -6,18 +6,18 @@ use sqlx::{Pool, Postgres};
 
 use super::{Bar, State};
 use crate::alegria::{
-    core::{
-        models::{
-            product::Product, simple_invoice::SimpleInvoice, temporal_product::TemporalProduct,
-            temporal_ticket::TemporalTicket,
-        },
-        print::TicketType,
-    },
     screen::bar::{
         Action, Message, NumPadAction, PaginationAction, PrintModal, SubScreen,
         TemporalProductField,
     },
     widgets::toast::Toast,
+};
+use alegria_core::{
+    models::{
+        product::Product, simple_invoice::SimpleInvoice, temporal_product::TemporalProduct,
+        temporal_ticket::TemporalTicket,
+    },
+    print::TicketType,
 };
 
 impl Bar {

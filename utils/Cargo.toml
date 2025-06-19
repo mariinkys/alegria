@@ -1,0 +1,10 @@
+[package]
+name = "alegria_utils"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono.workspace = true
+iced.workspace = true
+sqlx.workspace = true
+serde.workspace = true

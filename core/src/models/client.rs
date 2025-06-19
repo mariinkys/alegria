@@ -4,8 +4,7 @@ use chrono::{Datelike, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
-
-use crate::alegria::utils::{
+use alegria_utils::{
     date::check_date_format,
     entities::{gender::Gender, identity_document_type::IdentityDocumentType},
 };

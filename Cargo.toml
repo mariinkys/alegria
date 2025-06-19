@@ -3,36 +3,45 @@ name = "alegria"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-iced = { git = "https://github.com/iced-rs/iced", default-features = false, features = [
-    "tokio",
-    "wgpu",
-    "tiny-skia",
-    "advanced",
-    "image",
-    "debug",
-] }
+[workspace]
+members = ["core", "utils"]
+
+[workspace.dependencies]
+alegria_core.path = "./core"
+alegria_utils.path = "./utils"
+
+iced = { git = "https://github.com/iced-rs/iced" }
 anywho = "0.1.2"
-sqlx = { version = "0.8.6", features = [
-    "runtime-tokio",
-    "postgres",
-    "chrono",
-    "uuid",
-] }
-chrono = { version = "0.4.41", features = ["serde"] }
-serde = { version = "1.0.219", features = ["derive"] }
-i18n-embed-fl = "0.9.4" # needed for fl support
-rust-embed = "8.7.2" # needed for fl support
-dotenvy = "0.15.7" # .env support
-printers = "2.1.3" # getting printers, sending docs to print...
+sqlx = "0.8.6"
+chrono = "0.4.41"
+serde = "1.0.219"
 tokio = "1.45.1"
-printpdf = "0.8.2" # pdf generation
-fontdue = "0.9.3" # needed to measure the text width in order to print
+
+[dependencies]
+alegria_core.workspace = true
+alegria_utils.workspace = true
+
+iced.workspace = true
+iced.features = ["tokio", "wgpu", "tiny-skia", "advanced", "image", "debug"]
+
+anywho.workspace = true
+sqlx.workspace = true
+chrono.workspace = true
+serde.workspace = true
+tokio.workspace = true
+
+i18n-embed-fl = "0.9.4"         # needed for fl support
+rust-embed = "8.7.2"            # needed for fl support
 unicode-segmentation = "1.12.0" # needed for custom text-input
 
 [dependencies.i18n-embed]
 version = "0.15.4"
 features = ["fluent-system", "desktop-requester"]
+
+[lints.clippy]
+single-component-path-imports = "allow"
+too-many-arguments = "allow"
+large-enum-variant = "allow"
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

@@ -13,18 +13,11 @@ use iced::{Alignment, Element, Length, Renderer, Subscription, Theme, event};
 use iced::{Task, widget::container};
 use sqlx::{Pool, Postgres};
 
-use crate::alegria::utils::styling::{
-    GLOBAL_BUTTON_HEIGHT, GLOBAL_SPACING, TEXT_SIZE, TITLE_TEXT_SIZE,
-};
+use alegria_core::models::product_category::ProductCategory;
+use alegria_utils::pagination::*;
+use alegria_utils::styling::{GLOBAL_BUTTON_HEIGHT, GLOBAL_SPACING, TEXT_SIZE, TITLE_TEXT_SIZE};
 
-use crate::{
-    alegria::{
-        core::models::product_category::ProductCategory,
-        utils::pagination::{PaginationAction, PaginationConfig},
-        widgets::toast::Toast,
-    },
-    fl,
-};
+use crate::{alegria::widgets::toast::Toast, fl};
 
 pub struct ProductCategories {
     state: State,

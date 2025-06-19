@@ -13,14 +13,14 @@ use iced::widget::{
 use iced::{Alignment, Length, Renderer, Subscription, Task, Theme, event};
 use sqlx::{Pool, Postgres};
 
-use crate::alegria::core::models::client::Client;
-use crate::alegria::utils::date::parse_date_to_naive_datetime;
-use crate::alegria::utils::entities::gender::Gender;
-use crate::alegria::utils::entities::identity_document_type::IdentityDocumentType;
-use crate::alegria::utils::pagination::{PaginationAction, PaginationConfig};
-use crate::alegria::utils::styling::*;
 use crate::alegria::widgets::toast::Toast;
 use crate::fl;
+use alegria_core::models::client::Client;
+use alegria_utils::date::parse_date_to_naive_datetime;
+use alegria_utils::entities::gender::Gender;
+use alegria_utils::entities::identity_document_type::IdentityDocumentType;
+use alegria_utils::pagination::{PaginationAction, PaginationConfig};
+use alegria_utils::styling::*;
 
 pub struct Clients {
     page_mode: PageMode,

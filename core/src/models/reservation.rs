@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+use alegria_utils::date::check_date_format;
 use chrono::{NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
-
-use crate::alegria::utils::date::check_date_format;
 
 use super::sold_room::SoldRoom;
 

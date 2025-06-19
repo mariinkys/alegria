@@ -13,19 +13,12 @@ use iced::{Alignment, Element, Length, Renderer, Subscription, Theme, event};
 use iced::{Task, widget::container};
 use sqlx::{Pool, Postgres};
 
-use crate::alegria::core::models::room::Room;
-use crate::alegria::utils::styling::{
-    GLOBAL_BUTTON_HEIGHT, GLOBAL_SPACING, TEXT_SIZE, TITLE_TEXT_SIZE,
-};
+use alegria_core::models::room::Room;
+use alegria_core::models::room_type::RoomType;
+use alegria_utils::pagination::*;
+use alegria_utils::styling::{GLOBAL_BUTTON_HEIGHT, GLOBAL_SPACING, TEXT_SIZE, TITLE_TEXT_SIZE};
 
-use crate::{
-    alegria::{
-        core::models::room_type::RoomType,
-        utils::pagination::{PaginationAction, PaginationConfig},
-        widgets::toast::Toast,
-    },
-    fl,
-};
+use crate::{alegria::widgets::toast::Toast, fl};
 
 pub struct Rooms {
     state: State,
