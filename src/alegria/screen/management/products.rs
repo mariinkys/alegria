@@ -448,13 +448,20 @@ fn list_screen<'a>(
             .push(
                 text(fl!("name"))
                     .size(TITLE_TEXT_SIZE)
-                    .width(300.)
+                    .width(200.)
                     .align_y(Alignment::Center),
             )
             .push(
                 text(fl!("product-category"))
                     .size(TITLE_TEXT_SIZE)
-                    .width(300.)
+                    .width(200.)
+                    .align_x(Alignment::Start)
+                    .align_y(Alignment::End),
+            )
+            .push(
+                text(fl!("inside-price"))
+                    .size(TITLE_TEXT_SIZE)
+                    .width(200.)
                     .align_x(Alignment::Start)
                     .align_y(Alignment::End),
             )
@@ -486,14 +493,21 @@ fn list_screen<'a>(
                 .push(
                     text(&product.name)
                         .size(TEXT_SIZE)
-                        .width(300.)
+                        .width(200.)
                         .align_x(Alignment::Start)
                         .align_y(Alignment::Center),
                 )
                 .push(
                     text(&*product.product_category_name)
                         .size(TEXT_SIZE)
-                        .width(300.)
+                        .width(200.)
+                        .align_x(Alignment::Start)
+                        .align_y(Alignment::Center),
+                )
+                .push(
+                    text(format!("{:.2}€", product.inside_price.unwrap_or_default()))
+                        .size(TEXT_SIZE)
+                        .width(200.)
                         .align_x(Alignment::Start)
                         .align_y(Alignment::Center),
                 )
