@@ -8,8 +8,8 @@ use super::{Bar, State};
 use crate::alegria::{
     core::{
         models::{
-            product::Product, simple_invoice::SimpleInvoice, temporal_product::TemporalProduct,
-            temporal_ticket::TemporalTicket,
+            product::Product, reservation::Reservation, simple_invoice::SimpleInvoice,
+            temporal_product::TemporalProduct, temporal_ticket::TemporalTicket,
         },
         print::TicketType,
     },
@@ -17,6 +17,7 @@ use crate::alegria::{
         Action, Message, NumPadAction, PaginationAction, PrintModal, SubScreen,
         TemporalProductField,
     },
+    utils::entities::payment_method::PaymentMethod,
     widgets::toast::Toast,
 };
 
@@ -723,7 +724,34 @@ impl Bar {
                         *sub_screen = SubScreen::Pay {
                             origin_position: current_position.clone(),
                             ticket,
+                            selected_payment_method: PaymentMethod::Efectivo,
+                            occupied_reservations: Vec::new(),
                         };
+                        return Action::Run(Task::perform(
+                            Reservation::get_occupied(database.clone()),
+                            |res| match res {
+                                Ok(reservations) => {
+                                    Message::LoadedOccupiedReservations(reservations)
+                                }
+                                Err(err) => {
+                                    eprintln!("{err}");
+                                    Message::AddToast(Toast::error_toast(err))
+                                }
+                            },
+                        ));
+                    }
+                }
+                Action::None
+            }
+            Message::LoadedOccupiedReservations(reservations) => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Pay {
+                        occupied_reservations,
+                        ..
+                    } = sub_screen
+                    {
+                        *occupied_reservations = reservations;
                     }
                 }
                 Action::None

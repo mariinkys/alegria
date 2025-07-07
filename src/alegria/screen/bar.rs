@@ -6,10 +6,12 @@ use sqlx::{Pool, Postgres};
 
 use crate::alegria::core::models::product::Product;
 use crate::alegria::core::models::product_category::ProductCategory;
+use crate::alegria::core::models::reservation::Reservation;
 use crate::alegria::core::models::simple_invoice::SimpleInvoice;
 use crate::alegria::core::models::temporal_product::TemporalProduct;
 use crate::alegria::core::models::temporal_ticket::TemporalTicket;
 use crate::alegria::core::print::{AlegriaPrinter, TicketType};
+use crate::alegria::utils::entities::payment_method::PaymentMethod;
 use crate::alegria::utils::pagination::{PaginationAction, PaginationConfig};
 use crate::alegria::widgets::toast::Toast;
 
@@ -78,6 +80,8 @@ pub enum Message {
 
     /// Attempts to open the pay screen for the given temporal ticket
     OpenPayScreen(TemporalTicket),
+    /// Callback after loading the currently occupied reservations for the PayScreen
+    LoadedOccupiedReservations(Vec<Reservation>),
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
@@ -111,6 +115,8 @@ pub enum SubScreen {
     Pay {
         origin_position: CurrentPosition,
         ticket: TemporalTicket,
+        selected_payment_method: PaymentMethod,
+        occupied_reservations: Vec<Reservation>,
     },
 }
 
