@@ -2,7 +2,10 @@
 
 use std::{collections::HashMap, fmt::Display, sync::Arc};
 
-use printers::{common::base::printer::Printer, get_default_printer, get_printers};
+use printers::{
+    common::base::{job::PrinterJobOptions, printer::Printer},
+    get_default_printer, get_printers,
+};
 use printpdf::*;
 
 use super::models::simple_invoice::SimpleInvoice;
@@ -74,16 +77,20 @@ impl AlegriaPrinter {
         tokio::task::spawn_blocking(move || match ticket_type {
             TicketType::Invoice => {
                 if let Ok(doc) = generate_invoice(&invoice) {
-                    self.0.print(&doc, Some("Alegria Print Job"))
+                    match self.0.print(&doc, PrinterJobOptions::none()) {
+                        Ok(_) => Ok(()),
+                        Err(_e) => Err("Failed to print invoice"),
+                    }
                 } else {
                     Err("Failed to generate invoice document")
                 }
             }
             TicketType::Receipt => {
                 if let Ok(doc) = generate_receipt(&invoice) {
-                    self.0.print(&doc, Some("Alegria Print Job"))
-                    // std::fs::write("./text_example.pdf", doc).unwrap();
-                    // Ok(())
+                    match self.0.print(&doc, PrinterJobOptions::none()) {
+                        Ok(_) => Ok(()),
+                        Err(_e) => Err("Failed to print receipt"),
+                    }
                 } else {
                     Err("Failed to generate receipt document")
                 }

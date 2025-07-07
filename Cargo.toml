@@ -24,8 +24,8 @@ serde = { version = "1.0.219", features = ["derive"] }
 i18n-embed-fl = "0.9.4" # needed for fl support
 rust-embed = "8.7.2" # needed for fl support
 dotenvy = "0.15.7" # .env support
-printers = "2.1.3" # getting printers, sending docs to print...
-tokio = "1.45.1"
+printers = "2.2.0" # getting printers, sending docs to print...
+tokio = "1.46.1"
 printpdf = "0.8.2" # pdf generation
 fontdue = "0.9.3" # needed to measure the text width in order to print
 unicode-segmentation = "1.12.0" # needed for custom text-input
