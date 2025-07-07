@@ -30,7 +30,20 @@ impl Bar {
     ) -> Action {
         match message {
             Message::AddToast(toast) => Action::AddToast(toast),
-            Message::Back => Action::Back,
+            Message::Back => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    return match sub_screen {
+                        SubScreen::Bar { .. } => Action::Back,
+                        SubScreen::Pay {
+                            origin_position, ..
+                        } => Action::Run(Task::perform(
+                            super::init_page(database.clone(), Some(origin_position.to_owned())),
+                            Message::Loaded,
+                        )),
+                    };
+                }
+                Action::None
+            }
             Message::Loaded(result) => match result {
                 Ok(state) => {
                     self.state = *state;
@@ -698,6 +711,22 @@ impl Bar {
 
                 self.printer_modal.ticket_type = TicketType::default();
                 self.update(Message::FetchTemporalTickets, &database.clone(), now)
+            }
+
+            Message::OpenPayScreen(ticket) => {
+                #[allow(clippy::collapsible_if)]
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    if let SubScreen::Bar {
+                        current_position, ..
+                    } = &sub_screen
+                    {
+                        *sub_screen = SubScreen::Pay {
+                            origin_position: current_position.clone(),
+                            ticket,
+                        };
+                    }
+                }
+                Action::None
             }
         }
     }

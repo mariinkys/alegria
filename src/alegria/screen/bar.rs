@@ -75,6 +75,9 @@ pub enum Message {
     PrintTicket(Box<SimpleInvoice>),
     /// Callback after print job is completed
     PrintJobCompleted(Result<(), &'static str>),
+
+    /// Attempts to open the pay screen for the given temporal ticket
+    OpenPayScreen(TemporalTicket),
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
@@ -105,14 +108,17 @@ pub enum SubScreen {
         current_position: CurrentPosition,
         active_temporal_product: ActiveTemporalProduct,
     },
-    Pay,
+    Pay {
+        origin_position: CurrentPosition,
+        ticket: TemporalTicket,
+    },
 }
 
 impl std::fmt::Debug for SubScreen {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Bar { .. } => write!(f, "Bar"),
-            Self::Pay => write!(f, "Pay"),
+            Self::Pay { .. } => write!(f, "Pay"),
         }
     }
 }
@@ -199,7 +205,7 @@ impl Bar {
                 state: State::Loading,
             },
             Task::batch([
-                Task::perform(init_page(database.clone()), Message::Loaded),
+                Task::perform(init_page(database.clone(), None), Message::Loaded),
                 Task::perform(AlegriaPrinter::load_printers(), |res| {
                     Message::SetPrinters(Box::from(res.0), res.1)
                 }),
@@ -212,9 +218,14 @@ impl Bar {
     }
 }
 
-async fn init_page(database: Arc<Pool<Postgres>>) -> Result<Box<State>, anywho::Error> {
+async fn init_page(
+    database: Arc<Pool<Postgres>>,
+    position: Option<CurrentPosition>,
+) -> Result<Box<State>, anywho::Error> {
     let temporal_tickets = TemporalTicket::get_all(database.clone()).await?;
     let product_categories = ProductCategory::get_all(database.clone()).await?;
+
+    let current_position = position.unwrap_or_default();
 
     Ok(Box::from(State::Ready {
         sub_screen: SubScreen::Bar {
@@ -222,7 +233,7 @@ async fn init_page(database: Arc<Pool<Postgres>>) -> Result<Box<State>, anywho::
             product_categories,
             product_category_products: None,
             pagination: BarPagination::default(),
-            current_position: CurrentPosition::default(),
+            current_position,
             active_temporal_product: ActiveTemporalProduct::default(),
         },
     }))

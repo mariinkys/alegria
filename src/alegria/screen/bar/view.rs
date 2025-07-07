@@ -56,7 +56,9 @@ impl Bar {
                 ))
                 .center(Length::Fill)
                 .into(),
-                SubScreen::Pay => todo!(),
+                SubScreen::Pay { ticket, .. } => container(pay_view(ticket, &self.printer_modal))
+                    .center(Length::Fill)
+                    .into(),
             },
         }
     }
@@ -106,11 +108,22 @@ fn bar_view<'a>(
     .spacing(spacing);
 
     match print_modal.show_modal {
-        true => modal(
-            column![header, content].padding(3.).spacing(spacing),
-            view_print_modal(print_modal, temporal_tickets, current_position),
-            Message::PrintModalAction(PrintTicketModalActions::HideModal),
-        ),
+        true => {
+            let current_ticket = temporal_tickets
+                .iter()
+                .find(|x| {
+                    x.ticket_location
+                        == super::match_table_location_with_number(&current_position.table_location)
+                        && x.table_id == current_position.table_index
+                })
+                .unwrap(); // It's safe to unwrap here because we're checking on the button to open the print modal.
+
+            modal(
+                column![header, content].padding(3.).spacing(spacing),
+                view_print_modal(print_modal, current_ticket),
+                Message::PrintModalAction(PrintTicketModalActions::HideModal),
+            )
+        }
         false => column![header, content].padding(3.).spacing(spacing).into(),
     }
 }
@@ -177,7 +190,7 @@ fn bar_header<'a>(
                         .align_y(Alignment::Center),
                 )
                 .style(button::success)
-                //.on_press(Message::OpenPayScreen)
+                .on_press(Message::OpenPayScreen(c_ticket.clone()))
                 .height(button_height),
             );
         }
@@ -534,8 +547,7 @@ fn product_category_products_container<'a>(
 /// Returns the view of the print modal
 fn view_print_modal<'a>(
     print_modal: &'a PrintModal,
-    temporal_tickets: &'a [TemporalTicket],
-    current_position: &'a CurrentPosition,
+    ticket: &'a TemporalTicket,
 ) -> iced::Element<'a, Message> {
     if print_modal.all_printers.is_empty() {
         text("No printers detected...")
@@ -559,24 +571,14 @@ fn view_print_modal<'a>(
         )
         .width(Length::Fill);
 
-        let current_ticket = temporal_tickets.iter().find(|x| {
-            x.ticket_location
-                == super::match_table_location_with_number(&current_position.table_location)
-                && x.table_id == current_position.table_index
-        });
-
         let submit_button = button(
             text(fl!("print"))
                 .align_x(Alignment::Center)
                 .align_y(Alignment::Center),
         )
-        .on_press_maybe(
-            (print_modal.selected_printer.is_some() && current_ticket.is_some()).then_some(
-                Message::PrintModalAction(PrintTicketModalActions::PrintTicket(
-                    current_ticket.unwrap().clone(),
-                )),
-            ),
-        )
+        .on_press_maybe((print_modal.selected_printer.is_some()).then_some(
+            Message::PrintModalAction(PrintTicketModalActions::PrintTicket(ticket.clone())),
+        ))
         .width(Length::Fill);
 
         container(
@@ -595,6 +597,48 @@ fn view_print_modal<'a>(
         .style(container::rounded_box)
         .into()
     }
+}
+
+/// View of the pay subscreen
+fn pay_view<'a>(
+    ticket: &'a TemporalTicket,
+    print_modal: &'a PrintModal,
+) -> iced::Element<'a, Message> {
+    let spacing = Pixels::from(GLOBAL_SPACING);
+
+    let header = pay_header();
+    let content = text("Pay Content").height(Length::Fill);
+
+    match print_modal.show_modal {
+        true => modal(
+            column![header, content].padding(3.).spacing(spacing),
+            view_print_modal(print_modal, ticket),
+            Message::PrintModalAction(PrintTicketModalActions::HideModal),
+        ),
+        false => column![header, content].padding(3.).spacing(spacing).into(),
+    }
+}
+
+/// Returns the view of the header row of the pay screen
+fn pay_header<'a>() -> iced::Element<'a, Message> {
+    let spacing = Pixels::from(GLOBAL_SPACING);
+    let button_height = Length::Fixed(GLOBAL_BUTTON_HEIGHT);
+
+    let back_button = button(text(fl!("back")).center())
+        .on_press(Message::Back)
+        .height(button_height);
+
+    row![
+        back_button,
+        text(fl!("pay"))
+            .size(TITLE_TEXT_SIZE)
+            .align_y(Alignment::Center),
+        Space::new(Length::Fill, Length::Shrink)
+    ]
+    .width(Length::Fill)
+    .align_y(Alignment::Center)
+    .spacing(spacing)
+    .into()
 }
 
 //
