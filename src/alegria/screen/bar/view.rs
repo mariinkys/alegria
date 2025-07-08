@@ -2,7 +2,7 @@ use crate::{
     alegria::{
         core::{
             models::{
-                product::Product, product_category::ProductCategory,
+                product::Product, product_category::ProductCategory, reservation::Reservation,
                 temporal_ticket::TemporalTicket,
             },
             print::TicketType,
@@ -16,6 +16,7 @@ use crate::{
             },
         },
         utils::{
+            entities::payment_method::PaymentMethod,
             styling::*,
             temporal_tickets::{TemporalTicketStatus, match_number_with_temporal_ticket_status},
         },
@@ -56,9 +57,19 @@ impl Bar {
                 ))
                 .center(Length::Fill)
                 .into(),
-                SubScreen::Pay { ticket, .. } => container(pay_view(ticket, &self.printer_modal))
-                    .center(Length::Fill)
-                    .into(),
+                SubScreen::Pay {
+                    ticket,
+                    occupied_reservations,
+                    selected_payment_method,
+                    ..
+                } => container(pay_view(
+                    ticket,
+                    occupied_reservations,
+                    selected_payment_method,
+                    &self.printer_modal,
+                ))
+                .center(Length::Fill)
+                .into(),
             },
         }
     }
@@ -293,13 +304,7 @@ fn total_ticket_price<'a>(
     });
 
     let text = if let Some(ticket) = current_ticket {
-        let mut price = 0.;
-        for product in &ticket.products {
-            for _ in 0..product.quantity {
-                price += product.price.unwrap_or(0.);
-            }
-        }
-
+        let price = ticket.total_price();
         text(format!("{price:.2}")).size(25.).line_height(2.)
     } else {
         text(fl!("unknown")).size(25.).line_height(2.)
@@ -602,6 +607,8 @@ fn view_print_modal<'a>(
 /// View of the pay subscreen
 fn pay_view<'a>(
     ticket: &'a TemporalTicket,
+    occupied_reservations: &'a [Reservation],
+    selected_payment_method: &'a PaymentMethod,
     print_modal: &'a PrintModal,
 ) -> iced::Element<'a, Message> {
     let spacing = Pixels::from(GLOBAL_SPACING);
@@ -628,12 +635,23 @@ fn pay_header<'a>() -> iced::Element<'a, Message> {
         .on_press(Message::Back)
         .height(button_height);
 
+    let print_button = button(
+        text(fl!("print"))
+            .align_x(Alignment::Center)
+            .align_y(Alignment::Center),
+    )
+    .on_press(Message::PrintModalAction(
+        PrintTicketModalActions::ShowModal,
+    ))
+    .height(button_height);
+
     row![
         back_button,
         text(fl!("pay"))
             .size(TITLE_TEXT_SIZE)
             .align_y(Alignment::Center),
-        Space::new(Length::Fill, Length::Shrink)
+        Space::new(Length::Fill, Length::Shrink),
+        print_button
     ]
     .width(Length::Fill)
     .align_y(Alignment::Center)

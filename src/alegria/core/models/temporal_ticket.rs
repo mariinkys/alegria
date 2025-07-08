@@ -17,6 +17,17 @@ pub struct TemporalTicket {
 }
 
 impl TemporalTicket {
+    pub fn total_price(&self) -> f32 {
+        let mut price = 0.;
+        for product in &self.products {
+            for _ in 0..product.quantity {
+                price += product.price.unwrap_or(0.);
+            }
+        }
+
+        price
+    }
+
     pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<TemporalTicket>, sqlx::Error> {
         let rows = sqlx::query(
             "SELECT 
