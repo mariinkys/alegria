@@ -725,6 +725,7 @@ impl Bar {
                             origin_position: current_position.clone(),
                             ticket,
                             selected_payment_method: PaymentMethod::Efectivo,
+                            selected_adeudo_room_id: None,
                             occupied_reservations: Vec::new(),
                         };
                         return Action::Run(Task::perform(
@@ -743,6 +744,16 @@ impl Bar {
                 }
                 Action::None
             }
+            Message::LoadOccupiedReservations => Action::Run(Task::perform(
+                Reservation::get_occupied(database.clone()),
+                |res| match res {
+                    Ok(reservations) => Message::LoadedOccupiedReservations(reservations),
+                    Err(err) => {
+                        eprintln!("{err}");
+                        Message::AddToast(Toast::error_toast(err))
+                    }
+                },
+            )),
             Message::LoadedOccupiedReservations(reservations) => {
                 if let State::Ready { sub_screen, .. } = &mut self.state {
                     #[allow(clippy::collapsible_match)]
@@ -755,6 +766,86 @@ impl Bar {
                     }
                 }
                 Action::None
+            }
+            Message::UpdateSelectedPaymentMethod(p_method) => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Pay {
+                        selected_payment_method,
+                        selected_adeudo_room_id,
+                        ..
+                    } = sub_screen
+                    {
+                        *selected_payment_method = p_method;
+                        *selected_adeudo_room_id = None;
+                    }
+                }
+                Action::None
+            }
+            Message::SelectAdeudoSoldRoom(room_id) => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Pay {
+                        selected_adeudo_room_id,
+                        ..
+                    } = sub_screen
+                    {
+                        *selected_adeudo_room_id = room_id;
+                    }
+                }
+                Action::None
+            }
+            Message::PayTicket => {
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Pay {
+                        ticket,
+                        selected_payment_method,
+                        selected_adeudo_room_id,
+                        ..
+                    } = sub_screen
+                    {
+                        if *selected_payment_method != PaymentMethod::Adeudo
+                            && selected_adeudo_room_id.is_some()
+                        {
+                            return Action::AddToast(Toast::error_toast(
+                                "Room Id was selected when adeudo is not the payment method",
+                            ));
+                        } else if *selected_payment_method == PaymentMethod::Adeudo
+                            && selected_adeudo_room_id.is_none()
+                        {
+                            return Action::AddToast(Toast::error_toast(
+                                "No room selected for adeudo",
+                            ));
+                        }
+
+                        // we get the id because we don't know if the ticket has been printed or not
+                        // so we will retrieve it by id before commiting to the pay transaction
+                        // this way we know if it's already a simple invoice or not
+                        return Action::Run(Task::perform(
+                            SimpleInvoice::pay_temporal_ticket(
+                                database.clone(),
+                                ticket.id.unwrap_or_default(),
+                                *selected_payment_method,
+                                *selected_adeudo_room_id,
+                            ),
+                            |res| {
+                                let mapped_result = res.map_err(|e| e.to_string());
+                                Message::PaidTemporalTicket(mapped_result)
+                            },
+                        ));
+                    }
+                }
+                Action::None
+            }
+            Message::PaidTemporalTicket(result) => {
+                match result {
+                    Ok(_) => {
+                        // we can effectively go back, this will load the bar screen normally again
+                        self.update(Message::Back, &database.clone(), now)
+                    }
+                    Err(e) => Action::AddToast(Toast::error_toast(e.to_string())),
+                }
             }
         }
     }

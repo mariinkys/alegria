@@ -80,8 +80,18 @@ pub enum Message {
 
     /// Attempts to open the pay screen for the given temporal ticket
     OpenPayScreen(TemporalTicket),
+    /// Attempts to load the currently occupied reservations for the PayScreeb
+    LoadOccupiedReservations,
     /// Callback after loading the currently occupied reservations for the PayScreen
     LoadedOccupiedReservations(Vec<Reservation>),
+    /// Updates the currently selected payment method of the pay screen and removes any selected adeudo room id
+    UpdateSelectedPaymentMethod(PaymentMethod),
+    /// Updates the currently selected adeudo room if needed
+    SelectAdeudoSoldRoom(Option<i32>),
+    /// Attempts to submit the Pay action of the current pay screen ticket
+    PayTicket,
+    /// Callback after executing the pay temporal ticket transaction
+    PaidTemporalTicket(Result<(), String>),
 }
 
 // We only need to derive Debug and Clone because we're passing a State through the Loaded Message, there may be a better way to do this
@@ -116,6 +126,7 @@ pub enum SubScreen {
         origin_position: CurrentPosition,
         ticket: TemporalTicket,
         selected_payment_method: PaymentMethod,
+        selected_adeudo_room_id: Option<i32>,
         occupied_reservations: Vec<Reservation>,
     },
 }

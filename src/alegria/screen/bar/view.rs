@@ -61,11 +61,13 @@ impl Bar {
                     ticket,
                     occupied_reservations,
                     selected_payment_method,
+                    selected_adeudo_room_id,
                     ..
                 } => container(pay_view(
                     ticket,
                     occupied_reservations,
                     selected_payment_method,
+                    selected_adeudo_room_id,
                     &self.printer_modal,
                 ))
                 .center(Length::Fill)
@@ -609,12 +611,18 @@ fn pay_view<'a>(
     ticket: &'a TemporalTicket,
     occupied_reservations: &'a [Reservation],
     selected_payment_method: &'a PaymentMethod,
+    selected_adeudo_room_id: &'a Option<i32>,
     print_modal: &'a PrintModal,
 ) -> iced::Element<'a, Message> {
     let spacing = Pixels::from(GLOBAL_SPACING);
 
     let header = pay_header();
-    let content = text("Pay Content").height(Length::Fill);
+    let content = pay_view_content(
+        ticket,
+        occupied_reservations,
+        selected_payment_method,
+        selected_adeudo_room_id,
+    );
 
     match print_modal.show_modal {
         true => modal(
@@ -657,6 +665,162 @@ fn pay_header<'a>() -> iced::Element<'a, Message> {
     .align_y(Alignment::Center)
     .spacing(spacing)
     .into()
+}
+
+/// View of the pay subscreen
+fn pay_view_content<'a>(
+    ticket: &'a TemporalTicket,
+    occupied_reservations: &'a [Reservation],
+    selected_payment_method: &'a PaymentMethod,
+    selected_adeudo_room_id: &'a Option<i32>,
+) -> iced::Element<'a, Message> {
+    let spacing = Pixels::from(GLOBAL_SPACING);
+    let button_height = Length::Fixed(GLOBAL_BUTTON_HEIGHT);
+
+    let total_price = {
+        let price = ticket.total_price();
+        text(format!("{price:.2}")).size(25.).line_height(2.)
+    };
+
+    let payment_methods_buttons: Vec<iced::Element<Message>> = PaymentMethod::ALL
+        .iter()
+        .map(|p_method| {
+            button(
+                text(p_method.to_string())
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
+            )
+            .on_press(Message::UpdateSelectedPaymentMethod(*p_method))
+            .style(if p_method == selected_payment_method {
+                button::success
+            } else {
+                button::secondary
+            })
+            .height(button_height)
+            .into()
+        })
+        .collect();
+    let payment_methods_column = Column::with_children(payment_methods_buttons).spacing(spacing);
+
+    let reservations_selector_grid: iced::Element<Message> =
+        if *selected_payment_method == PaymentMethod::Adeudo {
+            pay_screen_reservations_selector(occupied_reservations, selected_adeudo_room_id)
+        } else {
+            container(Space::new(Length::Shrink, Length::Shrink)).into()
+        };
+
+    let submit_button = button(
+        text(fl!("pay"))
+            .align_x(Alignment::Center)
+            .align_y(Alignment::Center),
+    )
+    .on_press(Message::PayTicket)
+    .height(button_height);
+
+    let content = row![
+        column![total_price, payment_methods_column, submit_button].spacing(spacing),
+        reservations_selector_grid
+    ]
+    .spacing(spacing);
+
+    container(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(50)
+        .into()
+}
+
+fn pay_screen_reservations_selector<'a>(
+    occupied_reservations: &'a [Reservation],
+    selected_adeudo_room_id: &'a Option<i32>,
+) -> iced::Element<'a, Message> {
+    let spacing = Pixels::from(GLOBAL_SPACING);
+    let button_height = Length::Fixed(GLOBAL_BUTTON_HEIGHT);
+
+    let refresh_button = button(
+        text(fl!("refresh"))
+            .align_x(Alignment::Center)
+            .align_y(Alignment::Center),
+    )
+    .on_press(Message::LoadOccupiedReservations)
+    .height(button_height);
+
+    let title_row = Row::new()
+        .push(
+            text(fl!("room-name"))
+                .size(TITLE_TEXT_SIZE)
+                .width(250.)
+                .center(),
+        )
+        .push(text(fl!("name")).size(TITLE_TEXT_SIZE).width(250.).center())
+        .push(
+            text(fl!("select"))
+                .size(TITLE_TEXT_SIZE)
+                .width(250.)
+                .center(),
+        )
+        .width(Length::Shrink)
+        .align_y(Alignment::Center);
+
+    let mut grid = Column::new()
+        .push(title_row)
+        .align_x(Alignment::Center)
+        .spacing(spacing)
+        .width(Length::Shrink);
+
+    for reservation in occupied_reservations {
+        for reservation_room in &reservation.rooms {
+            let row = Row::new()
+                .push(
+                    text(&*reservation_room.room_name)
+                        .width(250.)
+                        .align_y(Alignment::Center),
+                )
+                .push(
+                    text(&reservation.client_name)
+                        .width(250.)
+                        .align_y(Alignment::Center),
+                )
+                .push(
+                    button(text(fl!("select")).center())
+                        .on_press(Message::SelectAdeudoSoldRoom(reservation_room.id))
+                        .style(match &selected_adeudo_room_id {
+                            Some(id) => {
+                                if *id == reservation_room.id.unwrap_or_default() {
+                                    button::success
+                                } else {
+                                    button::secondary
+                                }
+                            }
+                            None => button::secondary,
+                        }),
+                )
+                .width(Length::Shrink)
+                .align_y(Alignment::Center);
+
+            // Limit Rule size to sum of all column widths
+            grid = grid.push(row![iced::widget::Rule::horizontal(1.)].width(750.));
+            grid = grid.push(row);
+        }
+    }
+
+    let result = column![
+        refresh_button,
+        text(format!(
+            "Number of reservations {}",
+            &occupied_reservations.len()
+        )),
+        text(format!(
+            "Number of sold rooms {}",
+            &occupied_reservations
+                .iter()
+                .map(|x| x.rooms.len())
+                .sum::<usize>()
+        )),
+        Scrollable::new(grid)
+    ];
+
+    container(result).into()
 }
 
 //
