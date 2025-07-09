@@ -679,7 +679,7 @@ fn pay_view_content<'a>(
 
     let total_price = {
         let price = ticket.total_price();
-        text(format!("{price:.2}")).size(25.).line_height(2.)
+        text(format!("{price:.2} €")).size(25.).line_height(2.)
     };
 
     let payment_methods_buttons: Vec<iced::Element<Message>> = PaymentMethod::ALL
