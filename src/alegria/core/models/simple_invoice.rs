@@ -23,6 +23,15 @@ pub struct SimpleInvoice {
 }
 
 impl SimpleInvoice {
+    pub fn total_price(&self) -> f32 {
+        let mut price = 0.;
+        for product in &self.products {
+            price += product.price.unwrap_or(0.);
+        }
+
+        price
+    }
+
     /// Creates a simple invoice given a temporal ticket, returns the newly created invoice
     pub async fn create_from_temporal_ticket(
         pool: Arc<PgPool>,
@@ -337,5 +346,118 @@ impl SimpleInvoice {
 
         transaction.commit().await?;
         Ok(())
+    }
+
+    pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<SimpleInvoice>, sqlx::Error> {
+        use sqlx::Row;
+
+        let rows = sqlx::query(
+            "SELECT
+            si.id,
+            si.payment_method_id,
+            si.paid,
+            si.is_deleted,
+            si.created_at,
+            si.updated_at,
+            sp.id as product_id,
+            sp.simple_invoice_id,
+            sp.original_product_id,
+            sp.price,
+            p.id as original_product_id_field,
+            p.category_id,
+            p.name as product_name,
+            p.inside_price,
+            p.outside_price,
+            p.tax_percentage,
+            p.is_deleted as product_is_deleted,
+            p.created_at as product_created_at,
+            p.updated_at as product_updated_at
+            FROM simple_invoices si
+            LEFT JOIN sold_products sp ON si.id = sp.simple_invoice_id
+            LEFT JOIN products p ON sp.original_product_id = p.id
+            WHERE si.is_deleted = $1
+            ORDER BY si.id DESC",
+        )
+        .bind(false)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+        let mut invoices_map = std::collections::HashMap::<i32, SimpleInvoice>::new();
+
+        for row in rows {
+            let id: Option<i32> = row.try_get("id")?;
+            let invoice_id = id.unwrap_or(0);
+
+            let invoice = invoices_map.entry(invoice_id).or_insert_with(|| {
+                let payment_method_id: Option<i32> =
+                    row.try_get("payment_method_id").unwrap_or(None);
+                let paid: bool = row.try_get("paid").unwrap_or(false);
+                let is_deleted: bool = row.try_get("is_deleted").unwrap_or(false);
+                let created_at: Option<NaiveDateTime> = row.try_get("created_at").unwrap_or(None);
+                let updated_at: Option<NaiveDateTime> = row.try_get("updated_at").unwrap_or(None);
+
+                SimpleInvoice {
+                    id,
+                    payment_method: PaymentMethod::from_id(payment_method_id.unwrap_or_default())
+                        .unwrap_or_default(),
+                    products: Vec::new(),
+                    paid,
+                    is_deleted,
+                    created_at,
+                    updated_at,
+                }
+            });
+
+            let product_id: Option<i32> = row.try_get("product_id")?;
+            if let Some(product_id) = product_id {
+                let simple_invoice_id: i32 = row.try_get("simple_invoice_id")?;
+                let original_product_id: i32 = row.try_get("original_product_id")?;
+                let price: Option<f32> = row.try_get("price")?;
+
+                let original_product_id_field: Option<i32> =
+                    row.try_get("original_product_id_field")?;
+                let category_id: Option<i32> = row.try_get("category_id")?;
+                let product_name: String = row.try_get("product_name")?;
+                let inside_price: Option<f32> = row.try_get("inside_price")?;
+                let outside_price: Option<f32> = row.try_get("outside_price")?;
+                let tax_percentage: Option<f32> = row.try_get("tax_percentage")?;
+                let product_is_deleted: bool = row.try_get("product_is_deleted")?;
+                let product_created_at: Option<NaiveDateTime> =
+                    row.try_get("product_created_at")?;
+                let product_updated_at: Option<NaiveDateTime> =
+                    row.try_get("product_updated_at")?;
+
+                let original_product = Product {
+                    id: original_product_id_field,
+                    category_id,
+                    name: product_name,
+                    inside_price,
+                    outside_price,
+                    tax_percentage,
+                    is_deleted: product_is_deleted,
+                    created_at: product_created_at,
+                    updated_at: product_updated_at,
+                    product_category_name: Box::from(""),
+                    inside_price_input: String::new(),
+                    outside_price_input: String::new(),
+                    tax_percentage_input: String::new(),
+                };
+
+                let sold_product = SoldProduct {
+                    id: Some(product_id),
+                    simple_invoice_id,
+                    original_product_id,
+                    price,
+                    original_product,
+                };
+
+                invoice.products.push(sold_product);
+            }
+        }
+
+        let mut result: Vec<SimpleInvoice> = invoices_map.into_values().collect();
+        result.sort_by(|a, b| b.id.cmp(&a.id));
+
+        Ok(result)
     }
 }

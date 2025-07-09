@@ -83,6 +83,7 @@ add-reservation = Añadir Reserva
 <#-- Management Screen -->
 products = Productos
 product-categories = Categorías de Productos
+simple-invoices = Facturas Simplificadas
 
 <#-- ProductCategories SubScreen -->
 no-product-categories = Nada todavía...
@@ -92,3 +93,9 @@ product-category = Categoría de Producto
 inside-price = Precio Dentro
 outside-price = Precio Fuera
 tax-percentage = IVA
+
+<#-- Simple Invoices SubScreen -->
+no-simple-invoices = Nada todavía...
+id = Id
+total-invoice = Total 
+details = Detalles

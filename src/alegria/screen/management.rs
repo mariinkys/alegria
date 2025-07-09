@@ -13,6 +13,7 @@ use crate::fl;
 
 mod product_categories;
 mod products;
+mod simple_invoices;
 
 pub struct Management {
     state: State,
@@ -30,6 +31,7 @@ pub enum SubScreen {
     Home,
     Products(products::Products),
     ProductCategories(product_categories::ProductCategories),
+    SimpleInvoices(simple_invoices::SimpleInvoices),
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +41,8 @@ pub enum Message {
     OpenProducts,
     ProductCategories(product_categories::Message),
     OpenProductCategories,
+    SimpleInvoices(simple_invoices::Message),
+    OpenSimpleInvoices,
 }
 
 pub enum Action {
@@ -128,6 +132,36 @@ impl Management {
                 *sub_screen = SubScreen::ProductCategories(product_categories);
                 Action::Run(task.map(Message::ProductCategories))
             }
+            Message::SimpleInvoices(message) => {
+                let State::Ready { sub_screen } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let SubScreen::SimpleInvoices(simple_invoices) = sub_screen else {
+                    return Action::None;
+                };
+
+                match simple_invoices.update(message, database, now) {
+                    simple_invoices::Action::None => Action::None,
+                    simple_invoices::Action::Run(task) => {
+                        Action::Run(task.map(Message::SimpleInvoices))
+                    }
+                    simple_invoices::Action::Back => {
+                        *sub_screen = SubScreen::Home;
+                        Action::None
+                    }
+                    simple_invoices::Action::AddToast(toast) => Action::AddToast(toast),
+                }
+            }
+            Message::OpenSimpleInvoices => {
+                let State::Ready { sub_screen, .. } = &mut self.state else {
+                    return Action::None;
+                };
+
+                let (simple_invoices, task) = simple_invoices::SimpleInvoices::new(database);
+                *sub_screen = SubScreen::SimpleInvoices(simple_invoices);
+                Action::Run(task.map(Message::SimpleInvoices))
+            }
         }
     }
 
@@ -154,6 +188,9 @@ impl Management {
                 SubScreen::ProductCategories(product_categories) => {
                     product_categories.view(now).map(Message::ProductCategories)
                 }
+                SubScreen::SimpleInvoices(simple_invoices) => {
+                    simple_invoices.view(now).map(Message::SimpleInvoices)
+                }
             },
         }
     }
@@ -169,6 +206,9 @@ impl Management {
             SubScreen::ProductCategories(product_categories) => product_categories
                 .subscription(now)
                 .map(Message::ProductCategories),
+            SubScreen::SimpleInvoices(simple_invoices) => simple_invoices
+                .subscription(now)
+                .map(Message::SimpleInvoices),
         }
     }
 }
@@ -215,6 +255,16 @@ fn home<'a>() -> iced::Element<'a, Message> {
                     .align_y(Alignment::Center),
             )
             .on_press(Message::OpenProductCategories)
+            .width(SQUAREBUTTONXY)
+            .height(SQUAREBUTTONXY),
+        )
+        .push(
+            button(
+                text(fl!("simple-invoices"))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center),
+            )
+            .on_press(Message::OpenSimpleInvoices)
             .width(SQUAREBUTTONXY)
             .height(SQUAREBUTTONXY),
         )
