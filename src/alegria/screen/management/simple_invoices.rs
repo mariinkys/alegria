@@ -201,26 +201,25 @@ impl SimpleInvoices {
                 Action::None
             }
             Message::DeleteCurrentSimpleInvoice => {
-                todo!();
-                // if let State::Ready { sub_screen, .. } = &mut self.state {
-                //     #[allow(clippy::collapsible_match)]
-                //     if let SubScreen::Details { simple_invoice, .. } = sub_screen {
-                //         return Action::Run(Task::perform(
-                //             SimpleInvoice::delete(
-                //                 database.clone(),
-                //                 simple_invoice.id.unwrap_or_default(),
-                //             ),
-                //             |res| match res {
-                //                 Ok(_) => Message::FetchSimpleInvoices,
-                //                 Err(err) => {
-                //                     eprintln!("{err}");
-                //                     Message::AddToast(Toast::error_toast(err))
-                //                 }
-                //             },
-                //         ));
-                //     }
-                // }
-                // Action::None
+                if let State::Ready { sub_screen, .. } = &mut self.state {
+                    #[allow(clippy::collapsible_match)]
+                    if let SubScreen::Details { simple_invoice, .. } = sub_screen {
+                        return Action::Run(Task::perform(
+                            SimpleInvoice::delete(
+                                database.clone(),
+                                simple_invoice.id.unwrap_or_default(),
+                            ),
+                            |res| match res {
+                                Ok(_) => Message::FetchSimpleInvoices,
+                                Err(err) => {
+                                    eprintln!("{err}");
+                                    Message::AddToast(Toast::error_toast(err))
+                                }
+                            },
+                        ));
+                    }
+                }
+                Action::None
             }
         }
     }

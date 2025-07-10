@@ -348,6 +348,7 @@ impl SimpleInvoice {
         Ok(())
     }
 
+    /// Retrieves all simple invoices from the database
     pub async fn get_all(pool: Arc<PgPool>) -> Result<Vec<SimpleInvoice>, sqlx::Error> {
         use sqlx::Row;
 
@@ -459,5 +460,15 @@ impl SimpleInvoice {
         result.sort_by(|a, b| b.id.cmp(&a.id));
 
         Ok(result)
+    }
+
+    /// delete the simple_invoice (the db cascade will handle sold_products deletion, will delete the simple invoice from any adeudo...)
+    pub async fn delete(pool: Arc<PgPool>, simple_invoice_id: i32) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM simple_invoices WHERE id = $1")
+            .bind(simple_invoice_id)
+            .execute(pool.as_ref())
+            .await?;
+
+        Ok(())
     }
 }
